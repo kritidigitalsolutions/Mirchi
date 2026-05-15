@@ -132,9 +132,7 @@ exports.sendOTP = async (req, res) => {
       success: true,
       message: "OTP generated successfully",
       isNewUser,
-
-      // REMOVE IN PRODUCTION
-      otp,
+      ...(process.env.NODE_ENV !== "production" && { otp }),
     });
 
   } catch (error) {

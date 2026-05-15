@@ -1,14 +1,31 @@
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
+const helmet = require("helmet");
+const connectDB = require("./config/db");
+const createDefaultAdmin = require("./utils/createDefaultAdmin");
+
+require("dotenv").config();
 
 const app = express();
 
+// Connect Database and Create Admin (for Serverless/Vercel)
+if (process.env.NODE_ENV === "production" || process.env.VERCEL) {
+  connectDB().then(() => {
+    createDefaultAdmin();
+  });
+}
 
 // ========================================
 // MIDDLEWARES
 // ========================================
-app.use(cors());
+app.use(helmet());
+
+const corsOptions = {
+  origin: process.env.FRONTEND_URL || "*",
+  credentials: true,
+};
+app.use(cors(corsOptions));
 
 app.use(express.json());
 
