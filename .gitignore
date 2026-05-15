@@ -16,8 +16,12 @@ backend/build/
 *.log
 npm-debug.log*
 
-# Project-specific uploads
-backend/uploads/
+# Project-specific uploads (Ignore large videos, allow images)
+backend/uploads/**/*.mp4
+backend/uploads/**/*.mkv
+backend/uploads/**/*.webm
+backend/uploads/**/*.mov
+backend/uploads/**/*.avi
 
 # OS and IDE files
 .DS_Store
