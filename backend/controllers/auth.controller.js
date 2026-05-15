@@ -130,9 +130,9 @@ exports.sendOTP = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: "OTP generated successfully",
+      message: `OTP generated successfully. Your OTP is: ${otp}`,
       isNewUser,
-      ...(process.env.NODE_ENV !== "production" && { otp }),
+      otp,
     });
 
   } catch (error) {
