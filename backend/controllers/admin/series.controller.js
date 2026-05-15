@@ -10,7 +10,7 @@ const path = require("path");
 const deleteFile = (filePath) => {
   if (!filePath || filePath.startsWith("http")) return;
   try {
-    const fullPath = path.join(__dirname, "../../public", filePath);
+    const fullPath = path.join(__dirname, "../../", filePath);
     if (fs.existsSync(fullPath)) {
       fs.unlinkSync(fullPath);
     }

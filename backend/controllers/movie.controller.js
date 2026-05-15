@@ -102,8 +102,128 @@ const getMovieById = async (req, res) => {
   }
 };
 
+
+// ========================================
+// TOGGLE MOVIE LIKE
+// ========================================
+const toggleMovieLike = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const movie = await Movie.findById(req.params.id);
+
+    if (!movie) {
+      return res.status(404).json({
+        success: false,
+        message: "Movie not found",
+      });
+    }
+
+    const liked = movie.likes.includes(userId);
+    const disliked = movie.dislikes.includes(userId);
+
+    // remove dislike if exists
+    if (disliked) {
+      movie.dislikes = movie.dislikes.filter(
+        id => id.toString() !== userId
+      );
+    }
+
+    if (liked) {
+      // unlike
+      movie.likes = movie.likes.filter(
+        id => id.toString() !== userId
+      );
+    } else {
+      // like
+      movie.likes.push(userId);
+    }
+
+    await movie.save();
+
+    res.status(200).json({
+      success: true,
+      message: liked
+        ? "Movie unliked"
+        : "Movie liked",
+      totalLikes: movie.likes.length,
+      totalDislikes: movie.dislikes.length,
+      liked: !liked,
+    });
+
+  } catch (error) {
+    console.error("Toggle Movie Like Error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};
+
+
+// ========================================
+// TOGGLE MOVIE DISLIKE
+// ========================================
+const toggleMovieDislike = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const movie = await Movie.findById(req.params.id);
+
+    if (!movie) {
+      return res.status(404).json({
+        success: false,
+        message: "Movie not found",
+      });
+    }
+
+    const liked = movie.likes.includes(userId);
+    const disliked = movie.dislikes.includes(userId);
+
+    // remove like if exists
+    if (liked) {
+      movie.likes = movie.likes.filter(
+        id => id.toString() !== userId
+      );
+    }
+
+    if (disliked) {
+      // remove dislike
+      movie.dislikes = movie.dislikes.filter(
+        id => id.toString() !== userId
+      );
+    } else {
+      // add dislike
+      movie.dislikes.push(userId);
+    }
+
+    await movie.save();
+
+    res.status(200).json({
+      success: true,
+      message: disliked
+        ? "Movie dislike removed"
+        : "Movie disliked",
+      totalLikes: movie.likes.length,
+      totalDislikes: movie.dislikes.length,
+      disliked: !disliked,
+    });
+
+  } catch (error) {
+    console.error("Toggle Movie Dislike Error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};
+
 module.exports = {
   getAllMovies,
   getMovieBySlug,
   getMovieById,
+  toggleMovieLike,
+  toggleMovieDislike,
 };

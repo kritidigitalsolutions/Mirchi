@@ -105,6 +105,19 @@ const movieUserRoutes = require("./routes/user/movie.routes");
 const seriesUserRoutes = require("./routes/user/series.routes");
 const contentAdminRoutes = require("./routes/admin/content.routes");
 const contentUserRoutes = require("./routes/user/content.routes");
+const shortDramaRoutes = require(
+  "./routes/admin/shortdrama.routes"
+);
+
+const dramaEpisodeRoutes = require(
+  "./routes/admin/dramaEpisode.routes"
+);
+const dramaUserRoutes = require(
+  "./routes/user/shortdrama.routes"
+);
+const dramaEpisodeUserRoutes = require(
+  "./routes/user/dramaEpisode.routes"
+);
 
 app.use(
   "/api/admin/auth",
@@ -134,6 +147,25 @@ app.use(
 app.use(
   "/api/admin/content",
   contentAdminRoutes
+);
+app.use(
+  "/api/admin/shortdramas",
+  shortDramaRoutes
+);
+
+app.use(
+  "/api/admin/drama-episodes",
+  dramaEpisodeRoutes
+);
+
+app.use(
+  "/api/shortdramas",
+  dramaUserRoutes
+);
+
+app.use(
+  "/api/drama-episodes",
+  dramaEpisodeUserRoutes
 );
 
 
@@ -221,6 +253,10 @@ const adminNotificationRoutes = require("./routes/admin/notification.routes");
 const userNotificationRoutes = require("./routes/user/notification.routes");
 app.use("/api/admin/notifications", adminNotificationRoutes);
 app.use("/api/notifications", userNotificationRoutes);
+
+//interactions routes
+const interactionRoutes = require("./routes/user/interation.routes");
+app.use("/api/interaction", interactionRoutes);
 
 // ================Razor Pay===============
 // const paymentRoutes = require("./routes/user/payment.routes");

@@ -151,10 +151,151 @@ const getEpisodesBySeries = async (req, res) => {
   }
 };
 
+// ========================================
+// TOGGLE SERIES LIKE
+// ========================================
+
+const toggleSeriesLike = async (req, res) => {
+  try {
+
+    const userId = req.user.id;
+
+    const series = await Series.findById(req.params.id);
+
+    if (!series) {
+      return res.status(404).json({
+        success: false,
+        message: "Series not found",
+      });
+    }
+
+    const liked = series.likes.some(
+      id => id.toString() === userId
+    );
+
+    const disliked = series.dislikes.some(
+      id => id.toString() === userId
+    );
+
+    // remove dislike
+    if (disliked) {
+      series.dislikes = series.dislikes.filter(
+        id => id.toString() !== userId
+      );
+    }
+
+    if (liked) {
+
+      // unlike
+      series.likes = series.likes.filter(
+        id => id.toString() !== userId
+      );
+
+    } else {
+
+      // like
+      series.likes.push(userId);
+    }
+
+    await series.save();
+
+    return res.status(200).json({
+      success: true,
+      message: liked
+        ? "Series unliked"
+        : "Series liked",
+      totalLikes: series.likes.length,
+      totalDislikes: series.dislikes.length,
+      liked: !liked,
+    });
+
+  } catch (error) {
+
+    console.error("Toggle Series Like Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};
+
+// ========================================
+// TOGGLE SERIES DISLIKE
+// ========================================
+
+const toggleSeriesDislike = async (req, res) => {
+  try {
+
+    const userId = req.user.id;
+
+    const series = await Series.findById(req.params.id);
+
+    if (!series) {
+      return res.status(404).json({
+        success: false,
+        message: "Series not found",
+      });
+    }
+
+    const liked = series.likes.some(
+      id => id.toString() === userId
+    );
+
+    const disliked = series.dislikes.some(
+      id => id.toString() === userId
+    );
+
+    // remove like
+    if (liked) {
+      series.likes = series.likes.filter(
+        id => id.toString() !== userId
+      );
+    }
+
+    if (disliked) {
+
+      // remove dislike
+      series.dislikes = series.dislikes.filter(
+        id => id.toString() !== userId
+      );
+
+    } else {
+
+      // add dislike
+      series.dislikes.push(userId);
+    }
+
+    await series.save();
+
+    return res.status(200).json({
+      success: true,
+      message: disliked
+        ? "Series dislike removed"
+        : "Series disliked",
+      totalLikes: series.likes.length,
+      totalDislikes: series.dislikes.length,
+      disliked: !disliked,
+    });
+
+  } catch (error) {
+
+    console.error("Toggle Series Dislike Error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};
+
 module.exports = {
   getAllSeries,
   getSeriesBySlug,
   getSeriesById,
+  toggleSeriesLike,
+  toggleSeriesDislike,
   getEpisodesBySeries,
 };
+
 

@@ -48,7 +48,20 @@ const movieSchema = new mongoose.Schema(
         enum: ["trending", "top10", "recommended"]
         // enum: ["trending", "top10", "recommended", "new releases", "bollywood", "hollywood", "action", "comedy"]
       }
-    ]
+    ],
+    likes: [
+  {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+  },
+],
+
+dislikes: [
+  {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+  },
+],
 
   },
   { timestamps: true }

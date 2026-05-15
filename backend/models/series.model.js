@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const Episode = require("./episode.model");
 
 // Cast Schema
 const castSchema = new mongoose.Schema({
@@ -43,6 +44,19 @@ const seriesSchema = new mongoose.Schema(
         // enum: ["trending", "top10", "recommended", "new releases", "bollywood", "hollywood", "action", "comedy"]
       }
     ],
+       likes: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
+    
+    dislikes: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
 
     totalSeasons: { type: Number, default: 0 },
     totalEpisodes: { type: Number, default: 0 }
@@ -68,5 +82,24 @@ seriesSchema.pre("save", function () {
   }
 });
 
+seriesSchema.pre("findOneAndDelete", async function () {
+  const series = await this.model.findOne(this.getFilter()).select("_id");
+
+  if (series) {
+    await Episode.deleteMany({
+      seriesId: series._id
+    });
+  }
+});
+
+seriesSchema.pre(
+  "deleteOne",
+  { document: true, query: false },
+  async function () {
+    await Episode.deleteMany({
+      seriesId: this._id
+    });
+  }
+);
 
 module.exports = mongoose.model("Series", seriesSchema);
