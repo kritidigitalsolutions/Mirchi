@@ -8,11 +8,23 @@ const fs = require("fs");
 // ========================================
 const uploadPath = "uploads/movies";
 
-if (!fs.existsSync(uploadPath)) {
-  fs.mkdirSync(uploadPath, {
-    recursive: true,
-  });
-}
+const ensureDir = (dir) => {
+  try {
+    if (!fs.existsSync(dir)) {
+      // On Vercel/Serverless, the filesystem is read-only.
+      // We only attempt to create directories if not on Vercel.
+      if (!process.env.VERCEL) {
+        fs.mkdirSync(dir, { recursive: true });
+      } else {
+        console.warn(`⚠️ Skipping directory creation on Vercel: ${dir}`);
+      }
+    }
+  } catch (err) {
+    console.error(`❌ Error creating directory ${dir}:`, err.message);
+  }
+};
+
+ensureDir(uploadPath);
 
 
 // ========================================
@@ -35,10 +47,7 @@ const storage = multer.diskStorage({
 
 
     const folder = `uploads/${type}/${subfolder}`;
-
-    if (!fs.existsSync(folder)) {
-      fs.mkdirSync(folder, { recursive: true });
-    }
+    ensureDir(folder);
 
     cb(null, folder);
   },
