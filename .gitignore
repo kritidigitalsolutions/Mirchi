@@ -1,0 +1,26 @@
+# Dependencies (ignores all node_modules in project)
+node_modules/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Build and distribution files
+frontend/dist/
+frontend/dist-ssr/
+backend/dist/
+backend/build/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Project-specific uploads
+backend/uploads/
+
+# OS and IDE files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
