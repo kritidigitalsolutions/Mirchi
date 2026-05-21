@@ -1,44 +1,103 @@
 const User = require("../models/user.model");
 const Subscription = require("../models/subscription.model");
 
-const protectSubscription = async (req, res, next) => {
+const {
+  expireSubscriptionIfNeeded,
+} = require("../utils/subscription.helper");
+
+const protectSubscription = async (
+  req,
+  res,
+  next
+) => {
   try {
-    // ✅ Use req.user.id from authMiddleware
+
     const userId = req.user.id;
 
     if (!userId) {
-      return res.status(401).json({ message: "Unauthorized - User ID missing" });
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
     }
 
+    let subscription = null;
+
+    // ========================================
+    // FUTURE SUPPORT:
+    // user.subscriptions
+    // ========================================
+    
     const user = await User.findById(userId);
 
-    if (!user || !user.subscriptions || user.subscriptions.length === 0) {
-      return res.status(403).json({ 
-        success: false,
-        message: "Active subscription required to access this content" 
-      });
-    }
-
-    const subscription = await Subscription.findById(
-      user.subscriptions[user.subscriptions.length - 1]
-    );
-
     if (
-      !subscription ||
-      subscription.status !== "active" ||
-      new Date() > new Date(subscription.endDate)
+      user &&
+      user.subscriptions &&
+      user.subscriptions.length > 0
     ) {
-      return res.status(403).json({ 
+
+      subscription =
+        await Subscription.findById(
+          user.subscriptions[
+            user.subscriptions.length - 1
+          ]
+        );
+    }
+
+    // ========================================
+    // CURRENT SYSTEM
+    // ========================================
+
+    if (!subscription) {
+
+      subscription =
+        await Subscription.findOne({
+          user: userId,
+          status: "active",
+        }).sort({ createdAt: -1 });
+    }
+
+    // no subscription
+    if (!subscription) {
+      return res.status(403).json({
         success: false,
-        message: "Your subscription has expired or is inactive" 
+        message:
+          "Active subscription required",
       });
     }
+
+    // auto expire
+    subscription =
+      await expireSubscriptionIfNeeded(
+        subscription
+      );
+
+    // after expiry
+    if (
+      subscription.status !== "active"
+    ) {
+      return res.status(403).json({
+        success: false,
+        message:
+          "Subscription expired",
+      });
+    }
+
+    req.subscription = subscription;
 
     next();
 
   } catch (error) {
-    console.error("Subscription Protection Error:", error);
-    res.status(500).json({ success: false, message: "Internal server error during subscription check" });
+
+    console.error(
+      "Subscription Protection Error:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
   }
 };
 

@@ -63,6 +63,17 @@ exports.completeProfile = async (
       });
     }
 
+    // ================================
+    // BLOCK SECOND TIME COMPLETION
+    // ================================
+    if (user.profileComplete) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Profile already completed. Use update-profile API.",
+      });
+    }
+
     // prevent duplicate email
     if (email) {
       const existingEmail =
@@ -96,7 +107,8 @@ exports.completeProfile = async (
 
     // handle profile image
     if (req.file) {
-      user.profileImage = req.file.path.replace(/\\/g, "/");
+      user.profileImage =
+        req.file.path.replace(/\\/g, "/");
     }
 
     user.profileComplete = true;
@@ -235,4 +247,4 @@ exports.saveFcmToken = async (req, res) => {
       message: "Server error",
     });
   }
-};
+};

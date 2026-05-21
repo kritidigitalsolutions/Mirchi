@@ -1,6 +1,6 @@
 import "./Sidebar.css";
 // import { BarChart3, Users, Plus, Film, FileText, HelpCircle, CreditCard, Settings, LogOut } from "lucide-react";
-import { X, BarChart3, Users, Plus, Film, FileText, HelpCircle, CreditCard, Settings, LogOut, Star, Bell } from "lucide-react";
+import { X, BarChart3, Users, Plus, Film, FileText, HelpCircle, CreditCard, Settings, LogOut, Star, Bell, MessageSquare } from "lucide-react";
 
 const NAV = [
   { id: "dashboard", label: "Dashboard", icon: BarChart3, color: "#e50914" },
@@ -12,6 +12,7 @@ const NAV = [
   { id: "promo", label: "Promo&Voucher", icon: CreditCard, color: "#ec4899" },
   { id: "pricing", label: "User Plan", icon: CreditCard, color: "#ec4899" },
   { id: "notifications", label: "Notifications", icon: Bell, color: "#f59e0b" },
+  { id: "support", label: "Support", icon: MessageSquare, color: "#06b6d4" },
   { id: "legal", label: "Legal", icon: FileText, color: "#8b5cf6" },
   { id: "help", label: "Help Center", icon: HelpCircle, color: "#06b6d4" },
   { id: "settings", label: "Settings", icon: Settings, color: "#64748b" },

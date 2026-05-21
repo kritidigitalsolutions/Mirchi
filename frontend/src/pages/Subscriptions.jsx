@@ -42,11 +42,11 @@ export default function SubscriptionPage() {
                 <td>{sub.user?.name || "-"}</td>
                 <td>{sub.user?.email || "-"}</td>
 
-                <td className="plan">{sub.plan}</td>
+                <td className="plan">{sub.plan?.name || sub.plan || "-"}</td>
 
                 <td>
                   <span className={isActive ? "status active" : "status expired"}>
-                    {isActive ? "Active" : "Expired"}
+                    {sub.status === "active" ? "Active" : sub.status === "cancelled" ? "Cancelled" : "Expired"}
                   </span>
                 </td>
 

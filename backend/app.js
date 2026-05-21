@@ -262,6 +262,24 @@ app.use("/api/interaction", interactionRoutes);
 // const paymentRoutes = require("./routes/user/payment.routes");
 // app.use("/api/payment", paymentRoutes);
 
+// SUPPORT ROUTES
+const userSupportRoutes = require(
+  "./routes/user/support.routes"
+);
+
+const adminSupportRoutes = require(
+  "./routes/admin/support.routes"
+);
+
+app.use(
+  "/api/support",
+  userSupportRoutes
+);
+
+app.use(
+  "/api/admin/support",
+  adminSupportRoutes
+);
 // ========================================
 // EXPORT
 // ========================================

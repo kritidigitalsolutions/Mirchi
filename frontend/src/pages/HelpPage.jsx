@@ -57,6 +57,16 @@ export default function HelpPage() {
     }
   };
 
+  const handleTogglePublish = async (id) => {
+    try {
+      await API.patch(`/admin/help/${id}/toggle`);
+      fetchHelp();
+    } catch (error) {
+      alert("Toggle visibility failed");
+      console.error(error);
+    }
+  };
+
   const open = (item, m) => {
     setSelected(item);
     setMode(m);
@@ -69,7 +79,7 @@ export default function HelpPage() {
           <button
             className="btn btn-primary"
             onClick={() => {
-              setSelected({ question: "", answer: "", category: "" });
+              setSelected({ question: "", answer: "", category: "", supportNumber: "", isPublished: true });
               setMode("add");
               setIsAdding(true);
             }}
@@ -94,7 +104,7 @@ export default function HelpPage() {
       ) : (
         <div className="doc-grid">
           {help.map((item, i) => (
-            <div key={item._id || i} className="doc-card">
+            <div key={item._id || i} className="doc-card" style={{ opacity: item.isPublished === false ? 0.75 : 1 }}>
               <div className="doc-card-head">
                 <h3>{item.question}</h3>
                 <div className="doc-card-actions">
@@ -109,14 +119,31 @@ export default function HelpPage() {
                   </button>
                 </div>
               </div>
-              {item.category && <span className="badge badge-active">{item.category}</span>}
+              
+              <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap", marginTop: 4, marginBottom: 8 }}>
+                {item.category && <span className="badge badge-active">{item.category}</span>}
+                {item.supportNumber && (
+                  <span className="badge badge-pub" style={{ background: "rgba(59, 130, 246, 0.1)", color: "var(--blue)", border: "1px solid rgba(59, 130, 246, 0.2)" }}>
+                    📞 {item.supportNumber}
+                  </span>
+                )}
+                <span
+                  className={`badge ${item.isPublished !== false ? "badge-pub" : "badge-draft"}`}
+                  style={{ cursor: "pointer" }}
+                  onClick={() => handleTogglePublish(item._id)}
+                  title="Click to toggle visibility"
+                >
+                  {item.isPublished !== false ? "👁️ Published" : "👁️‍🗨️ Draft"}
+                </span>
+              </div>
+
               <p className="doc-excerpt">{item.answer}</p>
             </div>
           ))}
         </div>
       )}
 
-      {(selected || isAdding) && (
+      {(selected || isAdding) && selected && (
         <div className="modal-overlay">
           <div className="modal-box" style={{ maxWidth: 560 }}>
             <div className="modal-head">
@@ -144,7 +171,7 @@ export default function HelpPage() {
                 <label className="form-label">Question</label>
                 <input
                   className="form-input"
-                  value={selected.question}
+                  value={selected.question || ""}
                   disabled={mode === "view"}
                   onChange={(e) => setSelected({ ...selected, question: e.target.value })}
                 />
@@ -166,11 +193,34 @@ export default function HelpPage() {
                 </select>
               </div>
               <div className="form-row">
+                <label className="form-label">Support Number / Contact Info (Optional)</label>
+                <input
+                  className="form-input"
+                  value={selected.supportNumber || ""}
+                  placeholder="e.g. +91 9876543210 or support@mirchi.com"
+                  disabled={mode === "view"}
+                  onChange={(e) => setSelected({ ...selected, supportNumber: e.target.value })}
+                />
+              </div>
+              <div className="form-row" style={{ flexDirection: "row", alignItems: "center", gap: 10, marginTop: 8 }}>
+                <input
+                  type="checkbox"
+                  id="isPublished"
+                  checked={selected.isPublished !== false}
+                  disabled={mode === "view"}
+                  style={{ width: 18, height: 18, cursor: mode === "view" ? "not-allowed" : "pointer" }}
+                  onChange={(e) => setSelected({ ...selected, isPublished: e.target.checked })}
+                />
+                <label htmlFor="isPublished" className="form-label" style={{ margin: 0, cursor: mode === "view" ? "not-allowed" : "pointer" }}>
+                  Publish Article (Visible to users)
+                </label>
+              </div>
+              <div className="form-row">
                 <label className="form-label">Answer</label>
                 <textarea
                   className="form-input"
                   rows={6}
-                  value={selected.answer}
+                  value={selected.answer || ""}
                   disabled={mode === "view"}
                   style={{ resize: "vertical" }}
                   onChange={(e) => setSelected({ ...selected, answer: e.target.value })}
@@ -203,4 +253,4 @@ export default function HelpPage() {
     </div>
   );
 }
-
+
