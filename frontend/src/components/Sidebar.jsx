@@ -1,4 +1,5 @@
 import "./Sidebar.css";
+import { NavLink } from "react-router-dom";
 // import { BarChart3, Users, Plus, Film, FileText, HelpCircle, CreditCard, Settings, LogOut } from "lucide-react";
 import { X, BarChart3, Users, Plus, Film, FileText, HelpCircle, CreditCard, Settings, LogOut, Star, Bell, MessageSquare } from "lucide-react";
 
@@ -17,7 +18,7 @@ const NAV = [
   { id: "help", label: "Help Center", icon: HelpCircle, color: "#06b6d4" },
   { id: "settings", label: "Settings", icon: Settings, color: "#64748b" },
 ];
-export default function Sidebar({ activeTab, setActiveTab, theme, showSidebar, toggleSidebar }) {
+export default function Sidebar({ theme, showSidebar, toggleSidebar, closeSidebar }) {
   const handleLogout = () => {
     localStorage.clear();
     window.location.href = "/";
@@ -44,20 +45,26 @@ export default function Sidebar({ activeTab, setActiveTab, theme, showSidebar, t
       {/* ── Nav ── */}
       <nav className="sidebar-nav">
         {NAV.map((item) => {
-          const isActive = activeTab === item.id;
+          const toPath = item.id === "dashboard" ? "/dashboard" : `/dashboard/${item.id}`;
           return (
-            <button
+            <NavLink
               key={item.id}
-              className={`nav-item ${isActive ? "active" : ""}`}
-              onClick={() => setActiveTab(item.id)}
-              style={isActive ? { "--accent": item.color } : undefined}
+              to={toPath}
+              end={item.id === "dashboard"}
+              className={({ isActive }) => `nav-item ${isActive ? "active" : ""}`}
+              style={({ isActive }) => isActive ? { "--accent": item.color } : undefined}
+              onClick={() => closeSidebar && closeSidebar()}
             >
-              <span className="nav-icon-wrap" style={isActive ? { background: item.color + "22", color: item.color } : undefined}>
-                <item.icon size={20} />
-              </span>
-              <span className="nav-label">{item.label}</span>
-              {isActive && <span className="nav-pill" style={{ background: item.color }} />}
-            </button>
+              {({ isActive }) => (
+                <>
+                  <span className="nav-icon-wrap" style={isActive ? { background: item.color + "22", color: item.color } : undefined}>
+                    <item.icon size={20} />
+                  </span>
+                  <span className="nav-label">{item.label}</span>
+                  {isActive && <span className="nav-pill" style={{ background: item.color }} />}
+                </>
+              )}
+            </NavLink>
           );
         })}
       </nav>

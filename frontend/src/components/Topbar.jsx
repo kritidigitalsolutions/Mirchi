@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { Search, Bell, Moon, Sun, X, Menu } from "lucide-react";
 import "./Topbar.css";
 import API from "../api/axios";
@@ -11,7 +12,8 @@ const TYPE_COLORS = {
   PROMOTIONAL: { bg: "rgba(245,158,11,0.2)",  color: "#f59e0b" },
 };
 
-export default function Topbar({ theme, toggleTheme, setActiveTab, toggleSidebar }) {
+export default function Topbar({ theme, toggleTheme, toggleSidebar }) {
+  const navigate = useNavigate();
   const [adminName, setAdminName] = useState("Admin");
   const [adminData, setAdminData] = useState(null);
   const [search, setSearch]       = useState("");
@@ -104,13 +106,13 @@ export default function Topbar({ theme, toggleTheme, setActiveTab, toggleSidebar
 };
 const handleSelect = (item) => {
   if (item.type === "User") {
-    setActiveTab("users");
+    navigate("/dashboard/users");
   } 
   else if (item.type === "Movie") {
-    setActiveTab("content");
+    navigate("/dashboard/content");
   } 
   else if (item.type === "Help") {
-    setActiveTab("help");
+    navigate("/dashboard/help");
   }
 
   setSearch("");
@@ -278,7 +280,7 @@ const handleSelect = (item) => {
                   <button
                     className="notif-panel-view-all"
                     onClick={() => {
-                      setActiveTab("notifications");
+                      navigate("/dashboard/notifications");
                       setNotifOpen(false);
                     }}
                   >

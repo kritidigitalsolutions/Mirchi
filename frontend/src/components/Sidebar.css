@@ -108,12 +108,19 @@
   border: none;
   background: transparent;
   color: var(--text-soft);
+  text-decoration: none;
   font-size: 0.88rem;
   font-weight: 500;
   cursor: pointer;
   text-align: left;
   position: relative;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.nav-item:hover,
+.nav-item:focus,
+.nav-item:active {
+  text-decoration: none;
 }
 
 .nav-item:hover {

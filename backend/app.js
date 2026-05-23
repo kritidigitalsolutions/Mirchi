@@ -25,8 +25,8 @@ app.use(
   })
 );
 
-const allowedOrigins = process.env.FRONTEND_URL 
-  ? process.env.FRONTEND_URL.split(",").map(url => url.trim().replace(/\/$/, "")) 
+const allowedOrigins = process.env.FRONTEND_URL
+  ? process.env.FRONTEND_URL.split(",").map(url => url.trim().replace(/\/$/, ""))
   : ["*"];
 
 const corsOptions = {
