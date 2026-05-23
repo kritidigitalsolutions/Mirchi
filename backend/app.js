@@ -1,9 +1,9 @@
 const express = require("express");
 const cors = require("cors");
-const path = require("path");
 const helmet = require("helmet");
 const connectDB = require("./config/db");
 const createDefaultAdmin = require("./utils/createDefaultAdmin");
+const { uploadRoot } = require("./middlewares/upload.middleware");
 
 require("dotenv").config();
 
@@ -58,12 +58,7 @@ app.use(
 // ========================================
 app.use(
   "/uploads",
-  express.static(
-    path.join(
-      __dirname,
-      "uploads"
-    )
-  )
+  express.static(uploadRoot)
 );
 
 
