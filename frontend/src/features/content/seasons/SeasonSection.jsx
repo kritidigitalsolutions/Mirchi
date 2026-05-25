@@ -15,6 +15,7 @@ export default function SeasonSection({
 
   handleEpisodeVideoChange,
   handleEpisodeThumbnailChange,
+  fileUploadsEnabled = true,
 }) {
   return (
     <div
@@ -108,6 +109,7 @@ export default function SeasonSection({
               handleEpisodeThumbnailChange={
                 handleEpisodeThumbnailChange
               }
+              fileUploadsEnabled={fileUploadsEnabled}
             />
           )
         )}

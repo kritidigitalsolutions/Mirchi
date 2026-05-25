@@ -275,6 +275,17 @@ app.use(
   "/api/admin/support",
   adminSupportRoutes
 );
+
+app.use((err, req, res, next) => {
+  if (!err) return next();
+
+  const statusCode = err.statusCode || err.status || 500;
+
+  return res.status(statusCode).json({
+    success: false,
+    message: err.message || "Server error",
+  });
+});
 // ========================================
 // EXPORT
 // ========================================

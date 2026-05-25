@@ -19,6 +19,10 @@ import {
 } from "lucide-react";
 
 export default function AddContent() {
+  const fileUploadsEnabled =
+    import.meta.env.DEV ||
+    import.meta.env.VITE_ENABLE_FILE_UPLOADS === "true";
+
   const {
     form,
     setForm,
@@ -198,6 +202,21 @@ export default function AddContent() {
     setLoading(true);
 
     try {
+      if (
+        !fileUploadsEnabled &&
+        (videoFile ||
+          posterFile ||
+          bannerFile ||
+          trailerFile ||
+          Object.keys(castFiles).length ||
+          Object.keys(episodeVideoFiles).length ||
+          Object.keys(episodeThumbnailFiles).length)
+      ) {
+        throw new Error(
+          "File uploads are disabled on the hosted app. Paste media URLs instead."
+        );
+      }
+
       await createContent({
         form,
 
@@ -232,6 +251,7 @@ export default function AddContent() {
 
       alert(
         err.response?.data?.message ||
+          err.message ||
           "Error publishing content"
       );
     }
@@ -319,6 +339,7 @@ export default function AddContent() {
         <MediaAssetsStep
           form={form}
           ch={ch}
+          fileUploadsEnabled={fileUploadsEnabled}
 
           posterFile={posterFile}
           posterInputRef={
@@ -361,6 +382,7 @@ export default function AddContent() {
         <CastSection
           cast={form.cast}
           castFiles={castFiles}
+          fileUploadsEnabled={fileUploadsEnabled}
           addCast={addCast}
           removeCast={removeCast}
           chCast={chCast}
@@ -373,6 +395,7 @@ export default function AddContent() {
         <SeasonsSection
           form={form}
           setForm={setForm}
+          fileUploadsEnabled={fileUploadsEnabled}
 
           addSeason={addSeason}
           addEp={addEp}

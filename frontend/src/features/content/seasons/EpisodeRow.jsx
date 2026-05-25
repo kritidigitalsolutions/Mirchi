@@ -13,6 +13,7 @@ export default function EpisodeRow({
 
   handleEpisodeVideoChange,
   handleEpisodeThumbnailChange,
+  fileUploadsEnabled = true,
 }) {
   return (
     <div
@@ -41,144 +42,182 @@ export default function EpisodeRow({
         }
       />
 
-      <div
-        className={`file-upload-box ${
-          episodeVideoFiles[
-            `${seasonIndex}_${episodeIndex}`
-          ]
-            ? "has-file"
-            : ""
-        }`}
-        style={{
-          padding: "8px 12px",
-          flexDirection: "row",
-          gap: 8,
-          height: "40px",
-        }}
-        onClick={() =>
-          document
-            .getElementById(
-              `ep-file-${seasonIndex}-${episodeIndex}`
-            )
-            .click()
-        }
-      >
-        <Video size={16} />
-
-        <span
+      {fileUploadsEnabled && (
+        <div
+          className={`file-upload-box ${
+            episodeVideoFiles[
+              `${seasonIndex}_${episodeIndex}`
+            ]
+              ? "has-file"
+              : ""
+          }`}
           style={{
-            fontSize: "0.75rem",
-            textOverflow: "ellipsis",
-            overflow: "hidden",
-            whiteSpace: "nowrap",
+            padding: "8px 12px",
+            flexDirection: "row",
+            gap: 8,
+            height: "40px",
           }}
+          onClick={() =>
+            document
+              .getElementById(
+                `ep-file-${seasonIndex}-${episodeIndex}`
+              )
+              .click()
+          }
         >
-          {episodeVideoFiles[
-            `${seasonIndex}_${episodeIndex}`
-          ]
-            ? "Video OK"
-            : "Video"}
-        </span>
+          <Video size={16} />
 
+          <span
+            style={{
+              fontSize: "0.75rem",
+              textOverflow: "ellipsis",
+              overflow: "hidden",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {episodeVideoFiles[
+              `${seasonIndex}_${episodeIndex}`
+            ]
+              ? "Video OK"
+              : "Video"}
+          </span>
+
+          <input
+            id={`ep-file-${seasonIndex}-${episodeIndex}`}
+            type="file"
+            hidden
+            accept="video/*"
+            onChange={(e) =>
+              handleEpisodeVideoChange(
+                seasonIndex,
+                episodeIndex,
+                e
+              )
+            }
+          />
+        </div>
+      )}
+
+      {fileUploadsEnabled && (
+        <div
+          className={`file-upload-box ${
+            episodeThumbnailFiles[
+              `${seasonIndex}_${episodeIndex}`
+            ]
+              ? "has-file"
+              : ""
+          }`}
+          style={{
+            padding: "8px 12px",
+            flexDirection: "row",
+            gap: 8,
+            height: "40px",
+          }}
+          onClick={() =>
+            document
+              .getElementById(
+                `ep-thumb-${seasonIndex}-${episodeIndex}`
+              )
+              .click()
+          }
+        >
+          <ImageIcon size={16} />
+
+          <span
+            style={{
+              fontSize: "0.75rem",
+              textOverflow: "ellipsis",
+              overflow: "hidden",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {episodeThumbnailFiles[
+              `${seasonIndex}_${episodeIndex}`
+            ]
+              ? "Thumb OK"
+              : "Thumb"}
+          </span>
+
+          <input
+            id={`ep-thumb-${seasonIndex}-${episodeIndex}`}
+            type="file"
+            hidden
+            accept="image/*"
+            onChange={(e) =>
+              handleEpisodeThumbnailChange(
+                seasonIndex,
+                episodeIndex,
+                e
+              )
+            }
+          />
+        </div>
+      )}
+
+      {!fileUploadsEnabled && (
         <input
-          id={`ep-file-${seasonIndex}-${episodeIndex}`}
-          type="file"
-          hidden
-          accept="video/*"
+          className="form-input-styled"
+          placeholder="Video URL"
+          value={episode.videoUrl}
           onChange={(e) =>
-            handleEpisodeVideoChange(
+            chEp(
               seasonIndex,
               episodeIndex,
-              e
+              "videoUrl",
+              e.target.value
             )
           }
         />
-      </div>
+      )}
 
-      <div
-        className={`file-upload-box ${
-          episodeThumbnailFiles[
-            `${seasonIndex}_${episodeIndex}`
-          ]
-            ? "has-file"
-            : ""
-        }`}
-        style={{
-          padding: "8px 12px",
-          flexDirection: "row",
-          gap: 8,
-          height: "40px",
-        }}
-        onClick={() =>
-          document
-            .getElementById(
-              `ep-thumb-${seasonIndex}-${episodeIndex}`
-            )
-            .click()
-        }
-      >
-        <ImageIcon size={16} />
-
-        <span
-          style={{
-            fontSize: "0.75rem",
-            textOverflow: "ellipsis",
-            overflow: "hidden",
-            whiteSpace: "nowrap",
-          }}
-        >
-          {episodeThumbnailFiles[
-            `${seasonIndex}_${episodeIndex}`
-          ]
-            ? "Thumb OK"
-            : "Thumb"}
-        </span>
-
+      {!fileUploadsEnabled && (
         <input
-          id={`ep-thumb-${seasonIndex}-${episodeIndex}`}
-          type="file"
-          hidden
-          accept="image/*"
+          className="form-input-styled"
+          placeholder="Thumbnail URL"
+          value={episode.thumbnailUrl}
           onChange={(e) =>
-            handleEpisodeThumbnailChange(
-              seasonIndex,
-              episodeIndex,
-              e
-            )
-          }
-        />
-      </div>
-
-      <input
-        className="form-input-styled"
-        placeholder="Or URLs"
-        value={`${episode.videoUrl}${
-          episode.thumbnailUrl
-            ? " | " + episode.thumbnailUrl
-            : ""
-        }`}
-        onChange={(e) => {
-          const [v, t] = e.target.value
-            .split("|")
-            .map((s) => s.trim());
-
-          chEp(
-            seasonIndex,
-            episodeIndex,
-            "videoUrl",
-            v || ""
-          );
-
-          if (t) {
             chEp(
               seasonIndex,
               episodeIndex,
               "thumbnailUrl",
-              t
-            );
+              e.target.value
+            )
           }
-        }}
-      />
+        />
+      )}
+
+      {fileUploadsEnabled && (
+        <input
+          className="form-input-styled"
+          placeholder="Or URLs"
+          value={`${episode.videoUrl}${
+            episode.thumbnailUrl
+              ? " | " + episode.thumbnailUrl
+              : ""
+          }`}
+          onChange={(e) => {
+            const [v, t] = e.target.value
+              .split("|")
+              .map((s) => s.trim());
+
+            chEp(
+              seasonIndex,
+              episodeIndex,
+              "videoUrl",
+              v || ""
+            );
+
+            if (t) {
+              chEp(
+                seasonIndex,
+                episodeIndex,
+                "thumbnailUrl",
+                t
+              );
+            }
+          }}
+        />
+      )}
 
       <input
         className="form-input-styled"

@@ -6,38 +6,41 @@ export default function VideoUploader({
   onUrlChange,
   inputRef,
   onFileChange,
+  fileUploadsEnabled = true,
 }) {
   return (
     <div className="form-row" style={{ marginTop: 24 }}>
       <label className="form-label">Full Movie Content</label>
 
       <div className="form-2col" style={{ gap: 20 }}>
-        <div
-          className={`file-upload-box ${file ? "has-file" : ""}`}
-          onClick={() => inputRef.current?.click()}
-          style={{
-            flexDirection: "row",
-            padding: "12px 24px",
-            height: "fit-content",
-          }}
-        >
-          <Play
-            size={20}
-            color={file ? "var(--green)" : "var(--text-muted)"}
-          />
+        {fileUploadsEnabled && (
+          <div
+            className={`file-upload-box ${file ? "has-file" : ""}`}
+            onClick={() => inputRef.current?.click()}
+            style={{
+              flexDirection: "row",
+              padding: "12px 24px",
+              height: "fit-content",
+            }}
+          >
+            <Play
+              size={20}
+              color={file ? "var(--green)" : "var(--text-muted)"}
+            />
 
-          <span style={{ fontSize: "0.9rem" }}>
-            {file ? file.name : "Choose Movie File"}
-          </span>
+            <span style={{ fontSize: "0.9rem" }}>
+              {file ? file.name : "Choose Movie File"}
+            </span>
 
-          <input
-            type="file"
-            ref={inputRef}
-            hidden
-            accept="video/*"
-            onChange={onFileChange}
-          />
-        </div>
+            <input
+              type="file"
+              ref={inputRef}
+              hidden
+              accept="video/*"
+              onChange={onFileChange}
+            />
+          </div>
+        )}
 
         {!file && (
           <input

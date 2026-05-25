@@ -17,6 +17,7 @@ export default function SeasonsSection({
 
   handleEpisodeVideoChange,
   handleEpisodeThumbnailChange,
+  fileUploadsEnabled = true,
 }) {
   if (
     form.type !== "series" ||
@@ -92,6 +93,7 @@ export default function SeasonsSection({
             handleEpisodeThumbnailChange={
               handleEpisodeThumbnailChange
             }
+            fileUploadsEnabled={fileUploadsEnabled}
           />
         )
       )}

@@ -6,32 +6,35 @@ export default function PosterUploader({
   onUrlChange,
   inputRef,
   onFileChange,
+  fileUploadsEnabled = true,
 }) {
   return (
     <div className="form-row">
       <label className="form-label">Poster (Vertical)</label>
 
-      <div
-        className={`file-upload-box ${file ? "has-file" : ""}`}
-        onClick={() => inputRef.current?.click()}
-      >
-        <Upload
-          size={24}
-          color={file ? "var(--green)" : "var(--text-muted)"}
-        />
+      {fileUploadsEnabled && (
+        <div
+          className={`file-upload-box ${file ? "has-file" : ""}`}
+          onClick={() => inputRef.current?.click()}
+        >
+          <Upload
+            size={24}
+            color={file ? "var(--green)" : "var(--text-muted)"}
+          />
 
-        <p style={{ fontSize: "0.8rem", margin: 0 }}>
-          {file ? file.name : "Upload Poster"}
-        </p>
+          <p style={{ fontSize: "0.8rem", margin: 0 }}>
+            {file ? file.name : "Upload Poster"}
+          </p>
 
-        <input
-          type="file"
-          ref={inputRef}
-          hidden
-          accept="image/*"
-          onChange={onFileChange}
-        />
-      </div>
+          <input
+            type="file"
+            ref={inputRef}
+            hidden
+            accept="image/*"
+            onChange={onFileChange}
+          />
+        </div>
+      )}
 
       {!file && (
         <input
