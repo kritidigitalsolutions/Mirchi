@@ -22,7 +22,6 @@ export default function MediaAssetsStep({
   handleVideoFileChange,
   type,
   isComingSoon,
-  fileUploadsEnabled = true,
 }) {
   return (
     <div className="premium-card media-assets-card">
@@ -49,7 +48,6 @@ export default function MediaAssetsStep({
           onUrlChange={ch}
           inputRef={posterInputRef}
           onFileChange={handlePosterFileChange}
-          fileUploadsEnabled={fileUploadsEnabled}
         />
 
         <BannerUploader
@@ -58,7 +56,6 @@ export default function MediaAssetsStep({
           onUrlChange={ch}
           inputRef={bannerInputRef}
           onFileChange={handleBannerFileChange}
-          fileUploadsEnabled={fileUploadsEnabled}
         />
 
         <TrailerUploader
@@ -67,7 +64,6 @@ export default function MediaAssetsStep({
           onUrlChange={ch}
           inputRef={trailerInputRef}
           onFileChange={handleTrailerFileChange}
-          fileUploadsEnabled={fileUploadsEnabled}
         />
 
         {type === "movie" && !isComingSoon && (
@@ -77,7 +73,6 @@ export default function MediaAssetsStep({
             onUrlChange={ch}
             inputRef={videoInputRef}
             onFileChange={handleVideoFileChange}
-            fileUploadsEnabled={fileUploadsEnabled}
           />
         )}
 

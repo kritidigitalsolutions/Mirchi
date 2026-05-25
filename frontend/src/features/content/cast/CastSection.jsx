@@ -9,7 +9,6 @@ export default function CastSection({
   chCast,
   handleCastFileChange,
   getFullUrl,
-  fileUploadsEnabled = true,
 }) {
   return (
     <div className="premium-card">
@@ -57,7 +56,6 @@ export default function CastSection({
             chCast={chCast}
             handleCastFileChange={handleCastFileChange}
             getFullUrl={getFullUrl}
-            fileUploadsEnabled={fileUploadsEnabled}
           />
         ))}
       </div>

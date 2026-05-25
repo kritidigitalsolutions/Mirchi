@@ -6,35 +6,32 @@ export default function TrailerUploader({
   onUrlChange,
   inputRef,
   onFileChange,
-  fileUploadsEnabled = true,
 }) {
   return (
     <div className="form-row">
       <label className="form-label">Trailer Video</label>
 
-      {fileUploadsEnabled && (
-        <div
-          className={`file-upload-box ${file ? "has-file" : ""}`}
-          onClick={() => inputRef.current?.click()}
-        >
-          <Video
-            size={24}
-            color={file ? "var(--green)" : "var(--text-muted)"}
-          />
+      <div
+        className={`file-upload-box ${file ? "has-file" : ""}`}
+        onClick={() => inputRef.current?.click()}
+      >
+        <Video
+          size={24}
+          color={file ? "var(--green)" : "var(--text-muted)"}
+        />
 
-          <p style={{ fontSize: "0.8rem", margin: 0 }}>
-            {file ? file.name : "Upload Trailer"}
-          </p>
+        <p style={{ fontSize: "0.8rem", margin: 0 }}>
+          {file ? file.name : "Upload Trailer"}
+        </p>
 
-          <input
-            type="file"
-            ref={inputRef}
-            hidden
-            accept="video/*"
-            onChange={onFileChange}
-          />
-        </div>
-      )}
+        <input
+          type="file"
+          ref={inputRef}
+          hidden
+          accept="video/*"
+          onChange={onFileChange}
+        />
+      </div>
 
       {!file && (
         <input

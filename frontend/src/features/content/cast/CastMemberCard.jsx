@@ -8,7 +8,6 @@ export default function CastMemberCard({
   removeCast,
   chCast,
   handleCastFileChange,
-  fileUploadsEnabled = true,
 }) {
   return (
     <div className="cast-member-card">
@@ -66,37 +65,35 @@ export default function CastMemberCard({
       </div>
 
       <div className="form-row">
-        {fileUploadsEnabled && (
-          <div
-            className={`file-upload-box ${
-              castFile ? "has-file" : ""
-            }`}
-            style={{ padding: "10px" }}
-            onClick={() =>
-              document
-                .getElementById(`cast-file-${index}`)
-                .click()
+        <div
+          className={`file-upload-box ${
+            castFile ? "has-file" : ""
+          }`}
+          style={{ padding: "10px" }}
+          onClick={() =>
+            document
+              .getElementById(`cast-file-${index}`)
+              .click()
+          }
+        >
+          <Upload size={16} />
+
+          <span style={{ fontSize: "0.75rem" }}>
+            {castFile
+              ? castFile.name
+              : "Upload Photo"}
+          </span>
+
+          <input
+            id={`cast-file-${index}`}
+            type="file"
+            hidden
+            accept="image/*"
+            onChange={(e) =>
+              handleCastFileChange(index, e)
             }
-          >
-            <Upload size={16} />
-
-            <span style={{ fontSize: "0.75rem" }}>
-              {castFile
-                ? castFile.name
-                : "Upload Photo"}
-            </span>
-
-            <input
-              id={`cast-file-${index}`}
-              type="file"
-              hidden
-              accept="image/*"
-              onChange={(e) =>
-                handleCastFileChange(index, e)
-              }
-            />
-          </div>
-        )}
+          />
+        </div>
 
         {!castFile && (
           <input

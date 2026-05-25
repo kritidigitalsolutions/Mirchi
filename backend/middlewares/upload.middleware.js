@@ -60,14 +60,6 @@ const storage = multer.diskStorage({
 });
 
 const fileFilter = (req, file, cb) => {
-  if (isVercel && process.env.ALLOW_VERCEL_FILE_UPLOADS !== "true") {
-    const err = new Error(
-      "File uploads are disabled on Vercel. Paste hosted media URLs instead."
-    );
-    err.statusCode = 400;
-    return cb(err, false);
-  }
-
   const allowedMimeTypes = [
     "image/jpeg",
     "image/jpg",
