@@ -48,6 +48,11 @@ const shortDramaSchema =
         default: false,
       },
 
+      priority: {
+        type: Number,
+        default: 0,
+      },
+
       status: {
         type: String,
         enum: [

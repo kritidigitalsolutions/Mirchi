@@ -6,6 +6,18 @@ node_modules/
 .env.*
 !.env.example
 
+# Sensitive credentials & keys
+*serviceAccount*.json
+serviceAccountKey.json
+serviceAccountkey.json
+firebase-key.json
+*.pem
+*.key
+*.pfx
+*.cert
+.npmrc
+.yarnrc
+
 # Build and distribution files
 frontend/dist/
 frontend/dist-ssr/

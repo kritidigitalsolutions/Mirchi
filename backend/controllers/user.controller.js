@@ -223,22 +223,51 @@ exports.updateProfile = async (
 // ========================================
 exports.saveFcmToken = async (req, res) => {
   try {
-    const { token } = req.body;
+    const rawToken = req.body.fcmToken || req.body.token;
+    const fcmToken =
+      typeof rawToken === "string"
+        ? rawToken.trim()
+        : "";
 
-    if (!token) {
+    if (!fcmToken) {
       return res.status(400).json({
         success: false,
-        message: "Token is required",
+        message: "FCM token is required",
       });
     }
 
-    await User.findByIdAndUpdate(req.user.id, {
-      fcmToken: token,
-    });
+    const user = await User.findById(req.user.id);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    await User.updateMany(
+      {
+        _id: { $ne: user._id },
+        fcmToken,
+      },
+      {
+        $unset: {
+          fcmToken: "",
+          fcmTokenUpdatedAt: "",
+        },
+      }
+    );
+
+    user.fcmToken = fcmToken;
+    user.fcmTokenUpdatedAt = new Date();
+
+    await user.save();
 
     res.status(200).json({
       success: true,
-      message: "FCM token saved successfully",
+      message: "FCM token connected to user successfully",
+      userId: user._id,
+      hasFcmToken: true,
     });
   } catch (error) {
     console.error("Save FCM Token Error:", error);

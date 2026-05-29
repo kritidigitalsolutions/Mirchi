@@ -68,17 +68,20 @@ router.post(
 
 router.get(
   "/",
+  isAdmin,
   getAllSeries
 );
 
 router.get(
   "/search",
+  isAdmin,
   searchSeries
 );
 
 
 router.get(
   "/:id",
+  isAdmin,
   getSeriesById
 );
 

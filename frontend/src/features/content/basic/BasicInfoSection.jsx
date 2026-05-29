@@ -7,6 +7,7 @@ import {
   Layers,
   Rocket,
   Lock,
+  ArrowUpCircle,
 } from "lucide-react";
 
 export default function BasicInfoSection({
@@ -191,6 +192,27 @@ export default function BasicInfoSection({
             placeholder="8.5"
             onChange={ch}
             value={form.rating}
+          />
+        </div>
+
+        <div className="form-row">
+          <label className="form-label">
+            <ArrowUpCircle
+              size={14}
+              style={{ marginRight: 4 }}
+            />
+
+            Priority (0 = Auto-assign)
+          </label>
+
+          <input
+            className="form-input-styled"
+            name="priority"
+            type="number"
+            min="0"
+            placeholder="0 = Automatic (bottom), manually enter 1, 2, 3... to rank"
+            onChange={ch}
+            value={form.priority}
           />
         </div>
       </div>

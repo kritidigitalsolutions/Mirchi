@@ -50,11 +50,13 @@ router.post(
 
 router.get(
   "/",
+  isAdmin,
   getEpisodes
 );
 
 router.get(
   "/search",
+  isAdmin,
   searchEpisodes
 );
 

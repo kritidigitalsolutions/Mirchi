@@ -79,17 +79,20 @@ router.post(
 
 router.get(
   "/",
+  isAdmin,
   getAllMovies
 );
 
 router.get(
   "/search",
+  isAdmin,
   searchMovies
 );
 
 
 router.get(
   "/:id",
+  isAdmin,
   getMovieById
 );
 

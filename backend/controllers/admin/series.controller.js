@@ -2,13 +2,22 @@ const Series = require("../../models/series.model");
 const Episode = require("../../models/episode.model");
 const fs = require("fs");
 const path = require("path");
+const { deleteFromBunny } = require("../../cdn/bunnyCDN");
 
 // ========================================
 // HELPERS
 // ========================================
 
-const deleteFile = (filePath) => {
-  if (!filePath || filePath.startsWith("http")) return;
+const deleteFile = async (filePath) => {
+  if (!filePath) return;
+  if (filePath.startsWith("http")) {
+    try {
+      await deleteFromBunny(filePath);
+    } catch (err) {
+      console.error("BunnyCDN delete error:", err);
+    }
+    return;
+  }
   try {
     const fullPath = path.join(__dirname, "../../", filePath);
     if (fs.existsSync(fullPath)) {
@@ -33,7 +42,7 @@ const parseJSON = (value, defaultValue = []) => {
 };
 
 const getFilePath = (file, path, fallback = "") => {
-  return file ? `${path}/${file.filename}` : fallback;
+  return file ? file.cdnUrl || file.path || `${path}/${file.filename}` : fallback;
 };
 
 

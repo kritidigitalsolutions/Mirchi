@@ -85,6 +85,11 @@ export const createContent = async ({
     form.releaseDate || ""
   );
 
+  formData.append(
+    "priority",
+    Number(form.priority) || 0
+  );
+
   // Poster
   if (posterFile) {
     formData.append("poster", posterFile);
@@ -226,13 +231,13 @@ export const createContent = async ({
 
         if (
           episodeVideoFiles[
-            episodeKey
+          episodeKey
           ]
         ) {
           epFormData.append(
             "video",
             episodeVideoFiles[
-              episodeKey
+            episodeKey
             ]
           );
         } else if (ep.videoUrl) {
@@ -244,13 +249,13 @@ export const createContent = async ({
 
         if (
           episodeThumbnailFiles[
-            episodeKey
+          episodeKey
           ]
         ) {
           epFormData.append(
             "thumbnail",
             episodeThumbnailFiles[
-              episodeKey
+            episodeKey
             ]
           );
         } else if (

@@ -12,6 +12,7 @@ const {
   getProfile,
   completeProfile,
   updateProfile,
+  saveFcmToken,
 } = require("../../controllers/user.controller");
 
 
@@ -50,6 +51,15 @@ router.patch(
   isAuth,
   upload.single("profileImage"),
   updateProfile
+);
+
+// ========================================
+// CONNECT FCM TOKEN TO USER
+// ========================================
+router.patch(
+  "/fcm-token",
+  isAuth,
+  saveFcmToken
 );
 
 

@@ -8,9 +8,11 @@ import {
   MessageSquare,
   Phone,
   RefreshCw,
+  Search,
   Send,
   Tag,
   User,
+  X,
 } from "lucide-react";
 import API from "../api/axios";
 import "./SupportDetails.css";
@@ -53,9 +55,32 @@ export default function SupportDetails({ ticketId }) {
   const [sendingReply, setSendingReply] = useState(false);
   const [error, setError] = useState("");
   const [ticketsLoading, setTicketsLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const activeTicketId = routeTicketId || selectedTicketId;
   const showTicketList = !routeTicketId;
+
+  // Filter tickets reactively based on subject, user details, category, or status
+  const filteredTickets = useMemo(() => {
+    if (!searchQuery.trim()) return tickets;
+    const query = searchQuery.toLowerCase().trim();
+    return tickets.filter((item) => {
+      const subject = (item.subject || "").toLowerCase();
+      const userName = (item.user?.name || "").toLowerCase();
+      const userEmail = (item.user?.email || "").toLowerCase();
+      const itemStatus = (item.status || "").toLowerCase();
+      const category = (item.category || "").toLowerCase();
+      const ticketIdStr = (item._id || "").toLowerCase();
+      return (
+        subject.includes(query) ||
+        userName.includes(query) ||
+        userEmail.includes(query) ||
+        itemStatus.includes(query) ||
+        category.includes(query) ||
+        ticketIdStr.includes(query)
+      );
+    });
+  }, [tickets, searchQuery]);
 
   const user = ticket?.user || {};
   const userName = user.name || "Unknown User";
@@ -174,19 +199,49 @@ export default function SupportDetails({ ticketId }) {
       <div className="support-ticket-list-head">
         <div>
           <h2>Tickets</h2>
-          <p>{tickets.length} total</p>
+          <p>
+            {searchQuery.trim()
+              ? `${filteredTickets.length} found`
+              : `${tickets.length} total`}
+          </p>
         </div>
         {ticketsLoading && <Loader2 className="spin" size={18} />}
       </div>
 
-      {tickets.length === 0 ? (
+      {/* SEARCH BAR */}
+      <div className="support-search-bar">
+        <Search size={16} className="support-search-icon" />
+        <input
+          type="text"
+          placeholder="Search tickets..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="support-search-input"
+        />
+        {searchQuery && (
+          <button
+            type="button"
+            className="support-search-clear"
+            onClick={() => setSearchQuery("")}
+            title="Clear search"
+          >
+            <X size={15} />
+          </button>
+        )}
+      </div>
+
+      {filteredTickets.length === 0 ? (
         <div className="support-ticket-list-empty">
           <MessageSquare size={24} />
-          <p>No support tickets found.</p>
+          <p>
+            {searchQuery.trim()
+              ? "No matching tickets found."
+              : "No support tickets found."}
+          </p>
         </div>
       ) : (
         <div className="support-ticket-items">
-          {tickets.map((item) => (
+          {filteredTickets.map((item) => (
             <button
               className={`support-ticket-item ${
                 item._id === activeTicketId ? "active" : ""

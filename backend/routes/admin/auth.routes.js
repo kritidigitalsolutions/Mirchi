@@ -2,15 +2,69 @@ const express = require("express");
 
 const router = express.Router();
 
+const { isAdmin } = require("../../middlewares/admin.middleware");
+
 const {
-  adminLogin,
+  loginAdmin,
+  sendForgotPasswordOtp,
+  verifyForgotPasswordOtp,
+  resetForgotPassword,
 } = require("../../controllers/admin_auth/admin.auth.controller");
+
+const {
+  sendPasswordOtp,
+  changePassword,
+  sendEmailOtp,
+  changeEmail,
+} = require("../../controllers/admin_auth/admin.settings.controller");
 
 
 // Admin Login
 router.post(
   "/login",
-  adminLogin
+  loginAdmin
+);
+
+//OTP
+router.post(
+  "/send-otp",
+  sendForgotPasswordOtp
+);
+
+router.post(
+  "/verify-otp",
+  verifyForgotPasswordOtp
+);
+
+router.post(
+  "/reset-password",
+  resetForgotPassword
+);
+
+// --- CHANGE PASSWORD FLOW (Authenticated) ---
+router.post(
+  "/change-password/send-otp",
+  isAdmin,
+  sendPasswordOtp
+);
+
+router.post(
+  "/change-password",
+  isAdmin,
+  changePassword
+);
+
+// --- CHANGE EMAIL FLOW (Authenticated) ---
+router.post(
+  "/change-email/send-otp",
+  isAdmin,
+  sendEmailOtp
+);
+
+router.post(
+  "/change-email",
+  isAdmin,
+  changeEmail
 );
 
 

@@ -5,6 +5,7 @@ const router = express.Router();
 const {
   sendOTP,
   verifyOtp,
+  googleLogin,
 } = require("../../controllers/auth.controller");
 
 
@@ -23,6 +24,14 @@ router.post(
 router.post(
   "/verify-otp",
   verifyOtp
+);
+
+// ========================================
+// GOOGLE LOGIN
+// ========================================
+router.post(
+  "/google-login",
+  googleLogin
 );
 
 

@@ -131,27 +131,17 @@ const promoSchema =
 // VALIDATION
 // ========================================
 
-promoSchema.pre(
-  "save",
-  function (next) {
+promoSchema.pre("save", function () {
 
-    // percentage cannot exceed 100
-    if (
-      this.discountType ===
-        "percentage" &&
-      this.discountValue > 100
-    ) {
-      return next(
-        new Error(
-          "Percentage discount cannot exceed 100"
-        )
-      );
-    }
-
-    next();
+  if (
+    this.discountType === "percentage" &&
+    this.discountValue > 100
+  ) {
+    throw new Error(
+      "Percentage discount cannot exceed 100"
+    );
   }
-);
-
+});
 
 // ========================================
 // INDEXES

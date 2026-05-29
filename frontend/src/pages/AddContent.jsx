@@ -29,7 +29,7 @@ export default function AddContent() {
     addCast,
     removeCast,
 
-  
+
     chCast,
 
     addSeason,
@@ -232,7 +232,7 @@ export default function AddContent() {
 
       alert(
         err.response?.data?.message ||
-          "Error publishing content"
+        "Error publishing content"
       );
     }
 
@@ -272,11 +272,10 @@ export default function AddContent() {
         <div className="content-type-toggle">
           <button
             type="button"
-            className={`toggle-btn ${
-              form.type === "movie"
+            className={`toggle-btn ${form.type === "movie"
                 ? "active"
                 : ""
-            }`}
+              }`}
             onClick={() =>
               setType("movie")
             }
@@ -287,11 +286,10 @@ export default function AddContent() {
 
           <button
             type="button"
-            className={`toggle-btn ${
-              form.type === "series"
+            className={`toggle-btn ${form.type === "series"
                 ? "active"
                 : ""
-            }`}
+              }`}
             onClick={() =>
               setType("series")
             }

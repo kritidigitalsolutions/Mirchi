@@ -8,12 +8,23 @@ const userSchema = new mongoose.Schema(
             default: "User",
         },
 
-        email: {
-            type: String,
-            trim: true,
-            lowercase: true,
-            sparse: true,
-        },
+       email: {
+    type: String,
+    trim: true,
+    lowercase: true,
+    sparse: true,
+},
+
+googleId: {
+    type: String,
+    sparse: true,
+},
+
+authProvider: {
+    type: String,
+    enum: ["PHONE", "GOOGLE"],
+    default: "PHONE",
+},
 
         phone: {
             type: String,
@@ -34,6 +45,11 @@ const userSchema = new mongoose.Schema(
 
         fcmToken: {
             type: String,
+            default: null,
+        },
+
+        fcmTokenUpdatedAt: {
+            type: Date,
             default: null,
         },
 

@@ -33,6 +33,9 @@ const seriesSchema = new mongoose.Schema(
 
     isPremium: { type: Boolean, default: false },
 
+    // Priority: higher = shown first (0 = default)
+    priority: { type: Number, default: 0 },
+
     rating: Number,
 
     cast: [castSchema],
@@ -44,13 +47,13 @@ const seriesSchema = new mongoose.Schema(
         // enum: ["trending", "top10", "recommended", "new releases", "bollywood", "hollywood", "action", "comedy"]
       }
     ],
-       likes: [
+    likes: [
       {
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",
       },
     ],
-    
+
     dislikes: [
       {
         type: mongoose.Schema.Types.ObjectId,

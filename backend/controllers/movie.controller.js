@@ -14,7 +14,7 @@ const getAllMovies = async (req, res) => {
     const skip = (page - 1) * limit;
 
     const movies = await Movie.find({})
-      .sort({ createdAt: -1 })
+      .sort({ priority: 1, createdAt: -1 })
       .skip(skip)
       .limit(limit)
       .lean();

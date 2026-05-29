@@ -19,6 +19,7 @@ const getAllShortDramas =
       const dramas =
         await ShortDrama.find()
           .sort({
+            priority: -1,
             createdAt: -1,
           });
 
@@ -84,6 +85,9 @@ const searchShortDrama =
             $regex: q,
             $options: "i",
           },
+        }).sort({
+          priority: -1,
+          createdAt: -1,
         });
 
       return res.json({

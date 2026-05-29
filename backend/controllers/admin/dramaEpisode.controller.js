@@ -7,19 +7,29 @@ const ShortDrama = require(
 );
 
 const fs = require("fs");
-
 const path = require("path");
+const { deleteFromBunny } = require("../../cdn/bunnyCDN");
 
+const getFilePath = (file, path, fallback = "") => {
+  return file ? file.cdnUrl || file.path || `${path}/${file.filename}` : fallback;
+};
 
 // ========================================
 // DELETE FILE
 // ========================================
-const deleteFile = (filePath) => {
-  if (!filePath || filePath.startsWith("http"))
+const deleteFile = async (filePath) => {
+  if (!filePath) return;
+
+  if (filePath.startsWith("http")) {
+    try {
+      await deleteFromBunny(filePath);
+    } catch (err) {
+      console.error("BunnyCDN delete error:", err);
+    }
     return;
+  }
 
   try {
-
     const fullPath = path.join(
       __dirname,
       "../../public",
@@ -29,9 +39,7 @@ const deleteFile = (filePath) => {
     if (fs.existsSync(fullPath)) {
       fs.unlinkSync(fullPath);
     }
-
   } catch (err) {
-
     console.error(
       "File deletion error:",
       err
@@ -120,13 +128,17 @@ const addDramaEpisode =
             req.body.isVertical !==
             "false",
 
-          videoUrl: video
-            ? `/uploads/dramaepisodes/videos/${video.filename}`
-            : req.body.videoUrl || "",
+          videoUrl: getFilePath(
+            video,
+            "/uploads/dramaepisodes/videos",
+            req.body.videoUrl || ""
+          ),
 
-          thumbnail: thumbnail
-            ? `/uploads/dramaepisodes/posters/${thumbnail.filename}`
-            : req.body.thumbnail || "",
+          thumbnail: getFilePath(
+            thumbnail,
+            "/uploads/dramaepisodes/posters",
+            req.body.thumbnail || req.body.thumbnailUrl || ""
+          ),
         });
 
       await updateDramaStats(
@@ -285,7 +297,7 @@ const updateDramaEpisode =
         );
 
         episode.videoUrl =
-          `/uploads/dramaepisodes/videos/${req.files.video[0].filename}`;
+          getFilePath(req.files.video[0], "/uploads/dramaepisodes/videos");
       }
 
 
@@ -299,7 +311,7 @@ const updateDramaEpisode =
         );
 
         episode.thumbnail =
-          `/uploads/dramaepisodes/posters/${req.files.thumbnail[0].filename}`;
+          getFilePath(req.files.thumbnail[0], "/uploads/dramaepisodes/posters");
       }
 
       await episode.save();

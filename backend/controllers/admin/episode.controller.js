@@ -2,10 +2,19 @@ const Episode = require("../../models/episode.model");
 const Series = require("../../models/series.model");
 const fs = require("fs");
 const path = require("path");
+const { deleteFromBunny } = require("../../cdn/bunnyCDN");
 
 // Helper to delete physical files
-const deleteFile = (filePath) => {
-  if (!filePath || filePath.startsWith("http")) return;
+const deleteFile = async (filePath) => {
+  if (!filePath) return;
+  if (filePath.startsWith("http")) {
+    try {
+      await deleteFromBunny(filePath);
+    } catch (err) {
+      console.error("BunnyCDN delete error:", err);
+    }
+    return;
+  }
   try {
     const fullPath = path.join(__dirname, "../../", filePath);
     if (fs.existsSync(fullPath)) {
@@ -16,6 +25,9 @@ const deleteFile = (filePath) => {
   }
 };
 
+const getFilePath = (file, localPrefix, fallback = "") => {
+  return file ? file.cdnUrl || file.path || `${localPrefix}/${file.filename}` : fallback;
+};
 
 // Helper to update totalSeasons and totalEpisodes in Series
 const updateSeriesStats = async (seriesId) => {
@@ -45,8 +57,8 @@ const addEpisode = async (req, res) => {
       seasonNumber: Number(req.body.seasonNumber),
       episodeNumber: Number(req.body.episodeNumber),
       duration: req.body.duration,
-      videoUrl: video ? `/uploads/episodes/videos/${video.filename}` : req.body.videoUrl || "",
-      thumbnail: thumbnail ? `/uploads/episodes/posters/${thumbnail.filename}` : req.body.thumbnailUrl || ""
+      videoUrl: getFilePath(video, "/uploads/episodes/videos", req.body.videoUrl || ""),
+      thumbnail: getFilePath(thumbnail, "/uploads/episodes/posters", req.body.thumbnailUrl || "")
     };
 
     const episode = await Episode.create(episodeData);
@@ -82,14 +94,14 @@ const updateEpisode = async (req, res) => {
 
     if (video) {
       deleteFile(episode.videoUrl);
-      updateData.videoUrl = `/uploads/episodes/videos/${video.filename}`;
+      updateData.videoUrl = getFilePath(video, "/uploads/episodes/videos");
     } else if (req.body.videoUrl) {
       updateData.videoUrl = req.body.videoUrl;
     }
 
     if (thumbnail) {
       deleteFile(episode.thumbnail);
-      updateData.thumbnail = `/uploads/episodes/posters/${thumbnail.filename}`;
+      updateData.thumbnail = getFilePath(thumbnail, "/uploads/episodes/posters");
     } else if (req.body.thumbnailUrl) {
       updateData.thumbnail = req.body.thumbnailUrl;
     }
@@ -191,4 +203,4 @@ module.exports = {
   searchEpisodes,
 };
 
-
+

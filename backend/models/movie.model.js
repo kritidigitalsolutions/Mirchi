@@ -29,10 +29,10 @@ const movieSchema = new mongoose.Schema(
     isComingSoon: { type: Boolean, default: false },
     releaseDate: { type: Date },
 
+    // Priority: higher = shown first (0 = default)
+    priority: { type: Number, default: 0 },
 
-
-    // Only for movies
-    videoUrl:String,
+    videoUrl: String,
 
     trailerUrl: String,
 
@@ -50,18 +50,18 @@ const movieSchema = new mongoose.Schema(
       }
     ],
     likes: [
-  {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "User",
-  },
-],
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
 
-dislikes: [
-  {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "User",
-  },
-],
+    dislikes: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
 
   },
   { timestamps: true }

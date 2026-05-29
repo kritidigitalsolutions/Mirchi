@@ -8,8 +8,8 @@ const Series = require("../models/series.model");
 const getHomeContent = async (req, res) => {
   try {
     // Fetch active movies and series
-    const movies = await Movie.find().sort({ createdAt: -1 }).limit(20).lean();
-    const series = await Series.find().sort({ createdAt: -1 }).limit(20).lean();
+    const movies = await Movie.find().sort({ priority: 1, createdAt: -1 }).limit(20).lean();
+    const series = await Series.find().sort({ priority: 1, createdAt: -1 }).limit(20).lean();
 
     const moviesCount = await Movie.countDocuments();
     const seriesCount = await Series.countDocuments();
@@ -29,9 +29,13 @@ const getHomeContent = async (req, res) => {
       isTrending: s.category?.includes("trending") || false
     }));
 
-    // Combine and sort by date
+    // Combine and sort by priority, then date
     const content = [...formattedMovies, ...formattedSeries].sort(
-      (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+      (a, b) => {
+        const priorityDiff = (a.priority || 0) - (b.priority || 0);
+        if (priorityDiff !== 0) return priorityDiff;
+        return new Date(b.createdAt) - new Date(a.createdAt);
+      }
     );
 
     return res.json({

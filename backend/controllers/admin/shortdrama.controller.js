@@ -7,14 +7,21 @@ const DramaEpisode = require(
 );
 
 const fs = require("fs");
-
 const path = require("path");
-
+const { deleteFromBunny } = require("../../cdn/bunnyCDN");
 
 // DELETE FILE
-const deleteFile = (filePath) => {
-  if (!filePath || filePath.startsWith("http"))
+const deleteFile = async (filePath) => {
+  if (!filePath) return;
+
+  if (filePath.startsWith("http")) {
+    try {
+      await deleteFromBunny(filePath);
+    } catch (err) {
+      console.error("BunnyCDN delete error:", err);
+    }
     return;
+  }
 
   try {
     const fullPath = path.join(
@@ -57,7 +64,7 @@ const getFilePath = (
   fallback = ""
 ) => {
   return file
-    ? `${path}/${file.filename}`
+    ? file.cdnUrl || file.path || `${path}/${file.filename}`
     : fallback;
 };
 

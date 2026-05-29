@@ -3,8 +3,9 @@ import API, { BASE_URL } from "../api/axios";
 
 import "./Content.css";
 import {
-  Eye, Edit2, Upload, Trash2, X, Play, Film, Tv,
-  Search, Plus, ChevronDown, ChevronRight, User, Calendar, Video, ChevronLeft, Activity
+  Eye, Edit2, Trash2, X, Play, Film, Tv,
+  Search, Plus, ChevronRight, ChevronLeft, ChevronDown, User, Calendar, Video,
+  Activity, Upload
 } from "lucide-react";
 
 export default function Content() {
@@ -284,7 +285,7 @@ export default function Content() {
     try {
       const formData = new FormData();
       // Basic text fields
-      const textFields = ["title", "description", "language", "duration", "rating", "releaseYear", "isPremium", "isComingSoon", "releaseDate"];
+      const textFields = ["title", "description", "language", "duration", "rating", "releaseYear", "isPremium", "isComingSoon", "releaseDate", "priority"];
 
       textFields.forEach(k => {
         if (editData[k] !== undefined) formData.append(k, editData[k]);
@@ -526,12 +527,12 @@ export default function Content() {
                 <table className="tbl">
                   <thead>
                     <tr>
-                      <th>Title</th><th>Genre</th><th>Year</th><th>Rating</th><th>Premium</th><th>Status</th><th>Actions</th>
+                      <th>Title</th><th>Genre</th><th>Year</th><th>Rating</th><th>Priority</th><th>Premium</th><th>Status</th><th>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {displayData.length === 0 ? (
-                      <tr><td colSpan={7}>No movies found</td></tr>
+                      <tr><td colSpan={8}>No movies found</td></tr>
                     ) : displayData.map(movie => (
                       <tr key={movie._id}>
                         <td>
@@ -552,6 +553,7 @@ export default function Content() {
                         <td>{Array.isArray(movie.genre) ? movie.genre.join(", ") : movie.genre}</td>
                         <td>{movie.releaseYear}</td>
                         <td>{movie.rating}</td>
+                        <td><strong>{movie.priority || 0}</strong></td>
                         <td><span className={`badge ${movie.isPremium ? "badge-active" : "badge-draft"}`}>{movie.isPremium ? "Premium" : "Free"}</span></td>
                         <td>
                           <span className={`badge ${isLocked(movie) ? "badge-coming" : "badge-pub"}`}>
@@ -595,12 +597,12 @@ export default function Content() {
                 <table className="tbl">
                   <thead>
                     <tr>
-                      <th>Title</th><th>Genre</th><th>Year</th><th>Rating</th><th>Seasons</th><th>Status</th><th>Actions</th>
+                      <th>Title</th><th>Genre</th><th>Year</th><th>Rating</th><th>Priority</th><th>Seasons</th><th>Status</th><th>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {displayData.length === 0 ? (
-                      <tr><td colSpan={7}>No series found</td></tr>
+                      <tr><td colSpan={8}>No series found</td></tr>
                     ) : displayData.map(series => (
                       <tr key={series._id}>
                         <td>
@@ -620,6 +622,7 @@ export default function Content() {
                         <td>{Array.isArray(series.genre) ? series.genre.join(", ") : series.genre}</td>
                         <td>{series.releaseYear}</td>
                         <td>{series.rating}</td>
+                        <td><strong>{series.priority || 0}</strong></td>
                         <td>{series.totalSeasons}</td>
                         <td>
                           <span className={`badge ${isLocked(series) ? "badge-coming" : "badge-pub"}`}>
@@ -1102,6 +1105,10 @@ export default function Content() {
                         <span className="vp-detail-value">{selectedItem.rating} ⭐</span>
                       </div>
                       <div className="vp-detail-card">
+                        <span className="vp-detail-label">Priority</span>
+                        <span className="vp-detail-value">{selectedItem.priority || 0}</span>
+                      </div>
+                      <div className="vp-detail-card">
                         <span className="vp-detail-label">Premium</span>
                         <span className={`vp-detail-value ${selectedItem.isPremium ? "text-gold" : ""}`}>{selectedItem.isPremium ? "✓ Yes" : "✗ No"}</span>
                       </div>
@@ -1241,6 +1248,16 @@ export default function Content() {
                         <option value="comedy">Comedy</option>
 
                       </select>
+                    </div>
+                    <div className="form-row">
+                      <label className="form-label">Priority (0 = Auto-assign, 1 = top priority)</label>
+                      <input
+                        className="form-input"
+                        type="number"
+                        placeholder="0 = Automatic"
+                        value={editData.priority !== undefined ? editData.priority : ""}
+                        onChange={e => setEditData(s => ({ ...s, priority: e.target.value === "" ? "" : Number(e.target.value) }))}
+                      />
                     </div>
                     {editData.isComingSoon && (
                       <div className="form-row">
@@ -1388,4 +1405,4 @@ export default function Content() {
       )}
     </div>
   );
-}
+}

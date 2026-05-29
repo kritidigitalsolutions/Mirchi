@@ -2,6 +2,9 @@ const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
 const os = require("os");
+const {
+  uploadBufferToBunny,
+} = require("../cdn/bunnyCDN");
 
 const isVercel = Boolean(process.env.VERCEL);
 const uploadRoot = isVercel
@@ -20,7 +23,7 @@ const ensureDir = (dir) => {
 
 ensureDir(uploadRoot);
 
-const getUploadTarget = (req, file) => {
+const getUploadInfo = (req, file) => {
   let type = "movies";
 
   if (req.originalUrl.includes("/series")) type = "series";
@@ -43,21 +46,55 @@ const getUploadTarget = (req, file) => {
     subfolder = "cast";
   }
 
-  return path.join(uploadRoot, type, subfolder);
+  return {
+    type,
+    subfolder,
+    localFolder: path.join(uploadRoot, type, subfolder),
+    remoteFolder: `${type}/${subfolder}`,
+  };
 };
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const folder = getUploadTarget(req, file);
-    ensureDir(folder);
-    cb(null, folder);
+const storage = {
+  _handleFile: (req, file, cb) => {
+    const uploadInfo = getUploadInfo(req, file);
+    const uniqueName = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+    const filename = uniqueName + path.extname(file.originalname);
+    const chunks = [];
+    let size = 0;
+
+    file.stream.on("data", (chunk) => {
+      chunks.push(chunk);
+      size += chunk.length;
+    });
+
+    file.stream.on("error", cb);
+
+    file.stream.on("end", async () => {
+      try {
+        const result = await uploadBufferToBunny({
+          buffer: Buffer.concat(chunks),
+          remotePath: `${uploadInfo.remoteFolder}/${filename}`,
+          contentType: file.mimetype,
+        });
+
+        cb(null, {
+          filename,
+          destination: uploadInfo.remoteFolder,
+          path: result.url,
+          cdnUrl: result.url,
+          remotePath: result.path,
+          size,
+        });
+      } catch (error) {
+        cb(error);
+      }
+    });
   },
 
-  filename: (req, file, cb) => {
-    const uniqueName = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-    cb(null, uniqueName + path.extname(file.originalname));
+  _removeFile: (req, file, cb) => {
+    cb(null);
   },
-});
+};
 
 const fileFilter = (req, file, cb) => {
   const allowedMimeTypes = [

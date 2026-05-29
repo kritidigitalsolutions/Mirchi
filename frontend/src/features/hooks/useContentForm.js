@@ -17,6 +17,7 @@ const EMPTY_FORM = {
   isPremium: false,
   isComingSoon: false,
   releaseDate: "",
+  priority: 0,
 
   cast: [
     {

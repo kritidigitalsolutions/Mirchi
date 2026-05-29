@@ -316,3 +316,54 @@ body.light .password-toggle:hover {
     max-width: 100%;
   }
 }
+
+/* ========== OTP Blocks ========== */
+.otp-blocks-container {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  max-width: 360px;
+  margin: 0 auto 10px auto;
+}
+
+.otp-block-input {
+  width: 45px;
+  height: 50px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 1.3rem;
+  font-weight: 700;
+  text-align: center;
+  outline: none;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: none;
+}
+
+body.light .otp-block-input {
+  background: #f8fafc;
+}
+
+.otp-block-input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-dim);
+  transform: translateY(-2px);
+}
+
+.otp-block-input:disabled {
+  opacity: 0.5;
+  background: var(--bg3);
+  cursor: not-allowed;
+}
+
+@media (max-width: 440px) {
+  .otp-blocks-container {
+    gap: 6px;
+  }
+  .otp-block-input {
+    width: 36px;
+    height: 42px;
+    font-size: 1.15rem;
+  }
+}
