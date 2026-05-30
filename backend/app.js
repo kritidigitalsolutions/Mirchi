@@ -25,22 +25,47 @@ app.use(
   })
 );
 
-const allowedOrigins = process.env.FRONTEND_URL
+const frontendUrls = process.env.FRONTEND_URL
   ? process.env.FRONTEND_URL.split(",").map(url => url.trim().replace(/\/$/, ""))
-  : ["*"];
+  : [];
+const adminUrls = process.env.ADMIN_URL
+  ? process.env.ADMIN_URL.split(",").map(url => url.trim().replace(/\/$/, ""))
+  : [];
+
+const defaultAllowed = [
+  "http://localhost:5173",
+  "http://localhost:5174",
+  "https://mirchi-admin-panel.vercel.app",
+  "https://mirchi-sigma.vercel.app",
+];
+
+const allowedOrigins = [...new Set([...frontendUrls, ...adminUrls, ...defaultAllowed])];
 
 const corsOptions = {
   origin: (origin, callback) => {
     // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin || allowedOrigins.includes(origin) || allowedOrigins.includes("*")) {
-      callback(null, true);
-    } else {
-      callback(new Error("Not allowed by CORS"));
+    if (!origin) {
+      return callback(null, true);
     }
+    
+    // Check exact matches or wildcard
+    if (allowedOrigins.includes(origin) || allowedOrigins.includes("*")) {
+      return callback(null, true);
+    }
+
+    // Dynamic pattern matching for development / Vercel preview environments
+    const isLocalhost = origin.startsWith("http://localhost:") || origin.startsWith("http://127.0.0.1:");
+    const isMirchiDomain = origin.endsWith(".vercel.app") && (origin.includes("mirchi") || origin.includes("sigma"));
+
+    if (isLocalhost || isMirchiDomain) {
+      return callback(null, true);
+    }
+
+    callback(new Error("Not allowed by CORS"));
   },
   credentials: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"]
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept"]
 };
 app.use(cors(corsOptions));
 
