@@ -83,7 +83,7 @@ export default function Dashboard() {
       //   API.get("/admin/content/stats"),
       // ]);
       const [uRes, sRes, gRes, subStatsRes, incomeStatsRes, regStatsRes] = await Promise.all([
-        API.get("/user"),
+        API.get("/admin/users"),
         API.get("/admin/content/stats"),
         API.get("/admin/user/growth"),
         API.get("/admin/subscription/stats"),
@@ -115,7 +115,7 @@ export default function Dashboard() {
         yesterdayRegistration: 0,
         totalRegistration: 0,
       });
-      setUsers(uRes.data?.data || uRes.data || []);
+      setUsers(uRes.data?.users || uRes.data?.data || uRes.data || []);
       // setContent(cRes.data?.data || cRes.data || []);
     } catch (err) {
       console.log("Dashboard fetch error:", err);

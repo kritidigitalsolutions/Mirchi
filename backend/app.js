@@ -151,6 +151,11 @@ app.use(
 );
 
 app.use(
+  "/api/admin/user",
+  adminUserRoutes
+);
+
+app.use(
   "/api/admin/movies",
   movieRoutes
 );

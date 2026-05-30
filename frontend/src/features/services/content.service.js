@@ -1,7 +1,7 @@
 import API from "../../api/axios";
 
 export const uploadFileInChunks = async (file, targetFolder, onProgress) => {
-  const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB chunks
+  const CHUNK_SIZE = 3 * 1024 * 1024; // 3MB chunks (fits within Vercel's 4.5MB body limit)
   const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
   const fileId = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.]/g, "_")}`;
   

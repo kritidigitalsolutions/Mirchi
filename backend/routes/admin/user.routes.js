@@ -24,6 +24,8 @@ const {
     getAllUsers,
     getSingleUser,
     deleteUser,
+    getRegistrationStats,
+    getUserGrowth,
 } = require("../../controllers/admin/user.controller");
 
 
@@ -64,6 +66,20 @@ router.get(
     "/",
     isAdmin,
     getAllUsers
+);
+
+// Get user registration stats
+router.get(
+    "/registration-stats",
+    isAdmin,
+    getRegistrationStats
+);
+
+// Get user growth stats
+router.get(
+    "/growth",
+    isAdmin,
+    getUserGrowth
 );
 
 // Get single user

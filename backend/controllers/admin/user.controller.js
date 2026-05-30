@@ -112,3 +112,76 @@ exports.deleteUser = async (
         });
     }
 };
+
+exports.getRegistrationStats = async (req, res) => {
+    try {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        yesterday.setHours(0, 0, 0, 0);
+
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        tomorrow.setHours(0, 0, 0, 0);
+
+        const [todayCount, yesterdayCount, totalCount] = await Promise.all([
+            User.countDocuments({ createdAt: { $gte: today, $lt: tomorrow } }),
+            User.countDocuments({ createdAt: { $gte: yesterday, $lt: today } }),
+            User.countDocuments({}),
+        ]);
+
+        res.status(200).json({
+            success: true,
+            data: {
+                todayRegistration: todayCount,
+                yesterdayRegistration: yesterdayCount,
+                totalRegistration: totalCount,
+            },
+        });
+    } catch (error) {
+        console.error("Get Registration Stats Error:", error);
+        res.status(500).json({
+            success: false,
+            message: "Server error",
+        });
+    }
+};
+
+exports.getUserGrowth = async (req, res) => {
+    try {
+        const daysOfWeek = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+        const growthData = [];
+
+        // Loop for the last 7 days
+        for (let i = 6; i >= 0; i--) {
+            const d = new Date();
+            d.setDate(d.getDate() - i);
+            d.setHours(0, 0, 0, 0);
+
+            const nextD = new Date(d);
+            nextD.setDate(nextD.getDate() + 1);
+
+            const count = await User.countDocuments({
+                createdAt: { $gte: d, $lt: nextD },
+            });
+
+            growthData.push({
+                day: daysOfWeek[d.getDay()],
+                users: count,
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            data: growthData,
+        });
+    } catch (error) {
+        console.error("Get User Growth Error:", error);
+        res.status(500).json({
+            success: false,
+            message: "Server error",
+        });
+    }
+};

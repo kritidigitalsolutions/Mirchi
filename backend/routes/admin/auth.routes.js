@@ -9,6 +9,7 @@ const {
   sendForgotPasswordOtp,
   verifyForgotPasswordOtp,
   resetForgotPassword,
+  getAdminProfile,
 } = require("../../controllers/admin_auth/admin.auth.controller");
 
 const {
@@ -23,6 +24,13 @@ const {
 router.post(
   "/login",
   loginAdmin
+);
+
+// Get own profile
+router.get(
+  "/profile",
+  isAdmin,
+  getAdminProfile
 );
 
 //OTP
