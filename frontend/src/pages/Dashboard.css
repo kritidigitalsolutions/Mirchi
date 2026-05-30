@@ -750,6 +750,37 @@ body.light .form-input {
   color: rgba(255, 255, 255, 0.35);
 }
 
+.password-input-container {
+  position: relative;
+  width: 100%;
+}
+
+.password-input-container .login-input {
+  padding-right: 48px;
+}
+
+.password-toggle-btn {
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.4);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: color 0.2s;
+  outline: none;
+  z-index: 10;
+}
+
+.password-toggle-btn:hover {
+  color: white;
+}
+
 .login-btn {
   padding: 15px;
   border-radius: 10px;

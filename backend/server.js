@@ -29,33 +29,7 @@ const startServer = async () => {
     server.keepAliveTimeout = 20 * 60 * 1000;
     server.headersTimeout = 21 * 60 * 1000;
 
-    // Background Cleaner: Prunes temporary chunk uploads older than 24 hours
-    const cleanAbandonedChunks = async () => {
-      const chunksDir = path.join(__dirname, "uploads/chunks");
-      const now = Date.now();
-      const MAX_AGE = 24 * 60 * 60 * 1000; // 24 hours
 
-      try {
-        if (!require("fs").existsSync(chunksDir)) return;
-
-        const folders = await fs.readdir(chunksDir);
-        for (const folder of folders) {
-          const folderPath = path.join(chunksDir, folder);
-          const stat = await fs.stat(folderPath);
-          
-          if (now - stat.mtimeMs > MAX_AGE) {
-            await fs.rm(folderPath, { recursive: true, force: true });
-            console.log(`🧹 Cleaned abandoned chunk directory: ${folder}`);
-          }
-        }
-      } catch (err) {
-        console.error("❌ Failed to clean abandoned chunks:", err.message);
-      }
-    };
-
-    // Run once immediately on start, then every 6 hours
-    cleanAbandonedChunks();
-    setInterval(cleanAbandonedChunks, 6 * 60 * 60 * 1000);
 
   } catch (error) {
     console.error("❌ Server Error:", error);

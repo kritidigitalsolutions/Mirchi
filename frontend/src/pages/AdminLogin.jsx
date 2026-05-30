@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import API from "../api/axios";
 import { useNavigate } from "react-router-dom";
+import { Eye, EyeOff } from "lucide-react";
 import "../pages/Dashboard.css"; // Uses shared .login-page classes
 
 const AdminLogin = () => {
@@ -8,6 +9,7 @@ const AdminLogin = () => {
   const [form, setForm] = useState({ email: "", password: "" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -66,15 +68,25 @@ const AdminLogin = () => {
           required
         />
 
-        <input
-          className="login-input"
-          type="password"
-          name="password"
-          placeholder="Password"
-          value={form.password}
-          onChange={handleChange}
-          required
-        />
+        <div className="password-input-container">
+          <input
+            className="login-input"
+            type={showPassword ? "text" : "password"}
+            name="password"
+            placeholder="Password"
+            value={form.password}
+            onChange={handleChange}
+            required
+          />
+          <button
+            type="button"
+            className="password-toggle-btn"
+            onClick={() => setShowPassword(!showPassword)}
+            tabIndex={-1}
+          >
+            {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+          </button>
+        </div>
 
         <button type="submit" className="login-btn" disabled={loading}>
           {loading ? "Signing in..." : "Sign In →"}

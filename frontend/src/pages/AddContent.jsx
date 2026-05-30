@@ -45,9 +45,7 @@ export default function AddContent() {
   const [loading, setLoading] =
     useState(false);
 
-  const [videoProgress, setVideoProgress] = useState(null);
-  const [trailerProgress, setTrailerProgress] = useState(null);
-  const [episodeProgress, setEpisodeProgress] = useState({});
+
 
   const [videoFile, setVideoFile] =
     useState(null);
@@ -200,9 +198,7 @@ export default function AddContent() {
     e.preventDefault();
 
     setLoading(true);
-    setVideoProgress(null);
-    setTrailerProgress(null);
-    setEpisodeProgress({});
+
 
     try {
       await createContent({
@@ -218,9 +214,6 @@ export default function AddContent() {
         episodeVideoFiles,
         episodeThumbnailFiles,
         
-        onVideoProgress: (p) => setVideoProgress(p),
-        onTrailerProgress: (p) => setTrailerProgress(p),
-        onEpisodeProgress: (key, p) => setEpisodeProgress(prev => ({ ...prev, [key]: p })),
       });
 
       alert(
@@ -407,64 +400,7 @@ export default function AddContent() {
           }
         />
 
-        {loading && (
-          <div className="upload-progress-container" style={{
-            background: "var(--bg3)",
-            border: "1px solid var(--border)",
-            borderRadius: "12px",
-            padding: "20px",
-            marginTop: "20px",
-            display: "flex",
-            flexDirection: "column",
-            gap: "12px",
-            animation: "fadeIn 0.3s ease"
-          }}>
-            <h4 style={{ margin: 0, color: "var(--primary)", fontSize: "1rem", display: "flex", alignItems: "center", gap: "8px" }}>
-              <div className="spinner" style={{ width: 14, height: 14, border: "2px solid rgba(255,255,255,0.3)", borderTopColor: "var(--primary)", borderRadius: "50%", animation: "spin 1s linear infinite" }} />
-              Uploading Large Assets (Streaming Chunks)...
-            </h4>
-            
-            {trailerProgress !== null && (
-              <div className="progress-item">
-                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
-                  <span style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>Trailer Video</span>
-                  <span style={{ fontSize: "0.85rem", fontWeight: "bold", color: "var(--primary)" }}>{trailerProgress}%</span>
-                </div>
-                <div style={{ background: "rgba(255,255,255,0.08)", borderRadius: "6px", height: "8px", overflow: "hidden" }}>
-                  <div style={{ background: "var(--primary)", width: `${trailerProgress}%`, height: "100%", transition: "width 0.2s ease" }} />
-                </div>
-              </div>
-            )}
-            
-            {videoProgress !== null && (
-              <div className="progress-item">
-                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
-                  <span style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>Full Movie Video</span>
-                  <span style={{ fontSize: "0.85rem", fontWeight: "bold", color: "var(--primary)" }}>{videoProgress}%</span>
-                </div>
-                <div style={{ background: "rgba(255,255,255,0.08)", borderRadius: "6px", height: "8px", overflow: "hidden" }}>
-                  <div style={{ background: "var(--primary)", width: `${videoProgress}%`, height: "100%", transition: "width 0.2s ease" }} />
-                </div>
-              </div>
-            )}
 
-            {Object.keys(episodeProgress).map((key) => {
-              const [si, ei] = key.split("_");
-              const progress = episodeProgress[key];
-              return (
-                <div key={key} className="progress-item">
-                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
-                    <span style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>Season {Number(si) + 1} Episode {Number(ei) + 1} Video</span>
-                    <span style={{ fontSize: "0.85rem", fontWeight: "bold", color: "var(--primary)" }}>{progress}%</span>
-                  </div>
-                  <div style={{ background: "rgba(255,255,255,0.08)", borderRadius: "6px", height: "8px", overflow: "hidden" }}>
-                    <div style={{ background: "var(--primary)", width: `${progress}%`, height: "100%", transition: "width 0.2s ease" }} />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
 
         {/* Submit */}
         <div
