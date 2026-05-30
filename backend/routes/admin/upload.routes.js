@@ -6,10 +6,20 @@ const fs = require("fs");
 const { isAdmin } = require("../../middlewares/admin.middleware");
 const { uploadChunk } = require("../../controllers/admin/upload.controller");
 
+const os = require("os");
+const isVercel = Boolean(process.env.VERCEL);
+
 // Ensure temp directory exists
-const tempDir = path.join(__dirname, "../../uploads/temp");
-if (!fs.existsSync(tempDir)) {
-  fs.mkdirSync(tempDir, { recursive: true });
+const tempDir = isVercel
+  ? path.join(os.tmpdir(), "uploads", "temp")
+  : path.join(__dirname, "../../uploads/temp");
+
+try {
+  if (!fs.existsSync(tempDir)) {
+    fs.mkdirSync(tempDir, { recursive: true });
+  }
+} catch (err) {
+  console.error("Temp directory creation error:", err.message);
 }
 
 // Lightweight local disk storage for incoming chunks

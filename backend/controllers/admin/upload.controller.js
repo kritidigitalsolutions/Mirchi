@@ -3,12 +3,21 @@ const fsPromises = require("fs").promises;
 const path = require("path");
 const { uploadFileToBunny } = require("../../cdn/bunnyCDN");
 
-const CHUNKS_DIR = path.join(__dirname, "../../uploads/chunks");
+const os = require("os");
+const isVercel = Boolean(process.env.VERCEL);
+
+const CHUNKS_DIR = isVercel
+  ? path.join(os.tmpdir(), "uploads", "chunks")
+  : path.join(__dirname, "../../uploads/chunks");
 
 // Helper to ensure directory exists
 const ensureDir = (dir) => {
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
+  try {
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+  } catch (err) {
+    console.error("chunks directory creation error:", err.message);
   }
 };
 
