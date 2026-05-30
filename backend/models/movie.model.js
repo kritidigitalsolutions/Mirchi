@@ -86,4 +86,6 @@ movieSchema.pre(
   }
 );
 
+movieSchema.index({ createdAt: -1 });
+
 module.exports = mongoose.model("Movie", movieSchema);

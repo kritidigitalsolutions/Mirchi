@@ -114,7 +114,7 @@ const addShortDrama = async (
 
       if (cast[index]) {
         cast[index].image =
-          `/uploads/shortdramas/cast/${file.filename}`;
+          getFilePath(file, "/uploads/shortdramas/cast");
       }
     });
 
@@ -308,7 +308,7 @@ const updateShortDrama =
         deleteFile(drama.poster);
 
         drama.poster =
-          `/uploads/shortdramas/posters/${req.files.poster[0].filename}`;
+          getFilePath(req.files.poster[0], "/uploads/shortdramas/posters");
       }
 
 
@@ -318,7 +318,7 @@ const updateShortDrama =
         deleteFile(drama.banner);
 
         drama.banner =
-          `/uploads/shortdramas/banners/${req.files.banner[0].filename}`;
+          getFilePath(req.files.banner[0], "/uploads/shortdramas/banners");
       }
 
 
@@ -330,7 +330,7 @@ const updateShortDrama =
         );
 
         drama.trailerUrl =
-          `/uploads/shortdramas/trailers/${req.files.trailer[0].filename}`;
+          getFilePath(req.files.trailer[0], "/uploads/shortdramas/trailers");
       }
 
 
@@ -354,7 +354,7 @@ const updateShortDrama =
 
         if (cast[index]) {
           cast[index].image =
-            `/uploads/shortdramas/cast/${file.filename}`;
+            getFilePath(file, "/uploads/shortdramas/cast");
         }
       });
 

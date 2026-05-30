@@ -100,6 +100,7 @@ const movieUserRoutes = require("./routes/user/movie.routes");
 const seriesUserRoutes = require("./routes/user/series.routes");
 const contentAdminRoutes = require("./routes/admin/content.routes");
 const contentUserRoutes = require("./routes/user/content.routes");
+const uploadAdminRoutes = require("./routes/admin/upload.routes");
 const shortDramaRoutes = require(
   "./routes/admin/shortdrama.routes"
 );
@@ -142,6 +143,11 @@ app.use(
 app.use(
   "/api/admin/content",
   contentAdminRoutes
+);
+
+app.use(
+  "/api/admin/uploads",
+  uploadAdminRoutes
 );
 app.use(
   "/api/admin/shortdramas",

@@ -96,7 +96,7 @@ const addMovie = async (req, res) => {
 
       if (cast[index]) {
         cast[index].image =
-          `/uploads/movies/cast/${file.filename}`;
+          getFilePath(file, "/uploads/movies/cast");
       }
     });
 
@@ -370,7 +370,7 @@ const updateMovie = async (req, res) => {
 
     if (req.files?.poster?.[0]) {
       deleteFile(movie.poster);
-      movie.poster = `/uploads/movies/posters/${req.files.poster[0].filename}`;
+      movie.poster = getFilePath(req.files.poster[0], "/uploads/movies/posters");
     } else if (req.body.posterUrl !== undefined) {
       movie.poster = req.body.posterUrl;
     } else if (req.body.poster !== undefined) {
@@ -379,7 +379,7 @@ const updateMovie = async (req, res) => {
 
     if (req.files?.banner?.[0]) {
       deleteFile(movie.banner);
-      movie.banner = `/uploads/movies/banners/${req.files.banner[0].filename}`;
+      movie.banner = getFilePath(req.files.banner[0], "/uploads/movies/banners");
     } else if (req.body.bannerUrl !== undefined) {
       movie.banner = req.body.bannerUrl;
     } else if (req.body.banner !== undefined) {
@@ -388,14 +388,14 @@ const updateMovie = async (req, res) => {
 
     if (req.files?.trailer?.[0]) {
       deleteFile(movie.trailerUrl);
-      movie.trailerUrl = `/uploads/movies/trailers/${req.files.trailer[0].filename}`;
+      movie.trailerUrl = getFilePath(req.files.trailer[0], "/uploads/movies/trailers");
     } else if (req.body.trailerUrl !== undefined) {
       movie.trailerUrl = req.body.trailerUrl;
     }
 
     if (req.files?.video?.[0]) {
       deleteFile(movie.videoUrl);
-      movie.videoUrl = `/uploads/movies/videos/${req.files.video[0].filename}`;
+      movie.videoUrl = getFilePath(req.files.video[0], "/uploads/movies/videos");
     } else if (req.body.videoUrl !== undefined) {
       movie.videoUrl = req.body.videoUrl;
     }
@@ -419,7 +419,7 @@ const updateMovie = async (req, res) => {
 
       if (cast[index]) {
         cast[index].image =
-          `/uploads/movies/cast/${file.filename}`;
+          getFilePath(file, "/uploads/movies/cast");
       }
     });
 

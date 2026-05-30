@@ -1,5 +1,39 @@
 import API from "../../api/axios";
 
+export const uploadFileInChunks = async (file, targetFolder, onProgress) => {
+  const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB chunks
+  const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+  const fileId = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.]/g, "_")}`;
+  
+  let responseData = null;
+
+  for (let index = 0; index < totalChunks; index++) {
+    const start = index * CHUNK_SIZE;
+    const end = Math.min(start + CHUNK_SIZE, file.size);
+    const chunk = file.slice(start, end);
+
+    const formData = new FormData();
+    formData.append("chunk", chunk, file.name);
+    formData.append("filename", fileId);
+    formData.append("chunkIndex", index);
+    formData.append("totalChunks", totalChunks);
+    formData.append("folder", targetFolder);
+
+    const res = await API.post("/admin/uploads/chunk", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+
+    responseData = res.data;
+    if (onProgress) {
+      onProgress(Math.round(((index + 1) / totalChunks) * 100));
+    }
+  }
+
+  return responseData;
+};
+
 export const createContent = async ({
   form,
 
@@ -12,6 +46,10 @@ export const createContent = async ({
 
   episodeVideoFiles,
   episodeThumbnailFiles,
+  
+  onVideoProgress,
+  onTrailerProgress,
+  onEpisodeProgress,
 }) => {
   const isMovie = form.type === "movie";
 
@@ -112,10 +150,13 @@ export const createContent = async ({
 
   // Trailer
   if (trailerFile) {
-    formData.append(
-      "trailer",
-      trailerFile
+    onTrailerProgress?.(0);
+    const result = await uploadFileInChunks(
+      trailerFile,
+      `${isMovie ? "movies" : "series"}/trailers`,
+      onTrailerProgress
     );
+    formData.append("trailerUrl", result.url);
   } else if (form.trailerUrl) {
     formData.append(
       "trailerUrl",
@@ -126,10 +167,13 @@ export const createContent = async ({
   // Movie Video
   if (isMovie) {
     if (videoFile) {
-      formData.append(
-        "video",
-        videoFile
+      onVideoProgress?.(0);
+      const result = await uploadFileInChunks(
+        videoFile,
+        "movies/videos",
+        onVideoProgress
       );
+      formData.append("videoUrl", result.url);
     } else if (form.videoUrl) {
       formData.append(
         "videoUrl",
@@ -234,12 +278,14 @@ export const createContent = async ({
           episodeKey
           ]
         ) {
-          epFormData.append(
-            "video",
-            episodeVideoFiles[
-            episodeKey
-            ]
+          const epVideoFile = episodeVideoFiles[episodeKey];
+          onEpisodeProgress?.(episodeKey, 0);
+          const result = await uploadFileInChunks(
+            epVideoFile,
+            "episodes/videos",
+            (p) => onEpisodeProgress?.(episodeKey, p)
           );
+          epFormData.append("videoUrl", result.url);
         } else if (ep.videoUrl) {
           epFormData.append(
             "videoUrl",

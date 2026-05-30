@@ -70,7 +70,7 @@ const addSeries = async (req, res) => {
     castFiles.forEach((key) => {
       const index = key.split("_")[1];
       const file = req.files[key][0];
-      if (cast[index]) cast[index].image = `/uploads/series/cast/${file.filename}`;
+      if (cast[index]) cast[index].image = getFilePath(file, "/uploads/series/cast");
     });
 
     const series = await Series.create({
@@ -200,7 +200,7 @@ const updateSeries = async (req, res) => {
 
     if (req.files?.poster?.[0]) {
       deleteFile(series.poster);
-      series.poster = `/uploads/series/posters/${req.files.poster[0].filename}`;
+      series.poster = getFilePath(req.files.poster[0], "/uploads/series/posters");
     } else if (req.body.posterUrl !== undefined) {
       series.poster = req.body.posterUrl;
     } else if (req.body.poster !== undefined) {
@@ -209,7 +209,7 @@ const updateSeries = async (req, res) => {
 
     if (req.files?.banner?.[0]) {
       deleteFile(series.banner);
-      series.banner = `/uploads/series/banners/${req.files.banner[0].filename}`;
+      series.banner = getFilePath(req.files.banner[0], "/uploads/series/banners");
     } else if (req.body.bannerUrl !== undefined) {
       series.banner = req.body.bannerUrl;
     } else if (req.body.banner !== undefined) {
@@ -218,7 +218,7 @@ const updateSeries = async (req, res) => {
 
     if (req.files?.trailer?.[0]) {
       deleteFile(series.trailerUrl);
-      series.trailerUrl = `/uploads/series/trailers/${req.files.trailer[0].filename}`;
+      series.trailerUrl = getFilePath(req.files.trailer[0], "/uploads/series/trailers");
     } else if (req.body.trailerUrl !== undefined) {
       series.trailerUrl = req.body.trailerUrl;
     }
@@ -229,10 +229,10 @@ const updateSeries = async (req, res) => {
       const index = key.split("_")[1];
       const file = req.files[key][0];
       if (cast[index]) {
-        if (cast[index].image && cast[index].image !== `/uploads/series/cast/${file.filename}`) {
+        if (cast[index].image && cast[index].image !== getFilePath(file, "/uploads/series/cast")) {
           deleteFile(cast[index].image);
         }
-        cast[index].image = `/uploads/series/cast/${file.filename}`;
+        cast[index].image = getFilePath(file, "/uploads/series/cast");
       }
     });
 

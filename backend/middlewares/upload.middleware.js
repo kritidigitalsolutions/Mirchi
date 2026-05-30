@@ -4,6 +4,7 @@ const fs = require("fs");
 const os = require("os");
 const {
   uploadBufferToBunny,
+  uploadStreamToBunny,
 } = require("../cdn/bunnyCDN");
 
 const isVercel = Boolean(process.env.VERCEL);
@@ -55,40 +56,28 @@ const getUploadInfo = (req, file) => {
 };
 
 const storage = {
-  _handleFile: (req, file, cb) => {
-    const uploadInfo = getUploadInfo(req, file);
-    const uniqueName = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-    const filename = uniqueName + path.extname(file.originalname);
-    const chunks = [];
-    let size = 0;
+  _handleFile: async (req, file, cb) => {
+    try {
+      const uploadInfo = getUploadInfo(req, file);
+      const uniqueName = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+      const filename = uniqueName + path.extname(file.originalname);
 
-    file.stream.on("data", (chunk) => {
-      chunks.push(chunk);
-      size += chunk.length;
-    });
+      const result = await uploadStreamToBunny({
+        stream: file.stream,
+        remotePath: `${uploadInfo.remoteFolder}/${filename}`,
+        contentType: file.mimetype,
+      });
 
-    file.stream.on("error", cb);
-
-    file.stream.on("end", async () => {
-      try {
-        const result = await uploadBufferToBunny({
-          buffer: Buffer.concat(chunks),
-          remotePath: `${uploadInfo.remoteFolder}/${filename}`,
-          contentType: file.mimetype,
-        });
-
-        cb(null, {
-          filename,
-          destination: uploadInfo.remoteFolder,
-          path: result.url,
-          cdnUrl: result.url,
-          remotePath: result.path,
-          size,
-        });
-      } catch (error) {
-        cb(error);
-      }
-    });
+      cb(null, {
+        filename,
+        destination: uploadInfo.remoteFolder,
+        path: result.url,
+        cdnUrl: result.url,
+        remotePath: result.path,
+      });
+    } catch (error) {
+      cb(error);
+    }
   },
 
   _removeFile: (req, file, cb) => {

@@ -121,6 +121,8 @@ shortDramaSchema.pre(
   }
 );
 
+shortDramaSchema.index({ createdAt: -1 });
+
 module.exports = mongoose.model(
   "ShortDrama",
   shortDramaSchema

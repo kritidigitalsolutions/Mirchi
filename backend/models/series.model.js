@@ -105,4 +105,6 @@ seriesSchema.pre(
   }
 );
 
+seriesSchema.index({ createdAt: -1 });
+
 module.exports = mongoose.model("Series", seriesSchema);

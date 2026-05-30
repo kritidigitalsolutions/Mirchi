@@ -22,4 +22,6 @@ const episodeSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+episodeSchema.index({ createdAt: -1 });
+
 module.exports = mongoose.model("Episode", episodeSchema);

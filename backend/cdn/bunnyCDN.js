@@ -86,6 +86,50 @@ const uploadBufferToBunny = async ({
   };
 };
 
+const uploadStreamToBunny = async ({
+  stream,
+  remotePath,
+  contentType = "application/octet-stream",
+  contentLength,
+}) => {
+  const {
+    storageZone,
+    accessKey,
+    storageHost,
+  } = getConfig();
+
+  const safeRemotePath = sanitizeRemotePath(remotePath);
+  const uploadUrl = `https://${storageHost}/${storageZone}/${safeRemotePath}`;
+
+  const headers = {
+    AccessKey: accessKey,
+    "Content-Type": contentType,
+  };
+
+  if (contentLength) {
+    headers["Content-Length"] = String(contentLength);
+  }
+
+  const response = await fetch(uploadUrl, {
+    method: "PUT",
+    headers,
+    body: stream,
+    duplex: "half",
+  });
+
+  if (!response.ok) {
+    const message = await response.text().catch(() => "");
+    throw new Error(
+      `Bunny upload failed (${response.status}): ${message || response.statusText}`
+    );
+  }
+
+  return {
+    path: safeRemotePath,
+    url: buildPublicUrl(safeRemotePath),
+  };
+};
+
 const uploadFileToBunny = async ({
   filePath,
   remotePath,
@@ -166,4 +210,5 @@ module.exports = {
   uploadBufferToBunny,
   uploadFileToBunny,
   uploadMulterFileToBunny,
+  uploadStreamToBunny,
 };

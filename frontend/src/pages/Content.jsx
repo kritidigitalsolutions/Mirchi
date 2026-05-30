@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import API, { BASE_URL } from "../api/axios";
+import { uploadFileInChunks } from "../features/services/content.service";
 
 import "./Content.css";
 import {
@@ -35,6 +36,8 @@ export default function Content() {
     poster: null, banner: null, trailer: null, video: null
   });
   const [castFiles, setCastFiles] = useState({}); // { index: File }
+  const [videoProgress, setVideoProgress] = useState(null);
+  const [trailerProgress, setTrailerProgress] = useState(null);
 
   // Add season/episode forms
   const [showAddEpisodeForm, setShowAddEpisodeForm] = useState(null); // seasonNumber
@@ -282,6 +285,8 @@ export default function Content() {
   const handleSave = async () => {
     if (!editData) return;
     setLoading(true);
+    setVideoProgress(null);
+    setTrailerProgress(null);
     try {
       const formData = new FormData();
       // Basic text fields
@@ -308,11 +313,29 @@ export default function Content() {
       if (uploadData.banner) formData.append("banner", uploadData.banner);
       else if (uploadData.bannerUrl) formData.append("bannerUrl", uploadData.bannerUrl);
 
-      if (uploadData.trailer) formData.append("trailer", uploadData.trailer);
-      else if (uploadData.trailerUrl) formData.append("trailerUrl", uploadData.trailerUrl);
+      if (uploadData.trailer) {
+        setTrailerProgress(0);
+        const result = await uploadFileInChunks(
+          uploadData.trailer,
+          `${contentType}/trailers`,
+          (p) => setTrailerProgress(p)
+        );
+        formData.append("trailerUrl", result.url);
+      } else if (uploadData.trailerUrl) {
+        formData.append("trailerUrl", uploadData.trailerUrl);
+      }
 
-      if (uploadData.video) formData.append("video", uploadData.video);
-      else if (uploadData.videoUrl) formData.append("videoUrl", uploadData.videoUrl);
+      if (uploadData.video) {
+        setVideoProgress(0);
+        const result = await uploadFileInChunks(
+          uploadData.video,
+          "movies/videos",
+          (p) => setVideoProgress(p)
+        );
+        formData.append("videoUrl", result.url);
+      } else if (uploadData.videoUrl) {
+        formData.append("videoUrl", uploadData.videoUrl);
+      }
 
       const route = contentType === "movies" ? "movies" : "series";
       await API.patch(`/admin/${route}/${selectedItem._id}`, formData, { headers: { "Content-Type": "multipart/form-data" } });
@@ -329,6 +352,7 @@ export default function Content() {
   const handleEpisodeSave = async () => {
     if (!editData) return;
     setLoading(true);
+    setVideoProgress(null);
     try {
       const formData = new FormData();
       const textFields = ["title", "description", "seasonNumber", "episodeNumber", "duration"];
@@ -351,8 +375,17 @@ export default function Content() {
         }
       });
 
-      if (uploadData.video) formData.append("video", uploadData.video);
-      else if (uploadData.videoUrl) formData.append("videoUrl", uploadData.videoUrl);
+      if (uploadData.video) {
+        setVideoProgress(0);
+        const result = await uploadFileInChunks(
+          uploadData.video,
+          "episodes/videos",
+          (p) => setVideoProgress(p)
+        );
+        formData.append("videoUrl", result.url);
+      } else if (uploadData.videoUrl) {
+        formData.append("videoUrl", uploadData.videoUrl);
+      }
 
       if (uploadData.thumbnail) formData.append("thumbnail", uploadData.thumbnail);
       else if (uploadData.thumbnailUrl) formData.append("thumbnailUrl", uploadData.thumbnailUrl);
@@ -1379,6 +1412,49 @@ export default function Content() {
                       </div>
                     )}
                   </div>
+                </div>
+              )}
+
+              {loading && (videoProgress !== null || trailerProgress !== null) && (
+                <div className="upload-progress-container" style={{
+                  background: "var(--bg3)",
+                  border: "1px solid var(--border)",
+                  borderRadius: "12px",
+                  padding: "16px",
+                  margin: "15px 0",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "10px",
+                  animation: "fadeIn 0.3s ease"
+                }}>
+                  <h4 style={{ margin: 0, color: "var(--primary)", fontSize: "0.9rem", display: "flex", alignItems: "center", gap: "6px" }}>
+                    <div className="spinner" style={{ width: 12, height: 12, border: "2px solid rgba(255,255,255,0.3)", borderTopColor: "var(--primary)", borderRadius: "50%", animation: "spin 1s linear infinite" }} />
+                    Streaming Video Chunks...
+                  </h4>
+                  
+                  {trailerProgress !== null && (
+                    <div className="progress-item">
+                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "3px" }}>
+                        <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>Trailer Video</span>
+                        <span style={{ fontSize: "0.8rem", fontWeight: "bold", color: "var(--primary)" }}>{trailerProgress}%</span>
+                      </div>
+                      <div style={{ background: "rgba(255,255,255,0.08)", borderRadius: "4px", height: "6px", overflow: "hidden" }}>
+                        <div style={{ background: "var(--primary)", width: `${trailerProgress}%`, height: "100%", transition: "width 0.2s ease" }} />
+                      </div>
+                    </div>
+                  )}
+                  
+                  {videoProgress !== null && (
+                    <div className="progress-item">
+                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "3px" }}>
+                        <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>Video File</span>
+                        <span style={{ fontSize: "0.8rem", fontWeight: "bold", color: "var(--primary)" }}>{videoProgress}%</span>
+                      </div>
+                      <div style={{ background: "rgba(255,255,255,0.08)", borderRadius: "4px", height: "6px", overflow: "hidden" }}>
+                        <div style={{ background: "var(--primary)", width: `${videoProgress}%`, height: "100%", transition: "width 0.2s ease" }} />
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
