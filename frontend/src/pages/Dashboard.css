@@ -741,6 +741,16 @@ body.light .form-input {
   outline: none;
 }
 
+/* Prevent Chrome Autofill from turning inputs white/yellow and hiding the eye icon */
+.login-input:-webkit-autofill,
+.login-input:-webkit-autofill:hover, 
+.login-input:-webkit-autofill:focus, 
+.login-input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px #0e1320 inset !important;
+  -webkit-text-fill-color: #ffffff !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
 .login-input:focus {
   border-color: #e50914;
   box-shadow: 0 0 0 3px rgba(229, 9, 20, 0.2);

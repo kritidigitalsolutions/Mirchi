@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Bell, Moon, Sun, X, Menu } from "lucide-react";
+import { Search, Bell, Moon, Sun, X, Menu, User, LogOut, Mail, Shield, Clock } from "lucide-react";
 import "./Topbar.css";
 import API from "../api/axios";
 
@@ -328,15 +328,17 @@ const handleSelect = (item) => {
                     setShowProfile(true);
                     setShowMenu(false);
                   }}
+                  style={{ display: "flex", alignItems: "center", gap: "8px" }}
                 >
-                  👤 View Profile
+                  <User size={16} /> View Profile
                 </div>
 
                 <div
                   className="dropdown-item logout"
                   onClick={handleLogout}
+                  style={{ display: "flex", alignItems: "center", gap: "8px" }}
                 >
-                  🚪 Logout
+                  <LogOut size={16} /> Logout
                 </div>
               </div>
             )}
@@ -355,25 +357,65 @@ const handleSelect = (item) => {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="profile-header">
-              <h2>Admin Profile</h2>
+              <h2>Admin Panel Profile</h2>
               <button
-                className="close-btn"
+                className="profile-close-btn"
                 onClick={() => setShowProfile(false)}
+                aria-label="Close Profile"
               >
-                ✖
+                <X size={16} />
               </button>
             </div>
 
             <div className="profile-body">
-              <div className="profile-avatar">
-                {adminName.charAt(0).toUpperCase()}
+              {/* Avatar Frame with pulsing ring & status badge */}
+              <div className="profile-avatar-wrapper">
+                <div className="profile-avatar-glow" />
+                <div className="profile-avatar">
+                  {adminName.charAt(0).toUpperCase()}
+                </div>
+                <div className="profile-status-badge">
+                  <span className="pulse-dot" />
+                  ONLINE
+                </div>
               </div>
 
-              <h3>{adminData?.name}</h3>
-              <p>{adminData?.email}</p>
+              <h3 className="profile-name">{adminData?.name || "System Admin"}</h3>
+              <div className="profile-role-pill">
+                {adminData?.role || "SUPER ADMIN"}
+              </div>
 
-              <div className="profile-role">
-                Role: {adminData?.role || "ADMIN"}
+              {/* Grid of info cards */}
+              <div className="profile-info-grid">
+                <div className="profile-info-card">
+                  <div className="info-card-icon-wrapper">
+                    <Mail size={18} />
+                  </div>
+                  <div className="info-card-content">
+                    <span className="info-card-label">Email Address</span>
+                    <span className="info-card-value">{adminData?.email || "admin@mirchi.com"}</span>
+                  </div>
+                </div>
+
+                <div className="profile-info-card">
+                  <div className="info-card-icon-wrapper">
+                    <Shield size={18} />
+                  </div>
+                  <div className="info-card-content">
+                    <span className="info-card-label">Access Level</span>
+                    <span className="info-card-value">Full Permissions</span>
+                  </div>
+                </div>
+
+                <div className="profile-info-card">
+                  <div className="info-card-icon-wrapper">
+                    <Clock size={18} />
+                  </div>
+                  <div className="info-card-content">
+                    <span className="info-card-label">Last Login</span>
+                    <span className="info-card-value">Current Session</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
