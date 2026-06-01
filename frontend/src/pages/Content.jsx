@@ -8,7 +8,80 @@ import {
   Activity, Upload
 } from "lucide-react";
 
+/* ===================== PAGINATION COMPONENT ===================== */
+const Pagination = ({ currentPage, totalPages, totalItems, onPageChange }) => {
+  if (totalPages <= 1) return null;
+  return (
+    <div className="pagination" style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 15, marginTop: 25, padding: "10px 0" }}>
+      <button
+        className="btn btn-ghost"
+        disabled={currentPage === 1}
+        onClick={() => onPageChange(Math.max(1, currentPage - 1))}
+      >
+        Previous
+      </button>
+      <span style={{ fontSize: "0.9rem", color: "var(--text-muted)" }}>
+        Page <strong>{currentPage}</strong> of <strong>{totalPages}</strong> ({totalItems} total)
+      </span>
+      <button
+        className="btn btn-ghost"
+        disabled={currentPage === totalPages}
+        onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
+      >
+        Next
+      </button>
+    </div>
+  );
+};
+
+/* ===================== SEARCHBAR COMPONENT ===================== */
+const SearchBar = ({ placeholder, onSearchChange, onClear, initialValue }) => {
+  const [value, setValue] = useState(initialValue || "");
+  const timeoutRef = useRef(null);
+
+  useEffect(() => {
+    setValue(initialValue || "");
+  }, [initialValue]);
+
+  const handleChange = (e) => {
+    const val = e.target.value;
+    setValue(val);
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    timeoutRef.current = setTimeout(() => {
+      onSearchChange(val);
+    }, 400);
+  };
+
+  const handleClear = () => {
+    setValue("");
+    onClear();
+  };
+
+  return (
+    <div className="search-bar" style={{ minWidth: "300px" }}>
+      <Search size={18} className="search-icon" />
+      <input
+        className="search-input"
+        type="text"
+        placeholder={placeholder}
+        value={value}
+        onChange={handleChange}
+      />
+      {value && (
+        <button className="search-clear" onClick={handleClear}><X size={16} /></button>
+      )}
+    </div>
+  );
+};
+
 export default function Content() {
+  // Prevent Enter key from submitting form when typing inside input fields
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter" && e.target.tagName === "INPUT") {
+      e.preventDefault();
+    }
+  };
+
   const [contentType, setContentType] = useState("movies");
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -30,6 +103,8 @@ export default function Content() {
   const [selectedItem, setSelectedItem] = useState(null);
   const [modalMode, setModalMode] = useState(null);
   const [editData, setEditData] = useState(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadPhase, setUploadPhase] = useState(""); // "saving", "complete", ""
   const [selectedEpisode, setSelectedEpisode] = useState(null);
   const [uploadData, setUploadData] = useState({
     poster: null, banner: null, trailer: null, video: null
@@ -72,9 +147,13 @@ export default function Content() {
 
 
   useEffect(() => {
-    fetchData();
+    const controller = new AbortController();
+    fetchData(controller.signal);
     setSearchQuery("");
     setSearchResults(null);
+    return () => {
+      controller.abort();
+    };
   }, [contentType, currentPage]);
 
 
@@ -89,11 +168,11 @@ export default function Content() {
   const isVideoUploadLocked = (item) => isLocked(item);
 
   /* ===================== DATA FETCH ===================== */
-  const fetchData = async () => {
+  const fetchData = async (signal) => {
     setLoading(true);
     try {
       const endpoint = contentType === "movies" ? "/admin/movies" : "/admin/series";
-      const res = await API.get(`${endpoint}?page=${currentPage}&limit=10`);
+      const res = await API.get(`${endpoint}?page=${currentPage}&limit=10`, { signal });
 
       const key = contentType === "movies" ? "movies" : "series";
       setData(res.data[key] || []);
@@ -103,8 +182,10 @@ export default function Content() {
       setSelectedSeries(null);
       setEpisodes([]);
     } catch (err) {
-      console.error(err);
-      setData([]);
+      if (err.name !== "CanceledError") {
+        console.error(err);
+        setData([]);
+      }
     }
     setLoading(false);
   };
@@ -251,9 +332,23 @@ export default function Content() {
     setSelectedItem(item);
     setModalMode("edit");
     setCastFiles({});
-    setUploadData({ poster: null, banner: null, trailer: null, video: null, posterUrl: "", bannerUrl: "", trailerUrl: "", videoUrl: "" });
+    setUploadData({
+      poster: null,
+      banner: null,
+      trailer: null,
+      video: null,
+      posterUrl: item.poster || "",
+      bannerUrl: item.banner || "",
+      trailerUrl: item.trailerUrl || "",
+      videoUrl: item.videoUrl || ""
+    });
   };
   const closeModal = () => {
+    if (editData?.cast) {
+      editData.cast.forEach(c => {
+        if (c._previewUrl) URL.revokeObjectURL(c._previewUrl);
+      });
+    }
     setSelectedItem(null); setModalMode(null); setEditData(null);
     setSelectedEpisode(null);
     setUploadData({ poster: null, banner: null, trailer: null, video: null });
@@ -269,7 +364,12 @@ export default function Content() {
     setSelectedItem(episode);
     setSelectedEpisode(episode);
     setModalMode("episode-edit");
-    setUploadData({ video: null, thumbnail: null, videoUrl: "", thumbnailUrl: "" });
+    setUploadData({
+      video: null,
+      thumbnail: null,
+      videoUrl: episode.videoUrl || "",
+      thumbnailUrl: episode.thumbnail || ""
+    });
   };
 
   /* ===================== UPLOAD ===================== */
@@ -283,6 +383,8 @@ export default function Content() {
   const handleSave = async () => {
     if (!editData) return;
     setLoading(true);
+    setUploadProgress(0);
+    setUploadPhase("saving");
 
     try {
       const formData = new FormData();
@@ -323,20 +425,36 @@ export default function Content() {
       }
 
       const route = contentType === "movies" ? "movies" : "series";
-      await API.patch(`/admin/${route}/${selectedItem._id}`, formData, { headers: { "Content-Type": "multipart/form-data" } });
+      await API.patch(`/admin/${route}/${selectedItem._id}`, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+        onUploadProgress: (progressEvent) => {
+          const percentCompleted = Math.round(
+            (progressEvent.loaded * 100) / progressEvent.total
+          );
+          setUploadProgress(percentCompleted);
+          if (percentCompleted === 100) {
+            setUploadPhase("complete");
+          }
+        },
+      });
 
       alert("Saved successfully");
       closeModal();
       fetchData();
     } catch (err) {
       alert("Save failed: " + (err.response?.data?.message || err.message));
+    } finally {
+      setUploadProgress(0);
+      setUploadPhase("");
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const handleEpisodeSave = async () => {
     if (!editData) return;
     setLoading(true);
+    setUploadProgress(0);
+    setUploadPhase("saving");
 
     try {
       const formData = new FormData();
@@ -369,15 +487,29 @@ export default function Content() {
       if (uploadData.thumbnail) formData.append("thumbnail", uploadData.thumbnail);
       else if (uploadData.thumbnailUrl) formData.append("thumbnailUrl", uploadData.thumbnailUrl);
 
-      await API.patch(`/admin/episodes/${selectedEpisode._id}`, formData, { headers: { "Content-Type": "multipart/form-data" } });
+      await API.patch(`/admin/episodes/${selectedEpisode._id}`, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+        onUploadProgress: (progressEvent) => {
+          const percentCompleted = Math.round(
+            (progressEvent.loaded * 100) / progressEvent.total
+          );
+          setUploadProgress(percentCompleted);
+          if (percentCompleted === 100) {
+            setUploadPhase("complete");
+          }
+        },
+      });
 
       alert("Episode saved");
       closeModal();
       fetchEpisodes(selectedSeries._id);
     } catch (err) {
       alert("Save failed: " + (err.response?.data?.message || err.message));
+    } finally {
+      setUploadProgress(0);
+      setUploadPhase("");
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   /* ===================== DELETE ===================== */
@@ -419,11 +551,27 @@ export default function Content() {
 
   /* ===================== CAST HELPERS ===================== */
   const addCastMember = () => {
-    setEditData(prev => ({ ...prev, cast: [...(prev.cast || []), { name: "", image: "" }] }));
+    setEditData(prev => ({ ...prev, cast: [...(prev.cast || []), { name: "", image: "", file: null }] }));
   };
   const removeCastMember = (idx) => {
-    setEditData(prev => ({ ...prev, cast: prev.cast.filter((_, i) => i !== idx) }));
-    setCastFiles(prev => { const n = { ...prev }; delete n[idx]; return n; });
+    setEditData(prev => {
+      const target = prev.cast[idx];
+      if (target?._previewUrl) URL.revokeObjectURL(target._previewUrl);
+      return { ...prev, cast: prev.cast.filter((_, i) => i !== idx) };
+    });
+    // Shift cast files keys to align with shifted indices
+    setCastFiles(prev => {
+      const next = {};
+      Object.entries(prev).forEach(([k, file]) => {
+        const keyIndex = parseInt(k, 10);
+        if (keyIndex < idx) {
+          next[keyIndex] = file;
+        } else if (keyIndex > idx) {
+          next[keyIndex - 1] = file;
+        }
+      });
+      return next;
+    });
   };
   const updateCastMember = (idx, field, value) => {
     setEditData(prev => ({
@@ -444,31 +592,7 @@ export default function Content() {
   const groupedEpisodes = groupEpisodesBySeason();
   const seasonNumbers = Object.keys(groupedEpisodes).map(Number).sort((a, b) => a - b);
 
-  /* ===================== PAGINATION COMPONENT ===================== */
-  const Pagination = () => {
-    if (totalPages <= 1) return null;
-    return (
-      <div className="pagination" style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 15, marginTop: 25, padding: "10px 0" }}>
-        <button
-          className="btn btn-ghost"
-          disabled={currentPage === 1}
-          onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-        >
-          Previous
-        </button>
-        <span style={{ fontSize: "0.9rem", color: "var(--text-muted)" }}>
-          Page <strong>{currentPage}</strong> of <strong>{totalPages}</strong> ({totalItems} total)
-        </span>
-        <button
-          className="btn btn-ghost"
-          disabled={currentPage === totalPages}
-          onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-        >
-          Next
-        </button>
-      </div>
-    );
-  };
+
 
   /* ===================== RENDER ===================== */
   return (
@@ -502,19 +626,16 @@ export default function Content() {
           </div>
 
           <div style={{ marginLeft: "auto", display: "flex", gap: 12, alignItems: "center" }}>
-            <div className="search-bar" style={{ minWidth: "300px" }}>
-              <Search size={18} className="search-icon" />
-              <input
-                className="search-input"
-                type="text"
-                placeholder={`Quick search ${contentType}...`}
-                value={searchQuery}
-                onChange={handleSearchChange}
-              />
-              {searchQuery && (
-                <button className="search-clear" onClick={clearSearch}><X size={16} /></button>
-              )}
-            </div>
+            <SearchBar
+              placeholder={`Quick search ${contentType}...`}
+              onSearchChange={(q) => {
+                setSearchQuery(q);
+                if (!q.trim()) { setSearchResults(null); return; }
+                doSearch(q.trim());
+              }}
+              onClear={clearSearch}
+              initialValue={searchQuery}
+            />
           </div>
         </div>
 
@@ -592,7 +713,12 @@ export default function Content() {
                 </table>
               </div>
             )}
-            <Pagination />
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={totalItems}
+              onPageChange={setCurrentPage}
+            />
           </div>
         )}
 
@@ -664,7 +790,12 @@ export default function Content() {
                 </table>
               </div>
             )}
-            <Pagination />
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={totalItems}
+              onPageChange={setCurrentPage}
+            />
           </div>
         )}
 
@@ -941,6 +1072,7 @@ export default function Content() {
           <div
             className={`modal-box ${(modalMode === "view" || modalMode === "episode-view") ? "modal-box-view" : "modal-box-form"}`}
             onClick={e => e.stopPropagation()}
+            onKeyDown={handleKeyDown}
           >
             <div className="modal-head">
               <h3>
@@ -1218,11 +1350,27 @@ export default function Content() {
                     </div>
                     <div className="form-row">
                       <label className="form-label">Rating (0–10)</label>
-                      <input className="form-input" type="number" step="0.1" value={editData.rating || ""} onChange={e => setEditData(s => ({ ...s, rating: Number(e.target.value) }))} />
+                      <input
+                        className="form-input"
+                        type="number"
+                        step="0.1"
+                        min="0"
+                        max="10"
+                        value={editData.rating || ""}
+                        onChange={e => {
+                          let val = e.target.value;
+                          if (val !== "") {
+                            const num = Number(val);
+                            if (num > 10) val = "10";
+                            else if (num < 0) val = "0";
+                          }
+                          setEditData(s => ({ ...s, rating: val === "" ? "" : Number(val) }));
+                        }}
+                      />
                     </div>
                     <div className="form-row">
                       <label className="form-label">Genre (comma separated)</label>
-                      <input className="form-input" value={editData.genre?.join(", ") || ""} onChange={e => setEditData(s => ({ ...s, genre: e.target.value.split(",").map(x => x.trim()).filter(Boolean) }))} />
+                      <input className="form-input" value={Array.isArray(editData.genre) ? editData.genre.join(", ") : (editData.genre || "")} onChange={e => setEditData(s => ({ ...s, genre: e.target.value.split(",").map(x => x.trim()).filter(Boolean) }))} />
                     </div>
                     <div className="form-row">
                       <label className="form-label">Duration</label>
@@ -1248,17 +1396,11 @@ export default function Content() {
                     </div>
                     <div className="form-row">
                       <label className="form-label">Category</label>
-                      <select className="form-input" value={editData.category?.[0] || ""} onChange={e => setEditData(s => ({ ...s, category: [e.target.value] }))}>
+                      <select className="form-input" value={editData.category?.[0] || ""} onChange={e => setEditData(s => ({ ...s, category: e.target.value ? [e.target.value] : [] }))}>
                         <option value="">None</option>
                         <option value="trending">Trending</option>
                         <option value="top10">Top 10</option>
                         <option value="recommended">Recommended</option>
-                        <option value="new releases">New Releases</option>
-                        <option value="bollywood">Bollywood</option>
-                        <option value="hollywood">Hollywood</option>
-                        <option value="action">Action</option>
-                        <option value="comedy">Comedy</option>
-
                       </select>
                     </div>
                     <div className="form-row">
@@ -1277,7 +1419,11 @@ export default function Content() {
                         <input
                           className="form-input"
                           type="date"
-                          value={editData.releaseDate ? new Date(editData.releaseDate).toISOString().split("T")[0] : ""}
+                          value={
+                            editData.releaseDate && !isNaN(Date.parse(editData.releaseDate))
+                              ? new Date(editData.releaseDate).toISOString().split("T")[0]
+                              : ""
+                          }
                           onChange={e => setEditData(s => ({ ...s, releaseDate: e.target.value }))}
                         />
                       </div>
@@ -1330,14 +1476,27 @@ export default function Content() {
                               </label>
                             </div>
                           </div>
-                          {/* Cast name */}
-                          <input
-                            className="form-input"
-                            placeholder="Cast member name"
-                            value={c.name || ""}
-                            onChange={e => updateCastMember(idx, "name", e.target.value)}
-                            style={{ flex: 1 }}
-                          />
+                          {/* Cast details container */}
+                          <div style={{ display: "flex", flexDirection: "column", gap: 6, flex: 1 }}>
+                            {/* Cast name */}
+                            <input
+                              className="form-input"
+                              placeholder="Cast member name"
+                              value={c.name || ""}
+                              onChange={e => updateCastMember(idx, "name", e.target.value)}
+                              style={{ width: "100%" }}
+                            />
+                            {/* Cast photo URL option */}
+                            {!castFiles[idx] && (
+                              <input
+                                className="form-input"
+                                placeholder="Or Photo URL"
+                                value={c.image || ""}
+                                onChange={e => updateCastMember(idx, "image", e.target.value)}
+                                style={{ width: "100%", fontSize: "0.8rem", height: "30px", padding: "4px 10px" }}
+                              />
+                            )}
+                          </div>
                           <button className="icon-btn del" title="Remove" onClick={() => removeCastMember(idx)}>
                             <Trash2 size={15} />
                           </button>
@@ -1396,21 +1555,86 @@ export default function Content() {
 
 
 
+              {uploadPhase && (
+                <div
+                  className="upload-progress-card"
+                  style={{
+                    padding: "20px",
+                    borderRadius: "12px",
+                    background: "rgba(30, 30, 40, 0.7)",
+                    backdropFilter: "blur(8px)",
+                    border: "1px solid rgba(255, 255, 255, 0.08)",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "12px",
+                    marginTop: "20px",
+                    marginBottom: "10px",
+                  }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                      <div
+                        className="spinner"
+                        style={{
+                          width: 16,
+                          height: 16,
+                          border: "2px solid rgba(230, 57, 70, 0.2)",
+                          borderTopColor: "var(--primary)",
+                          borderRadius: "50%",
+                          animation: "spin 1s linear infinite",
+                        }}
+                      />
+                      <span style={{ fontSize: "14px", fontWeight: "600", color: "#fff" }}>
+                        {uploadPhase === "saving" ? "Uploading & Saving Changes..." : "Finalizing Updates..."}
+                      </span>
+                    </div>
+                    <span style={{ fontSize: "14px", fontWeight: "700", color: "var(--primary)" }}>
+                      {uploadProgress}%
+                    </span>
+                  </div>
+
+                  <div
+                    style={{
+                      width: "100%",
+                      height: "8px",
+                      backgroundColor: "rgba(255, 255, 255, 0.05)",
+                      borderRadius: "999px",
+                      overflow: "hidden",
+                      border: "1px solid rgba(255, 255, 255, 0.05)",
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: `${uploadProgress}%`,
+                        height: "100%",
+                        background: "linear-gradient(90deg, #e30914 0%, #ff4d5a 100%)",
+                        borderRadius: "999px",
+                        transition: "width 0.3s ease-out",
+                        boxShadow: "0 0 10px rgba(227, 9, 20, 0.5)",
+                      }}
+                    />
+                  </div>
+                  <span style={{ fontSize: "12px", color: "#8a8b98" }}>
+                    Please keep this window open while changes are being stored.
+                  </span>
+                </div>
+              )}
+
             </div>
 
             {/* Modal Footer Buttons */}
             <div className="modal-footer">
               {modalMode === "edit" && (
-                <button className="btn btn-primary" onClick={handleSave}>
-                  Save Changes
+                <button className="btn btn-primary" onClick={handleSave} disabled={!!uploadPhase}>
+                  {uploadPhase ? "Saving..." : "Save Changes"}
                 </button>
               )}
               {modalMode === "episode-edit" && (
-                <button className="btn btn-primary" onClick={handleEpisodeSave}>
-                  Save Episode
+                <button className="btn btn-primary" onClick={handleEpisodeSave} disabled={!!uploadPhase}>
+                  {uploadPhase ? "Saving..." : "Save Episode"}
                 </button>
               )}
-              <button className="btn btn-ghost" onClick={closeModal}>
+              <button className="btn btn-ghost" onClick={closeModal} disabled={!!uploadPhase}>
                 {(modalMode === "view" || modalMode === "episode-view") ? "Close" : "Cancel"}
               </button>
             </div>

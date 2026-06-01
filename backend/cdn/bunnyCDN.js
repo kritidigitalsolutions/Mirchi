@@ -64,14 +64,23 @@ const uploadBufferToBunny = async ({
   const safeRemotePath = sanitizeRemotePath(remotePath);
   const uploadUrl = `https://${storageHost}/${storageZone}/${safeRemotePath}`;
 
-  const response = await fetch(uploadUrl, {
-    method: "PUT",
-    headers: {
-      AccessKey: accessKey,
-      "Content-Type": contentType,
-    },
-    body: buffer,
-  });
+const controller = new AbortController();
+
+const timeout = setTimeout(() => {
+  controller.abort();
+}, 30 * 60 * 1000); // 30 minutes timeout for large files
+
+const response = await fetch(uploadUrl, {
+  method: "PUT",
+  headers: {
+    AccessKey: accessKey,
+    "Content-Type": contentType,
+  },
+  body: buffer,
+  signal: controller.signal,
+});
+
+clearTimeout(timeout);
 
   if (!response.ok) {
     const message = await response.text().catch(() => "");
@@ -110,17 +119,28 @@ const uploadStreamToBunny = async ({
     headers["Content-Length"] = String(contentLength);
   }
 
+  const controller = new AbortController();
+
+  const timeout = setTimeout(() => {
+    controller.abort();
+  }, 30 * 60 * 1000); // 30 minutes timeout for large files
+
   const response = await fetch(uploadUrl, {
     method: "PUT",
     headers,
     body: stream,
     duplex: "half",
+    signal: controller.signal,
   });
+
+  clearTimeout(timeout);
 
   if (!response.ok) {
     const message = await response.text().catch(() => "");
     throw new Error(
-      `Bunny upload failed (${response.status}): ${message || response.statusText}`
+      `Bunny upload failed (${response.status}): ${
+        message || response.statusText
+      }`
     );
   }
 

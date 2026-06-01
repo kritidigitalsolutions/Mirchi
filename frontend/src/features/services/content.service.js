@@ -173,6 +173,14 @@ export const createContent = async ({
         "Content-Type":
           "multipart/form-data",
       },
+      onUploadProgress: (progressEvent) => {
+        const percentCompleted = Math.round(
+          (progressEvent.loaded * 100) / progressEvent.total
+        );
+        if (onVideoProgress) {
+          onVideoProgress(percentCompleted);
+        }
+      },
     }
   );
 
@@ -183,6 +191,12 @@ export const createContent = async ({
   ) {
     const seriesId =
       response.data.series._id;
+
+    let totalEpisodes = 0;
+    form.seasons.forEach((season) => {
+      totalEpisodes += (season.episodes || []).length;
+    });
+    let currentEpisodeNum = 1;
 
     for (const [
       si,
@@ -261,6 +275,7 @@ export const createContent = async ({
           );
         }
 
+        const epNum = currentEpisodeNum++;
         await API.post(
           "/admin/episodes/add",
           epFormData,
@@ -268,6 +283,14 @@ export const createContent = async ({
             headers: {
               "Content-Type":
                 "multipart/form-data",
+            },
+            onUploadProgress: (progressEvent) => {
+              const percentCompleted = Math.round(
+                (progressEvent.loaded * 100) / progressEvent.total
+              );
+              if (onEpisodeProgress) {
+                onEpisodeProgress(epNum, totalEpisodes, percentCompleted);
+              }
             },
           }
         );

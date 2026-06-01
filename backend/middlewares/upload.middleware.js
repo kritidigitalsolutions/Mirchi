@@ -60,7 +60,9 @@ const storage = {
     try {
       const uploadInfo = getUploadInfo(req, file);
       const uniqueName = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-      const filename = uniqueName + path.extname(file.originalname);
+const ext = path.extname(file.originalname).toLowerCase();
+
+const filename = `${uniqueName}${ext}`;
 
       const result = await uploadStreamToBunny({
         stream: file.stream,
@@ -107,9 +109,9 @@ const fileFilter = (req, file, cb) => {
 const upload = multer({
   storage,
   fileFilter,
-  limits: {
-    fileSize: 500 * 1024 * 1024,
-  },
+ limits: {
+  fileSize: Number(process.env.MAX_UPLOAD_SIZE) || 500 * 1024 * 1024,
+},
 });
 
 module.exports = upload;

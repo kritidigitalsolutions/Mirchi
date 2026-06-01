@@ -3,13 +3,24 @@ const Episode = require("./episode.model");
 
 // Cast Schema
 const castSchema = new mongoose.Schema({
-  name: String,
-  image: String
-});
+  name: {
+    type: String,
+    required: true,
+    trim: true
+  },
 
+  image: {
+    type: String,
+    default: ""
+  }
+});
 const seriesSchema = new mongoose.Schema(
   {
-    title: { type: String, required: true },
+    title: {
+  type: String,
+  required: true,
+  trim: true
+},
 
     slug: {
       type: String,
@@ -17,8 +28,14 @@ const seriesSchema = new mongoose.Schema(
       index: true
     },
 
-    description: String,
-    genre: [String],
+    description: {
+  type: String,
+  default: ""
+},
+   genre: [{
+  type: String,
+  trim: true
+}],
 
     releaseYear: Number,
     duration: String,
@@ -36,7 +53,12 @@ const seriesSchema = new mongoose.Schema(
     // Priority: higher = shown first (0 = default)
     priority: { type: Number, default: 0 },
 
-    rating: Number,
+    rating: {
+  type: Number,
+  min: 0,
+  max: 10,
+  default: 0
+},
 
     cast: [castSchema],
 
@@ -61,8 +83,17 @@ const seriesSchema = new mongoose.Schema(
       },
     ],
 
-    totalSeasons: { type: Number, default: 0 },
-    totalEpisodes: { type: Number, default: 0 }
+    totalSeasons: {
+  type: Number,
+  default: 0,
+  min: 0
+},
+
+totalEpisodes: {
+  type: Number,
+  default: 0,
+  min: 0
+},
 
 
 
@@ -73,7 +104,9 @@ const seriesSchema = new mongoose.Schema(
 
 // slug generator
 seriesSchema.pre("save", function () {
-  if (this.title) {
+
+  if (!this.slug && this.title) {
+
     this.slug =
       this.title
         .toLowerCase()
@@ -105,6 +138,14 @@ seriesSchema.pre(
   }
 );
 
-seriesSchema.index({ createdAt: -1 });
+seriesSchema.index({
+  priority: -1,
+  createdAt: -1
+});
+
+seriesSchema.index({
+  title: "text",
+  description: "text"
+});
 
 module.exports = mongoose.model("Series", seriesSchema);

@@ -17,6 +17,9 @@ export default function SeasonsSection({
 
   handleEpisodeVideoChange,
   handleEpisodeThumbnailChange,
+
+  setEpisodeVideoFiles,
+  setEpisodeThumbnailFiles,
 }) {
   if (
     form.type !== "series" ||
@@ -91,6 +94,14 @@ export default function SeasonsSection({
 
             handleEpisodeThumbnailChange={
               handleEpisodeThumbnailChange
+            }
+
+            setEpisodeVideoFiles={
+              setEpisodeVideoFiles
+            }
+
+            setEpisodeThumbnailFiles={
+              setEpisodeThumbnailFiles
             }
           />
         )

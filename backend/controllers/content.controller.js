@@ -8,12 +8,18 @@ const Series = require("../models/series.model");
 const getHomeContent = async (req, res) => {
   try {
     // Fetch active movies and series
-    const movies = await Movie.find().sort({ priority: 1, createdAt: -1 }).limit(20).lean();
-    const series = await Series.find().sort({ priority: 1, createdAt: -1 }).limit(20).lean();
+    const movies = await Movie.find().sort({ priority: -1, createdAt: -1 }).limit(20).lean();
+    const series = await Series.find().sort({ priority: -1, createdAt: -1 }).limit(20).lean();
 
-    const moviesCount = await Movie.countDocuments();
-    const seriesCount = await Series.countDocuments();
-    const seriesData = await Series.find({}, "totalEpisodes");
+    const [
+  moviesCount,
+  seriesCount,
+  seriesData
+] = await Promise.all([
+  Movie.countDocuments(),
+  Series.countDocuments(),
+  Series.find({}, "totalEpisodes").lean()
+]);
     const episodesCount = seriesData.reduce((acc, s) => acc + (s.totalEpisodes || 0), 0);
 
     // Format and add flags
@@ -32,7 +38,7 @@ const getHomeContent = async (req, res) => {
     // Combine and sort by priority, then date
     const content = [...formattedMovies, ...formattedSeries].sort(
       (a, b) => {
-        const priorityDiff = (a.priority || 0) - (b.priority || 0);
+      const priorityDiff =(b.priority || 0)-(a.priority || 0);
         if (priorityDiff !== 0) return priorityDiff;
         return new Date(b.createdAt) - new Date(a.createdAt);
       }
@@ -64,18 +70,69 @@ const searchContent = async (req, res) => {
     const { query } = req.query;
     if (!query) return res.status(400).json({ success: false, message: "Search query is required" });
 
-    const movies = await Movie.find({
-      title: { $regex: query, $options: "i" },
-    }).lean();
+    const movies = await Movie.find(
+  {
+    $text: {
+      $search: query
+    }
+  },
+  {
+    score: {
+      $meta: "textScore"
+    }
+  }
+)
+.select({
+  score: {
+    $meta: "textScore"
+  }
+})
+.sort({
+  score: {
+    $meta: "textScore"
+  }
+})
+.lean();
 
-    const series = await Series.find({
-      title: { $regex: query, $options: "i" },
-    }).lean();
+
+const series = await Series.find(
+  {
+    $text: {
+      $search: query
+    }
+  },
+  {
+    score: {
+      $meta: "textScore"
+    }
+  }
+)
+.select({
+  score: {
+    $meta: "textScore"
+  }
+})
+.sort({
+  score: {
+    $meta: "textScore"
+  }
+})
+.lean();
 
     const results = [
-      ...movies.map(m => ({ ...m, type: "movie" })),
-      ...series.map(s => ({ ...s, type: "series" }))
-    ];
+  ...movies.map(m => ({
+    ...m,
+    type: "movie"
+  })),
+  ...series.map(s => ({
+    ...s,
+    type: "series"
+  }))
+].sort(
+  (a, b) =>
+    (b.score || 0) -
+    (a.score || 0)
+);
 
 
 

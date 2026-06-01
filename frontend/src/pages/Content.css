@@ -1556,6 +1556,7 @@ body.light .add-form-card {
     border-top: 1px solid var(--border);
     padding-top: 8px;
   }
+}
 
   /* ========== PREMIUM VIEW MODAL (V2) ========== */
   .view-content-v2 {
@@ -1755,8 +1756,3 @@ body.light .add-form-card {
   .text-danger {
     color: #ef4444;
   }
-
-  .text-gold {
-    color: #fbbf24;
-  }
-}

@@ -10,7 +10,10 @@ const { deleteFromBunny } = require("../../cdn/bunnyCDN");
 
 const deleteFile = async (filePath) => {
   if (!filePath) return;
-  if (filePath.startsWith("http")) {
+  if (
+    typeof filePath === "string" &&
+    filePath.startsWith("http")
+  ) {
     try {
       await deleteFromBunny(filePath);
     } catch (err) {
@@ -26,6 +29,14 @@ const deleteFile = async (filePath) => {
   } catch (err) {
     console.error("File deletion error:", err);
   }
+};
+
+const deleteFiles = async (...files) => {
+  await Promise.all(
+    files
+      .filter(Boolean)
+      .map(file => deleteFile(file))
+  );
 };
 
 
@@ -66,12 +77,36 @@ const addSeries = async (req, res) => {
     const banner = req.files?.banner?.[0];
     const trailer = req.files?.trailer?.[0];
 
-    const castFiles = Object.keys(req.files || {}).filter((key) => key.startsWith("castImage_"));
-    castFiles.forEach((key) => {
+    const castFiles = Object.keys(req.files || {})
+      .filter((key) => key.startsWith("castImage_"));
+
+    for (const key of castFiles) {
       const index = key.split("_")[1];
       const file = req.files[key][0];
-      if (cast[index]) cast[index].image = getFilePath(file, "/uploads/series/cast");
-    });
+
+      if (cast[index]) {
+        cast[index].image = getFilePath(
+          file,
+          "/uploads/series/cast"
+        );
+      }
+    }
+
+    // ========================================
+    // PRIORITY ALGORITHM
+    // ========================================
+    const inputPriority = req.body.priority !== undefined ? Number(req.body.priority) : 0;
+    let priority = 0;
+
+    if (inputPriority > 0) {
+      // Shift up all existing series with priority >= inputPriority
+      await Series.updateMany({ priority: { $gte: inputPriority } }, { $inc: { priority: 1 } });
+      priority = inputPriority;
+    } else {
+      // Auto-assign: maxPriority + 1
+      const maxSeries = await Series.findOne().sort("-priority");
+      priority = maxSeries && maxSeries.priority ? maxSeries.priority + 1 : 1;
+    }
 
     const series = await Series.create({
       title: req.body.title,
@@ -89,6 +124,7 @@ const addSeries = async (req, res) => {
       rating: req.body.rating || 0,
       cast,
       category,
+      priority,
     });
 
     return res.status(201).json({
@@ -113,7 +149,7 @@ const getAllSeries = async (req, res) => {
     const skip = (page - 1) * limit;
 
     const series = await Series.find()
-      .sort({ createdAt: -1 })
+      .sort({ priority: -1, createdAt: -1 })
       .skip(skip)
       .limit(limit)
       .lean();
@@ -199,7 +235,7 @@ const updateSeries = async (req, res) => {
     series.category = category;
 
     if (req.files?.poster?.[0]) {
-      deleteFile(series.poster);
+      await deleteFile(series.poster);
       series.poster = getFilePath(req.files.poster[0], "/uploads/series/posters");
     } else if (req.body.posterUrl !== undefined) {
       series.poster = req.body.posterUrl;
@@ -208,7 +244,7 @@ const updateSeries = async (req, res) => {
     }
 
     if (req.files?.banner?.[0]) {
-      deleteFile(series.banner);
+      await deleteFile(series.banner);
       series.banner = getFilePath(req.files.banner[0], "/uploads/series/banners");
     } else if (req.body.bannerUrl !== undefined) {
       series.banner = req.body.bannerUrl;
@@ -217,26 +253,74 @@ const updateSeries = async (req, res) => {
     }
 
     if (req.files?.trailer?.[0]) {
-      deleteFile(series.trailerUrl);
+      await deleteFile(series.trailerUrl);
       series.trailerUrl = getFilePath(req.files.trailer[0], "/uploads/series/trailers");
     } else if (req.body.trailerUrl !== undefined) {
       series.trailerUrl = req.body.trailerUrl;
     }
 
 
-    const castFiles = Object.keys(req.files || {}).filter((key) => key.startsWith("castImage_"));
-    castFiles.forEach((key) => {
-      const index = key.split("_")[1];
-      const file = req.files[key][0];
-      if (cast[index]) {
-        if (cast[index].image && cast[index].image !== getFilePath(file, "/uploads/series/cast")) {
-          deleteFile(cast[index].image);
-        }
-        cast[index].image = getFilePath(file, "/uploads/series/cast");
-      }
-    });
+    const castFiles = Object.keys(req.files || {})
+      .filter((key) => key.startsWith("castImage_"));
 
+    for (const key of castFiles) {
+
+      const index = key.split("_")[1];
+
+      const file = req.files[key][0];
+
+      if (cast[index]) {
+
+        if (
+          cast[index].image &&
+          cast[index].image !== getFilePath(
+            file,
+            "/uploads/series/cast"
+          )
+        ) {
+          await deleteFile(
+            cast[index].image
+          );
+        }
+
+        cast[index].image =
+          getFilePath(
+            file,
+            "/uploads/series/cast"
+          );
+      }
+    }
     series.cast = cast;
+
+    // ========================================
+    // PRIORITY ALGORITHM FOR UPDATE
+    // ========================================
+    if (req.body.priority !== undefined) {
+      const newPriority = Number(req.body.priority) || 0;
+      const oldPriority = series.priority || 0;
+
+      if (newPriority !== oldPriority) {
+        // Step 1: Remove series from its old slot by shifting down priorities above oldPriority
+        if (oldPriority > 0) {
+          await Series.updateMany(
+            { _id: { $ne: series._id }, priority: { $gt: oldPriority } },
+            { $inc: { priority: -1 } }
+          );
+        }
+
+        // Step 2: Insert series into its new slot
+        if (newPriority > 0) {
+          // Shift up all priorities >= newPriority
+          await Series.updateMany(
+            { _id: { $ne: series._id }, priority: { $gte: newPriority } },
+            { $inc: { priority: 1 } }
+          );
+          series.priority = newPriority;
+        } else {
+          series.priority = 0;
+        }
+      }
+    }
 
     await series.save();
 
@@ -257,21 +341,27 @@ const deleteSeries = async (req, res) => {
     const series = await Series.findById(id);
     if (!series) return res.status(404).json({ success: false, message: "Series not found" });
 
-    // Delete series files
-    deleteFile(series.poster);
-    deleteFile(series.banner);
-    deleteFile(series.trailerUrl);
-    series.cast.forEach(c => deleteFile(c.image));
+    // Capture priority before deletion to shift other priorities
+    const targetPriority = series.priority || 0;
 
+    // Delete series files
+    await deleteFiles(series.poster, series.banner, series.trailerUrl, ...(series.cast || []).map(c => c.image));
     // Cascading delete episodes and their files
     const episodes = await Episode.find({ seriesId: id });
-    episodes.forEach(ep => {
-      deleteFile(ep.videoUrl);
-      deleteFile(ep.thumbnail);
-    });
+    await Promise.all(
+      episodes.map(async (ep) => {
+        await deleteFile(ep.videoUrl);
+        await deleteFile(ep.thumbnail);
+      })
+    );
     await Episode.deleteMany({ seriesId: id });
 
     await Series.findByIdAndDelete(id);
+
+    // Shift down priorities of all series with priority > targetPriority
+    if (targetPriority > 0) {
+      await Series.updateMany({ priority: { $gt: targetPriority } }, { $inc: { priority: -1 } });
+    }
 
     return res.json({ success: true, message: "Series and all its episodes deleted successfully" });
   } catch (error) {

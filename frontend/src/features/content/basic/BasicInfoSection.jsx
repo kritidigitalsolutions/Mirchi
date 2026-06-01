@@ -181,7 +181,7 @@ export default function BasicInfoSection({
               style={{ marginRight: 4 }}
             />
 
-            IMDb Rating
+            IMDb Rating (0 - 10)
           </label>
 
           <input
@@ -189,6 +189,8 @@ export default function BasicInfoSection({
             name="rating"
             type="number"
             step="0.1"
+            min="0"
+            max="10"
             placeholder="8.5"
             onChange={ch}
             value={form.rating}

@@ -42,8 +42,10 @@ export default function AddContent() {
     resetForm,
   } = useContentForm();
 
-  const [loading, setLoading] =
-    useState(false);
+  const [loading, setLoading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadPhase, setUploadPhase] = useState(""); // "main", "episodes", "complete"
+  const [currentEpisodeInfo, setCurrentEpisodeInfo] = useState({ current: 0, total: 0 });
 
 
 
@@ -193,12 +195,20 @@ export default function AddContent() {
     }
   };
 
+  // Prevent Enter key from submitting form when typing inside input fields
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter" && e.target.tagName === "INPUT") {
+      e.preventDefault();
+    }
+  };
+
   // Submit
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     setLoading(true);
-
+    setUploadProgress(0);
+    setUploadPhase("main");
 
     try {
       await createContent({
@@ -214,6 +224,20 @@ export default function AddContent() {
         episodeVideoFiles,
         episodeThumbnailFiles,
         
+        onVideoProgress: (percent) => {
+          setUploadProgress(percent);
+          if (percent === 100) {
+            setUploadPhase(form.type === "movie" ? "complete" : "episodes");
+          }
+        },
+        onEpisodeProgress: (current, total, percent) => {
+          setUploadPhase("episodes");
+          setCurrentEpisodeInfo({ current, total });
+          setUploadProgress(percent);
+          if (current === total && percent === 100) {
+            setUploadPhase("complete");
+          }
+        },
       });
 
       alert(
@@ -231,6 +255,10 @@ export default function AddContent() {
       setEpisodeThumbnailFiles({});
       setCastFiles({});
 
+      setUploadProgress(0);
+      setUploadPhase("");
+      setCurrentEpisodeInfo({ current: 0, total: 0 });
+
     } catch (err) {
       console.error(err);
 
@@ -238,6 +266,9 @@ export default function AddContent() {
         err.response?.data?.message ||
         "Error publishing content"
       );
+
+      setUploadProgress(0);
+      setUploadPhase("");
     }
 
     setLoading(false);
@@ -306,6 +337,7 @@ export default function AddContent() {
 
       <form
         onSubmit={handleSubmit}
+        onKeyDown={handleKeyDown}
         style={{
           display: "flex",
           flexDirection: "column",
@@ -398,9 +430,102 @@ export default function AddContent() {
           handleEpisodeThumbnailChange={
             handleEpisodeThumbnailChange
           }
+
+          setEpisodeVideoFiles={
+            setEpisodeVideoFiles
+          }
+
+          setEpisodeThumbnailFiles={
+            setEpisodeThumbnailFiles
+          }
         />
 
 
+
+        {loading && (
+          <div
+            className="upload-progress-card"
+            style={{
+              padding: "24px",
+              borderRadius: "16px",
+              background: "rgba(30, 30, 40, 0.6)",
+              backdropFilter: "blur(12px)",
+              border: "1px solid rgba(255, 255, 255, 0.08)",
+              boxShadow: "0 8px 32px 0 rgba(0, 0, 0, 0.37)",
+              display: "flex",
+              flexDirection: "column",
+              gap: "16px",
+              marginTop: "20px",
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                <div
+                  className="spinner"
+                  style={{
+                    width: 20,
+                    height: 20,
+                    border: "3px solid rgba(230, 57, 70, 0.2)",
+                    borderTopColor: "var(--primary)",
+                    borderRadius: "50%",
+                    animation: "spin 1s linear infinite",
+                  }}
+                />
+                <span style={{ fontSize: "16px", fontWeight: "600", color: "#fff" }}>
+                  {uploadPhase === "main" && (form.type === "movie" ? "Uploading Movie Assets..." : "Uploading TV Series Details...")}
+                  {uploadPhase === "episodes" && `Uploading Episode ${currentEpisodeInfo.current} of ${currentEpisodeInfo.total}...`}
+                  {uploadPhase === "complete" && "Finalizing and Publishing Content..."}
+                </span>
+              </div>
+              <span style={{ fontSize: "16px", fontWeight: "700", color: "var(--primary)" }}>
+                {uploadProgress}%
+              </span>
+            </div>
+
+            <div
+              style={{
+                width: "100%",
+                height: "10px",
+                backgroundColor: "rgba(255, 255, 255, 0.05)",
+                borderRadius: "999px",
+                overflow: "hidden",
+                border: "1px solid rgba(255, 255, 255, 0.05)",
+              }}
+            >
+              <div
+                style={{
+                  width: `${uploadProgress}%`,
+                  height: "100%",
+                  background: "linear-gradient(90deg, #e30914 0%, #ff4d5a 100%)",
+                  borderRadius: "999px",
+                  transition: "width 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
+                  boxShadow: "0 0 12px rgba(227, 9, 20, 0.5)",
+                }}
+              />
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px", color: "#8a8b98" }}>
+              <span>Please keep this window open until publishing is complete.</span>
+              {uploadPhase === "main" && (
+                <span>
+                  {videoFile || trailerFile ? "Sending media chunks to CDN..." : "Uploading metadata..."}
+                </span>
+              )}
+              {uploadPhase === "episodes" && (
+                <span>
+                  Season {form.seasons.find((_, i) => {
+                    let totalBefore = 0;
+                    for (let sIdx = 0; sIdx < i; sIdx++) {
+                      totalBefore += form.seasons[sIdx].episodes.length;
+                    }
+                    return currentEpisodeInfo.current <= totalBefore + form.seasons[i].episodes.length;
+                  })?.seasonNumber || 1}
+                </span>
+              )}
+              {uploadPhase === "complete" && <span>Syncing CDN distribution nodes...</span>}
+            </div>
+          </div>
+        )}
 
         {/* Submit */}
         <div

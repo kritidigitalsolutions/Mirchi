@@ -7,7 +7,10 @@ const { deleteFromBunny } = require("../../cdn/bunnyCDN");
 // Helper to delete physical files
 const deleteFile = async (filePath) => {
   if (!filePath) return;
-  if (filePath.startsWith("http")) {
+  if (
+    typeof filePath === "string" &&
+    filePath.startsWith("http")
+  ) {
     try {
       await deleteFromBunny(filePath);
     } catch (err) {
@@ -24,6 +27,13 @@ const deleteFile = async (filePath) => {
     console.error("File deletion error:", err);
   }
 };
+const deleteFiles = async (...files) => {
+  await Promise.all(
+    files
+      .filter(Boolean)
+      .map(file => deleteFile(file))
+  );
+};
 
 const getFilePath = (file, localPrefix, fallback = "") => {
   return file ? file.cdnUrl || file.path || `${localPrefix}/${file.filename}` : fallback;
@@ -33,7 +43,7 @@ const getFilePath = (file, localPrefix, fallback = "") => {
 const updateSeriesStats = async (seriesId) => {
   const seasons = await Episode.distinct("seasonNumber", { seriesId });
   const episodeCount = await Episode.countDocuments({ seriesId });
-  await Series.findByIdAndUpdate(seriesId, { 
+  await Series.findByIdAndUpdate(seriesId, {
     totalSeasons: seasons.length,
     totalEpisodes: episodeCount
   });
@@ -61,6 +71,20 @@ const addEpisode = async (req, res) => {
       thumbnail: getFilePath(thumbnail, "/uploads/episodes/posters", req.body.thumbnailUrl || "")
     };
 
+    const existingEpisode =
+      await Episode.findOne({
+        seriesId: episodeData.seriesId,
+        seasonNumber: episodeData.seasonNumber,
+        episodeNumber: episodeData.episodeNumber,
+      });
+
+    if (existingEpisode) {
+      return res.status(409).json({
+        success: false,
+        message:
+          "Episode already exists for this season",
+      });
+    }
     const episode = await Episode.create(episodeData);
 
     // Update totalSeasons
@@ -69,8 +93,21 @@ const addEpisode = async (req, res) => {
 
     return res.status(201).json({ success: true, message: "Episode added successfully", episode });
   } catch (error) {
+
+    if (error.code === 11000) {
+      return res.status(409).json({
+        success: false,
+        message: "Episode already exists"
+      });
+    }
+
     console.error(error);
-    return res.status(500).json({ success: false, message: "Failed to add episode", error: error.message });
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to add episode",
+      error: error.message
+    });
   }
 };
 
@@ -83,24 +120,35 @@ const updateEpisode = async (req, res) => {
     const episode = await Episode.findById(id);
     if (!episode) return res.status(404).json({ success: false, message: "Episode not found" });
 
-    const updateData = {
-      title: req.body.title,
-      description: req.body.description,
-      seasonNumber: Number(req.body.seasonNumber),
-      episodeNumber: Number(req.body.episodeNumber),
-      duration: req.body.duration,
-    };
+    const updateData = {};
 
+    if (req.body.title !== undefined)
+      updateData.title = req.body.title;
+
+    if (req.body.description !== undefined)
+      updateData.description = req.body.description;
+
+    if (req.body.seasonNumber !== undefined)
+      updateData.seasonNumber =
+        Number(req.body.seasonNumber);
+
+    if (req.body.episodeNumber !== undefined)
+      updateData.episodeNumber =
+        Number(req.body.episodeNumber);
+
+    if (req.body.duration !== undefined)
+      updateData.duration =
+        req.body.duration;
 
     if (video) {
-      deleteFile(episode.videoUrl);
+      await deleteFile(episode.videoUrl);
       updateData.videoUrl = getFilePath(video, "/uploads/episodes/videos");
     } else if (req.body.videoUrl) {
       updateData.videoUrl = req.body.videoUrl;
     }
 
     if (thumbnail) {
-      deleteFile(episode.thumbnail);
+      await deleteFile(episode.thumbnail);
       updateData.thumbnail = getFilePath(thumbnail, "/uploads/episodes/posters");
     } else if (req.body.thumbnailUrl) {
       updateData.thumbnail = req.body.thumbnailUrl;
@@ -116,8 +164,20 @@ const updateEpisode = async (req, res) => {
 
 
   } catch (error) {
+
+    if (error.code === 11000) {
+      return res.status(409).json({
+        success: false,
+        message: "Episode already exists"
+      });
+    }
+
     console.error(error);
-    return res.status(500).json({ success: false, message: "Failed to update episode" });
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to update episode"
+    });
   }
 };
 
@@ -127,7 +187,7 @@ const getEpisodes = async (req, res) => {
     const query = { seriesId };
     if (seasonNumber) query.seasonNumber = seasonNumber;
 
-    const episodes = await Episode.find(query).sort({ seasonNumber: 1, episodeNumber: 1 });
+    const episodes = await Episode.find(query).sort({ seasonNumber: 1, episodeNumber: 1 }).lean();
     return res.json({ success: true, episodes });
   } catch (error) {
     return res.status(500).json({ success: false, message: "Failed to fetch episodes" });
@@ -140,8 +200,10 @@ const deleteEpisode = async (req, res) => {
     if (!episode) return res.status(404).json({ success: false, message: "Episode not found" });
 
     // Delete files
-    deleteFile(episode.videoUrl);
-    deleteFile(episode.thumbnail);
+    await deleteFiles(
+      episode.videoUrl,
+      episode.thumbnail
+    );
 
     await Episode.findByIdAndDelete(req.params.id);
 
@@ -159,13 +221,15 @@ const deleteEpisode = async (req, res) => {
 const deleteSeason = async (req, res) => {
   try {
     const { seriesId, seasonNumber } = req.params;
-    
+
     // Find all episodes in this season to delete their files
     const episodes = await Episode.find({ seriesId, seasonNumber });
-    episodes.forEach(ep => {
-      deleteFile(ep.videoUrl);
-      deleteFile(ep.thumbnail);
-    });
+
+    await Promise.all(
+      episodes.map(async (ep) => {
+        await deleteFiles(ep.videoUrl, ep.thumbnail);
+      })
+    );
 
     await Episode.deleteMany({ seriesId, seasonNumber });
 
