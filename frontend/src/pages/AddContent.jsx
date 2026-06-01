@@ -16,7 +16,6 @@ import {
   Tv,
   Rocket,
   ChevronRight,
-  X,
 } from "lucide-react";
 
 export default function AddContent() {
@@ -47,24 +46,6 @@ export default function AddContent() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadPhase, setUploadPhase] = useState(""); // "main", "episodes", "complete"
   const [currentEpisodeInfo, setCurrentEpisodeInfo] = useState({ current: 0, total: 0 });
-
-  const [notification, setNotification] = useState({
-    type: "", // 'success' or 'error'
-    message: "",
-    visible: false,
-  });
-
-  const showNotification = (type, message) => {
-    setNotification({
-      type,
-      message,
-      visible: true,
-    });
-  };
-
-  const closeNotification = () => {
-    setNotification((prev) => ({ ...prev, visible: false }));
-  };
 
 
 
@@ -242,7 +223,7 @@ export default function AddContent() {
 
         episodeVideoFiles,
         episodeThumbnailFiles,
-        
+
         onVideoProgress: (percent) => {
           setUploadProgress(percent);
           if (percent === 100) {
@@ -259,8 +240,7 @@ export default function AddContent() {
         },
       });
 
-      showNotification(
-        "success",
+      alert(
         "Content published successfully! 🚀"
       );
 
@@ -282,9 +262,9 @@ export default function AddContent() {
     } catch (err) {
       console.error(err);
 
-      showNotification(
-        "error",
-        err.response?.data?.message || "Error publishing content"
+      alert(
+        err.response?.data?.message ||
+        "Error publishing content"
       );
 
       setUploadProgress(0);
@@ -328,8 +308,8 @@ export default function AddContent() {
           <button
             type="button"
             className={`toggle-btn ${form.type === "movie"
-                ? "active"
-                : ""
+              ? "active"
+              : ""
               }`}
             onClick={() =>
               setType("movie")
@@ -342,8 +322,8 @@ export default function AddContent() {
           <button
             type="button"
             className={`toggle-btn ${form.type === "series"
-                ? "active"
-                : ""
+              ? "active"
+              : ""
               }`}
             onClick={() =>
               setType("series")
@@ -612,167 +592,11 @@ export default function AddContent() {
         </div>
       </form>
 
-      {/* Premium Notification Modal Overlay */}
-      {notification.visible && (
-        <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: "rgba(10, 12, 18, 0.8)",
-            backdropFilter: "blur(12px)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 999999,
-            animation: "modalFadeIn 0.25s ease-out",
-          }}
-        >
-          <div
-            style={{
-              width: "100%",
-              maxWidth: "460px",
-              background: "rgba(22, 23, 30, 0.9)",
-              backdropFilter: "blur(20px)",
-              border: `1px solid ${
-                notification.type === "success"
-                  ? "rgba(16, 185, 129, 0.35)"
-                  : "rgba(239, 68, 68, 0.35)"
-              }`,
-              borderRadius: "20px",
-              padding: "36px",
-              textAlign: "center",
-              boxShadow: `0 20px 50px rgba(0, 0, 0, 0.5), 0 0 40px ${
-                notification.type === "success"
-                  ? "rgba(16, 185, 129, 0.15)"
-                  : "rgba(239, 68, 68, 0.15)"
-              }`,
-              animation: "modalZoomIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)",
-            }}
-          >
-            {/* Status Icon */}
-            <div
-              style={{
-                width: "76px",
-                height: "76px",
-                borderRadius: "50%",
-                background:
-                  notification.type === "success"
-                    ? "rgba(16, 185, 129, 0.1)"
-                    : "rgba(239, 68, 68, 0.1)",
-                border: `2px solid ${
-                  notification.type === "success" ? "#10b981" : "#ef4444"
-                }`,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                margin: "0 auto 24px auto",
-                boxShadow: `0 0 24px ${
-                  notification.type === "success"
-                    ? "rgba(16, 185, 129, 0.25)"
-                    : "rgba(239, 68, 68, 0.25)"
-                }`,
-              }}
-            >
-              {notification.type === "success" ? (
-                <Rocket size={34} color="#10b981" style={{ animation: "rocketPulse 2s infinite" }} />
-              ) : (
-                <X size={34} color="#ef4444" />
-              )}
-            </div>
-
-            {/* Title */}
-            <h3
-              style={{
-                fontSize: "22px",
-                fontWeight: "850",
-                color: "#ffffff",
-                marginBottom: "12px",
-                letterSpacing: "0.5px",
-              }}
-            >
-              {notification.type === "success" ? "Publish Successful!" : "Publish Error"}
-            </h3>
-
-            {/* Message Body */}
-            <p
-              style={{
-                fontSize: "14px",
-                lineHeight: "1.65",
-                color: "#a0a5b5",
-                marginBottom: "28px",
-                whiteSpace: "pre-wrap",
-                wordBreak: "break-word",
-              }}
-            >
-              {notification.message}
-            </p>
-
-            {/* Action Button */}
-            <button
-              onClick={closeNotification}
-              style={{
-                width: "100%",
-                height: "50px",
-                borderRadius: "10px",
-                background:
-                  notification.type === "success"
-                    ? "linear-gradient(135deg, #10b981, #059669)"
-                    : "linear-gradient(135deg, #ef4444, #dc2626)",
-                border: "none",
-                color: "#ffffff",
-                fontWeight: "800",
-                fontSize: "15px",
-                cursor: "pointer",
-                transition: "all 0.2s ease",
-                boxShadow: `0 4px 14px ${
-                  notification.type === "success"
-                    ? "rgba(16, 185, 129, 0.4)"
-                    : "rgba(239, 68, 68, 0.4)"
-                }`,
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = "scale(1.02) translateY(-1px)";
-                e.currentTarget.style.boxShadow = `0 6px 18px ${
-                  notification.type === "success"
-                    ? "rgba(16, 185, 129, 0.5)"
-                    : "rgba(239, 68, 68, 0.5)"
-                }`;
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = "scale(1) translateY(0)";
-                e.currentTarget.style.boxShadow = `0 4px 14px ${
-                  notification.type === "success"
-                    ? "rgba(16, 185, 129, 0.4)"
-                    : "rgba(239, 68, 68, 0.4)"
-                }`;
-              }}
-            >
-              {notification.type === "success" ? "Done" : "Review Form & Retry"}
-            </button>
-          </div>
-        </div>
-      )}
-
       <style>{`
         @keyframes spin {
           to {
             transform: rotate(360deg);
           }
-        }
-        @keyframes modalFadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-        @keyframes modalZoomIn {
-          from { opacity: 0; transform: scale(0.92); }
-          to { opacity: 1; transform: scale(1); }
-        }
-        @keyframes rocketPulse {
-          0%, 100% { transform: scale(1); }
-          50% { transform: scale(1.08) translateY(-2px); }
         }
       `}</style>
     </div>
