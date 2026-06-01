@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
 import "./Dashboard.css";
 import API from "../api/axios";
+import { uploadToBunny } from "../features/services/bunnyUpload";
 import {
   Plus,
   Rocket,
@@ -102,6 +103,39 @@ export default function AddDrama() {
     e.preventDefault();
     setLoading(true);
     try {
+      // 1. Upload cast images directly to Bunny CDN
+      const updatedCast = [...cast];
+      const castKeys = Object.keys(castFiles);
+      for (const key of castKeys) {
+        const file = castFiles[key];
+        if (file) {
+          const cdnUrl = await uploadToBunny(file, "shortdramas", "cast");
+          const idx = Number(key);
+          if (updatedCast[idx]) {
+            updatedCast[idx].image = cdnUrl;
+          }
+        }
+      }
+
+      // 2. Upload main poster
+      let posterUrl = "";
+      if (posterFile) {
+        posterUrl = await uploadToBunny(posterFile, "shortdramas", "posters");
+      }
+
+      // 3. Upload main banner
+      let bannerUrl = "";
+      if (bannerFile) {
+        bannerUrl = await uploadToBunny(bannerFile, "shortdramas", "banners");
+      }
+
+      // 4. Upload main trailer
+      let trailerUrl = "";
+      if (trailerFile) {
+        trailerUrl = await uploadToBunny(trailerFile, "shortdramas", "trailers");
+      }
+
+      // 5. Build form payload with direct CDN URL strings
       const formData = new FormData();
       formData.append("title", form.title);
       formData.append("description", form.description || "");
@@ -114,31 +148,32 @@ export default function AddDrama() {
       formData.append("status", form.status);
       formData.append("priority", String(Number(form.priority) || 0));
 
-      if (posterFile) formData.append("poster", posterFile);
-      if (bannerFile) formData.append("banner", bannerFile);
-      if (trailerFile) formData.append("trailer", trailerFile);
+      formData.append("poster", posterUrl);
+      formData.append("banner", bannerUrl);
+      formData.append("trailerUrl", trailerUrl);
+      formData.append("cast", JSON.stringify(updatedCast));
 
-      // Cast
-      const castPayload = cast.map((c, i) => ({
-        name: c.name,
-        image: castFiles[i] ? `cast_${i}` : c.image || "",
-      }));
-      formData.append("cast", JSON.stringify(castPayload));
-      Object.keys(castFiles).forEach((key) => {
-        formData.append(`castImage_${key}`, castFiles[key]);
-      });
-
-      // Create drama first
+      // Create drama first (backend saves to DB instantly!)
       const res = await API.post("/admin/shortdramas/add", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
       const dramaId = res.data.shortDrama?._id;
 
-      // Add episodes
+      // 6. Direct upload episode videos and thumbnails and save
       if (dramaId) {
         for (let i = 0; i < episodes.length; i++) {
           const ep = episodes[i];
+          let epVideoUrl = "";
+          let epThumbnailUrl = "";
+
+          if (episodeVideoFiles[i]) {
+            epVideoUrl = await uploadToBunny(episodeVideoFiles[i], "dramaepisodes", "videos");
+          }
+          if (episodeThumbnailFiles[i]) {
+            epThumbnailUrl = await uploadToBunny(episodeThumbnailFiles[i], "dramaepisodes", "posters");
+          }
+
           const epForm = new FormData();
           epForm.append("episodeNumber", ep.episodeNumber);
           epForm.append("title", ep.title || "");
@@ -146,9 +181,8 @@ export default function AddDrama() {
           epForm.append("duration", ep.duration || "");
           epForm.append("isLocked", String(ep.isLocked));
           epForm.append("isVertical", String(ep.isVertical));
-
-          if (episodeVideoFiles[i]) epForm.append("video", episodeVideoFiles[i]);
-          if (episodeThumbnailFiles[i]) epForm.append("thumbnail", episodeThumbnailFiles[i]);
+          epForm.append("videoUrl", epVideoUrl);
+          epForm.append("thumbnail", epThumbnailUrl);
 
           await API.post(`/admin/drama-episodes/${dramaId}/add`, epForm, {
             headers: { "Content-Type": "multipart/form-data" },

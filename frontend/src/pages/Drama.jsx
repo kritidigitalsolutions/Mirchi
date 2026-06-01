@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import API, { BASE_URL } from "../api/axios";
+import { uploadToBunny } from "../features/services/bunnyUpload";
 import "./Content.css";
 import {
   Eye, Edit2, Trash2, X, Play, Film,
@@ -148,6 +149,37 @@ export default function Drama() {
     if (!editData) return;
     setLoading(true);
     try {
+      // 1. Direct upload cast image files
+      const castPayload = (editData.cast || []).map(c => ({ name: c.name, image: c.image || "" }));
+      const castEntries = Object.entries(castFiles);
+      for (const [idxStr, file] of castEntries) {
+        const idx = parseInt(idxStr, 10);
+        if (file) {
+          const cdnUrl = await uploadToBunny(file, "shortdramas", "cast");
+          if (castPayload[idx]) {
+            castPayload[idx].image = cdnUrl;
+          }
+        }
+      }
+
+      // 2. Direct upload poster
+      let posterUrl = editData.poster || "";
+      if (uploadData.poster) {
+        posterUrl = await uploadToBunny(uploadData.poster, "shortdramas", "posters");
+      }
+
+      // 3. Direct upload banner
+      let bannerUrl = editData.banner || "";
+      if (uploadData.banner) {
+        bannerUrl = await uploadToBunny(uploadData.banner, "shortdramas", "banners");
+      }
+
+      // 4. Direct upload trailer
+      let trailerUrl = editData.trailerUrl || "";
+      if (uploadData.trailer) {
+        trailerUrl = await uploadToBunny(uploadData.trailer, "shortdramas", "trailers");
+      }
+
       const formData = new FormData();
       ["title", "description", "language", "isPremium", "status", "priority"].forEach(k => {
         if (editData[k] !== undefined) formData.append(k, editData[k]);
@@ -155,13 +187,10 @@ export default function Drama() {
       if (editData.genre) formData.append("genre", JSON.stringify(Array.isArray(editData.genre) ? editData.genre : editData.genre.split(",").map(s => s.trim()).filter(Boolean)));
       if (editData.category) formData.append("category", JSON.stringify(Array.isArray(editData.category) ? editData.category : [editData.category]));
 
-      const castPayload = (editData.cast || []).map(c => ({ name: c.name, image: c.image || "" }));
       formData.append("cast", JSON.stringify(castPayload));
-      Object.entries(castFiles).forEach(([idx, file]) => formData.append(`castImage_${idx}`, file));
-
-      if (uploadData.poster) formData.append("poster", uploadData.poster);
-      if (uploadData.banner) formData.append("banner", uploadData.banner);
-      if (uploadData.trailer) formData.append("trailer", uploadData.trailer);
+      formData.append("poster", posterUrl);
+      formData.append("banner", bannerUrl);
+      formData.append("trailerUrl", trailerUrl);
 
       await API.patch(`/admin/shortdramas/${selectedItem._id}`, formData, { headers: { "Content-Type": "multipart/form-data" } });
       alert("Drama updated successfully!");
@@ -178,12 +207,24 @@ export default function Drama() {
     if (!editData) return;
     setLoading(true);
     try {
+      // 1. Direct upload episode video file
+      let videoUrl = editData.videoUrl || "";
+      if (epUpload.video) {
+        videoUrl = await uploadToBunny(epUpload.video, "dramaepisodes", "videos");
+      }
+
+      // 2. Direct upload thumbnail file
+      let thumbnailUrl = editData.thumbnail || "";
+      if (epUpload.thumbnail) {
+        thumbnailUrl = await uploadToBunny(epUpload.thumbnail, "dramaepisodes", "posters");
+      }
+
       const formData = new FormData();
       ["episodeNumber", "title", "description", "duration", "isLocked", "isVertical"].forEach(k => {
         if (editData[k] !== undefined) formData.append(k, editData[k]);
       });
-      if (epUpload.video) formData.append("video", epUpload.video);
-      if (epUpload.thumbnail) formData.append("thumbnail", epUpload.thumbnail);
+      formData.append("videoUrl", videoUrl);
+      formData.append("thumbnail", thumbnailUrl);
 
       await API.patch(`/admin/drama-episodes/${selectedEpisode._id}`, formData, { headers: { "Content-Type": "multipart/form-data" } });
       alert("Episode updated!");
@@ -200,6 +241,18 @@ export default function Drama() {
     if (!newEp.episodeNumber || !selectedDrama) return;
     setAddingEp(true);
     try {
+      // 1. Direct upload new episode video
+      let videoUrl = "";
+      if (newEpVideo) {
+        videoUrl = await uploadToBunny(newEpVideo, "dramaepisodes", "videos");
+      }
+
+      // 2. Direct upload new episode thumbnail
+      let thumbnailUrl = "";
+      if (newEpThumb) {
+        thumbnailUrl = await uploadToBunny(newEpThumb, "dramaepisodes", "posters");
+      }
+
       const formData = new FormData();
       formData.append("episodeNumber", newEp.episodeNumber);
       formData.append("title", newEp.title || "");
@@ -207,8 +260,8 @@ export default function Drama() {
       formData.append("duration", newEp.duration || "");
       formData.append("isLocked", String(newEp.isLocked));
       formData.append("isVertical", String(newEp.isVertical));
-      if (newEpVideo) formData.append("video", newEpVideo);
-      if (newEpThumb) formData.append("thumbnail", newEpThumb);
+      formData.append("videoUrl", videoUrl);
+      formData.append("thumbnail", thumbnailUrl);
 
       await API.post(`/admin/drama-episodes/${selectedDrama._id}/add`, formData, { headers: { "Content-Type": "multipart/form-data" } });
       alert("Episode added!");

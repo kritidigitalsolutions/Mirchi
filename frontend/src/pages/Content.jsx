@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import API, { BASE_URL } from "../api/axios";
+import { uploadToBunny } from "../features/services/bunnyUpload";
 
 import "./Content.css";
 import {
@@ -283,6 +284,16 @@ export default function Content() {
     }
     setAddingEpisode(true);
     try {
+      let videoUrl = "";
+      let thumbnailUrl = "";
+
+      if (newEpisodeVideo) {
+        videoUrl = await uploadToBunny(newEpisodeVideo, "episodes", "videos");
+      }
+      if (newEpisodeThumbnail) {
+        thumbnailUrl = await uploadToBunny(newEpisodeThumbnail, "episodes", "posters");
+      }
+
       const formData = new FormData();
       formData.append("seriesId", selectedSeries._id);
       formData.append("title", epData.title);
@@ -290,9 +301,8 @@ export default function Content() {
       formData.append("seasonNumber", epData.seasonNumber);
       formData.append("duration", epData.duration || "");
       formData.append("description", epData.description || "");
-      if (newEpisodeVideo) formData.append("video", newEpisodeVideo);
-      if (newEpisodeThumbnail) formData.append("thumbnail", newEpisodeThumbnail);
-
+      formData.append("videoUrl", videoUrl);
+      formData.append("thumbnailUrl", thumbnailUrl);
 
       await API.post("/admin/episodes/add", formData, { headers: { "Content-Type": "multipart/form-data" } });
 
@@ -387,6 +397,47 @@ export default function Content() {
     setUploadPhase("saving");
 
     try {
+      const typeFolder = contentType === "movies" ? "movies" : "series";
+
+      // 1. Direct upload cast image files and update payload URLs
+      const castPayload = (editData.cast || []).map(c => ({ name: c.name, image: c.image || "" }));
+      const castEntries = Object.entries(castFiles);
+      for (const [idxStr, file] of castEntries) {
+        const idx = parseInt(idxStr, 10);
+        if (file) {
+          const cdnUrl = await uploadToBunny(file, typeFolder, "cast");
+          if (castPayload[idx]) {
+            castPayload[idx].image = cdnUrl;
+          }
+        }
+      }
+
+      // 2. Direct upload poster
+      let posterUrl = uploadData.posterUrl || "";
+      if (uploadData.poster) {
+        posterUrl = await uploadToBunny(uploadData.poster, typeFolder, "posters");
+      }
+
+      // 3. Direct upload banner
+      let bannerUrl = uploadData.bannerUrl || "";
+      if (uploadData.banner) {
+        bannerUrl = await uploadToBunny(uploadData.banner, typeFolder, "banners");
+      }
+
+      // 4. Direct upload trailer
+      let trailerUrl = uploadData.trailerUrl || "";
+      if (uploadData.trailer) {
+        trailerUrl = await uploadToBunny(uploadData.trailer, typeFolder, "trailers");
+      }
+
+      // 5. Direct upload video (movies only)
+      let videoUrl = uploadData.videoUrl || "";
+      if (contentType === "movies" && uploadData.video) {
+        videoUrl = await uploadToBunny(uploadData.video, "movies", "videos", (percent) => {
+          setUploadProgress(percent);
+        });
+      }
+
       const formData = new FormData();
       // Basic text fields
       const textFields = ["title", "description", "language", "duration", "rating", "releaseYear", "isPremium", "isComingSoon", "releaseDate", "priority"];
@@ -397,45 +448,17 @@ export default function Content() {
       if (editData.genre) formData.append("genre", JSON.stringify(editData.genre));
       if (editData.category) formData.append("category", JSON.stringify(editData.category));
 
-      // Cast
-      const castPayload = (editData.cast || []).map(c => ({ name: c.name, image: c.image || "" }));
       formData.append("cast", JSON.stringify(castPayload));
-      // Cast image files
-      Object.entries(castFiles).forEach(([idx, file]) => {
-        formData.append(`castImage_${idx}`, file);
-      });
-
-      // Media Assets (from UploadData)
-      if (uploadData.poster) formData.append("poster", uploadData.poster);
-      else if (uploadData.posterUrl) formData.append("posterUrl", uploadData.posterUrl);
-
-      if (uploadData.banner) formData.append("banner", uploadData.banner);
-      else if (uploadData.bannerUrl) formData.append("bannerUrl", uploadData.bannerUrl);
-
-      if (uploadData.trailer) {
-        formData.append("trailer", uploadData.trailer);
-      } else if (uploadData.trailerUrl) {
-        formData.append("trailerUrl", uploadData.trailerUrl);
-      }
-
-      if (uploadData.video) {
-        formData.append("video", uploadData.video);
-      } else if (uploadData.videoUrl) {
-        formData.append("videoUrl", uploadData.videoUrl);
+      formData.append("poster", posterUrl);
+      formData.append("banner", bannerUrl);
+      formData.append("trailerUrl", trailerUrl);
+      if (contentType === "movies") {
+        formData.append("videoUrl", videoUrl);
       }
 
       const route = contentType === "movies" ? "movies" : "series";
       await API.patch(`/admin/${route}/${selectedItem._id}`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
-        onUploadProgress: (progressEvent) => {
-          const percentCompleted = Math.round(
-            (progressEvent.loaded * 100) / progressEvent.total
-          );
-          setUploadProgress(percentCompleted);
-          if (percentCompleted === 100) {
-            setUploadPhase("complete");
-          }
-        },
       });
 
       alert("Saved successfully");
@@ -457,6 +480,20 @@ export default function Content() {
     setUploadPhase("saving");
 
     try {
+      // 1. Direct upload episode video file
+      let videoUrl = uploadData.videoUrl || "";
+      if (uploadData.video) {
+        videoUrl = await uploadToBunny(uploadData.video, "episodes", "videos", (percent) => {
+          setUploadProgress(percent);
+        });
+      }
+
+      // 2. Direct upload thumbnail file
+      let thumbnailUrl = uploadData.thumbnailUrl || "";
+      if (uploadData.thumbnail) {
+        thumbnailUrl = await uploadToBunny(uploadData.thumbnail, "episodes", "posters");
+      }
+
       const formData = new FormData();
       const textFields = ["title", "description", "seasonNumber", "episodeNumber", "duration"];
       textFields.forEach((k) => {
@@ -478,26 +515,11 @@ export default function Content() {
         }
       });
 
-      if (uploadData.video) {
-        formData.append("video", uploadData.video);
-      } else if (uploadData.videoUrl) {
-        formData.append("videoUrl", uploadData.videoUrl);
-      }
-
-      if (uploadData.thumbnail) formData.append("thumbnail", uploadData.thumbnail);
-      else if (uploadData.thumbnailUrl) formData.append("thumbnailUrl", uploadData.thumbnailUrl);
+      formData.append("videoUrl", videoUrl);
+      formData.append("thumbnailUrl", thumbnailUrl);
 
       await API.patch(`/admin/episodes/${selectedEpisode._id}`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
-        onUploadProgress: (progressEvent) => {
-          const percentCompleted = Math.round(
-            (progressEvent.loaded * 100) / progressEvent.total
-          );
-          setUploadProgress(percentCompleted);
-          if (percentCompleted === 100) {
-            setUploadPhase("complete");
-          }
-        },
       });
 
       alert("Episode saved");

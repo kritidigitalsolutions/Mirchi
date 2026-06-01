@@ -33,6 +33,25 @@ router.get(
   getAdminProfile
 );
 
+// Get Bunny CDN credentials for client-side uploads
+router.get(
+  "/bunny-config",
+  isAdmin,
+  (req, res) => {
+    try {
+      res.json({
+        success: true,
+        storageZone: process.env.BUNNY_STORAGE_ZONE,
+        accessKey: process.env.BUNNY_ACCESS_KEY,
+        storageHost: process.env.BUNNY_STORAGE_HOST || "storage.bunnycdn.com",
+        cdnUrl: process.env.BUNNY_CDN_URL,
+      });
+    } catch (err) {
+      res.status(500).json({ success: false, message: err.message });
+    }
+  }
+);
+
 //OTP
 router.post(
   "/send-otp",

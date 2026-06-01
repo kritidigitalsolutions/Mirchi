@@ -28,7 +28,11 @@ const connectDB = async () => {
     console.log("✅ MongoDB Connected");
   } catch (error) {
     console.error("❌ MongoDB Connection Error:", error.message);
-    process.exit(1);
+    if (process.env.VERCEL) {
+      throw error;
+    } else {
+      process.exit(1);
+    }
   }
 };
 
