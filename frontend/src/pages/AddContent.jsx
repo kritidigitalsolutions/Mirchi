@@ -330,7 +330,7 @@ export default function AddContent() {
             }
           >
             <Tv size={18} />
-            TV Series
+            Web Series
           </button>
         </div>
       </div>

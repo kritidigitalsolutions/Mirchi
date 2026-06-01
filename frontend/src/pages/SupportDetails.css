@@ -584,7 +584,7 @@
   }
 }
 
-body.light .support-btn,
+body.light .support-btn:not(.primary):not(.ghost),
 body.light .support-icon-btn,
 body.light .support-status-select,
 body.light .support-main-panel,
@@ -731,5 +731,207 @@ body.light .support-search-bar {
 
 body.light .support-search-clear:hover {
   background: rgba(0, 0, 0, 0.05);
+}
+
+/* ========================================================
+   QUICK CANNED RESPONSES & SHORTCUT ACTIONS
+   ======================================================== */
+.quick-responses-container {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 4px 0 10px 0;
+  animation: supportFadeIn 0.3s ease-out;
+}
+
+.quick-responses-label {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+
+.quick-responses-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.quick-response-chip {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 6px 14px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-soft);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.quick-response-chip:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: var(--primary-dim);
+  transform: translateY(-1.5px);
+  box-shadow: 0 4px 12px rgba(229, 9, 20, 0.1);
+}
+
+body.light .quick-response-chip {
+  background: #f1f5f9;
+  border-color: #e2e8f0;
+  color: #475569;
+}
+
+body.light .quick-response-chip:hover {
+  background: var(--primary-dim);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.support-quick-status-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-right: 6px;
+}
+
+.status-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 38px;
+  padding: 0 12px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  border: 1px solid transparent;
+  box-shadow: var(--shadow-sm);
+}
+
+.status-action-btn span {
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.status-action-btn:hover {
+  transform: translateY(-1.5px);
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.08);
+}
+
+.status-action-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Specific Action button variations */
+.status-action-btn.pending {
+  background: rgba(245, 158, 11, 0.08);
+  border-color: rgba(245, 158, 11, 0.2);
+  color: var(--orange);
+}
+
+.status-action-btn.pending:hover {
+  background: rgba(245, 158, 11, 0.15);
+  border-color: var(--orange);
+}
+
+.status-action-btn.resolved {
+  background: rgba(16, 185, 129, 0.08);
+  border-color: rgba(16, 185, 129, 0.2);
+  color: var(--green);
+}
+
+.status-action-btn.resolved:hover {
+  background: rgba(16, 185, 129, 0.15);
+  border-color: var(--green);
+}
+
+.status-action-btn.closed {
+  background: rgba(239, 68, 68, 0.08);
+  border-color: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+}
+
+.status-action-btn.closed:hover {
+  background: rgba(239, 68, 68, 0.14);
+  border-color: #ef4444;
+}
+
+.status-action-btn.reopen {
+  background: rgba(59, 130, 246, 0.08);
+  border-color: rgba(59, 130, 246, 0.2);
+  color: var(--blue);
+}
+
+.status-action-btn.reopen:hover {
+  background: rgba(59, 130, 246, 0.14);
+  border-color: var(--blue);
+}
+
+/* Light mode specific classes */
+body.light .status-action-btn.pending {
+  background: #fffbeb;
+  border-color: #fde68a;
+  color: #b45309;
+}
+body.light .status-action-btn.pending:hover {
+  background: #fef3c7;
+  border-color: #f59e0b;
+}
+
+body.light .status-action-btn.resolved {
+  background: #ecfdf5;
+  border-color: #a7f3d0;
+  color: #047857;
+}
+body.light .status-action-btn.resolved:hover {
+  background: #d1fae5;
+  border-color: #10b981;
+}
+
+body.light .status-action-btn.closed {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #b91c1c;
+}
+body.light .status-action-btn.closed:hover {
+  background: #fee2e2;
+  border-color: #ef4444;
+}
+
+body.light .status-action-btn.reopen {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+  color: #1d4ed8;
+}
+body.light .status-action-btn.reopen:hover {
+  background: #dbeafe;
+  border-color: #3b82f6;
+}
+
+.reply-help-text {
+  font-size: 0.78rem !important;
+  color: var(--text-muted);
+}
+
+@keyframes supportFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 

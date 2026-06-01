@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft,
+  CheckCircle2,
   Clock,
   Loader2,
   Mail,
@@ -18,6 +19,25 @@ import API from "../api/axios";
 import "./SupportDetails.css";
 
 const STATUS_OPTIONS = ["OPEN", "PENDING", "RESOLVED", "CLOSED"];
+
+const QUICK_RESPONSES = [
+  {
+    label: "🔑 Activation Issue",
+    text: "Hi, please share a screenshot of your payment receipt or order ID so we can verify and activate your premium subscription manually.",
+  },
+  {
+    label: "⚡ App Cache Reset",
+    text: "Hi, please try clearing your browser cache or updating the Mirchi app to the latest version. Let us know if the issue persists.",
+  },
+  {
+    label: "📱 Request Specs",
+    text: "Hi, could you please provide more details about this issue (e.g., your device model, system version, error message, or screen recording)?",
+  },
+  {
+    label: "✅ Marked Resolved",
+    text: "Hi, this issue has been resolved. Please check now and let us know if everything is working fine. Thank you for your patience!",
+  }
+];
 
 const formatDate = (value) => {
   if (!value) return "N/A";
@@ -56,6 +76,27 @@ export default function SupportDetails({ ticketId }) {
   const [error, setError] = useState("");
   const [ticketsLoading, setTicketsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+
+  const threadEndRef = useRef(null);
+
+  const scrollToBottom = (behavior = "smooth") => {
+    if (threadEndRef.current) {
+      threadEndRef.current.scrollIntoView({ behavior });
+    }
+  };
+
+  const handleKeyDown = (event) => {
+    if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
+      event.preventDefault();
+      // We need to trigger the form submit or call handleReply directly.
+      // To ensure that the submit event is properly passed and handled,
+      // we'll programmatically dispatch it or trigger a synthetic submit event.
+      const submitBtn = document.getElementById("sendReplySubmitBtn");
+      if (submitBtn) {
+        submitBtn.click();
+      }
+    }
+  };
 
   const activeTicketId = routeTicketId || selectedTicketId;
   const showTicketList = !routeTicketId;
@@ -143,6 +184,22 @@ export default function SupportDetails({ ticketId }) {
   useEffect(() => {
     fetchTicket();
   }, [fetchTicket]);
+
+  useEffect(() => {
+    if (messages.length > 0) {
+      scrollToBottom("smooth");
+    }
+  }, [messages]);
+
+  useEffect(() => {
+    if (!loading) {
+      // Small timeout to ensure the DOM has finished painting
+      const timer = setTimeout(() => {
+        scrollToBottom("auto");
+      }, 80);
+      return () => clearTimeout(timer);
+    }
+  }, [loading]);
 
   const timeline = useMemo(() => {
     return [...messages].sort(
@@ -349,6 +406,57 @@ export default function SupportDetails({ ticketId }) {
             Refresh
           </button>
 
+          {status !== "CLOSED" && (
+            <div className="support-quick-status-actions">
+              {status === "OPEN" && (
+                <button
+                  type="button"
+                  className="status-action-btn pending"
+                  onClick={() => handleStatusChange("PENDING")}
+                  disabled={savingStatus}
+                  title="Mark as Pending"
+                >
+                  <Clock size={14} />
+                  <span>Pending</span>
+                </button>
+              )}
+              {(status === "OPEN" || status === "PENDING") && (
+                <button
+                  type="button"
+                  className="status-action-btn resolved"
+                  onClick={() => handleStatusChange("RESOLVED")}
+                  disabled={savingStatus}
+                  title="Mark as Resolved"
+                >
+                  <CheckCircle2 size={14} />
+                  <span>Resolve</span>
+                </button>
+              )}
+              <button
+                type="button"
+                className="status-action-btn closed"
+                onClick={() => handleStatusChange("CLOSED")}
+                disabled={savingStatus}
+                title="Close Ticket"
+              >
+                <X size={14} />
+                <span>Close Ticket</span>
+              </button>
+            </div>
+          )}
+          {status === "CLOSED" && (
+            <button
+              type="button"
+              className="status-action-btn reopen"
+              onClick={() => handleStatusChange("OPEN")}
+              disabled={savingStatus}
+              title="Reopen Ticket"
+            >
+              <RefreshCw size={14} />
+              <span>Reopen</span>
+            </button>
+          )}
+
           <label className="support-status-select">
             <span>Status</span>
             <select
@@ -409,25 +517,54 @@ export default function SupportDetails({ ticketId }) {
                 );
               })
             )}
+            <div ref={threadEndRef} />
           </div>
 
           <form className="support-reply-box" onSubmit={handleReply}>
             <label htmlFor="supportReply">Reply</label>
+
+            {status !== "CLOSED" && (
+              <div className="quick-responses-container">
+                <span className="quick-responses-label">Quick Responses:</span>
+                <div className="quick-responses-row">
+                  {QUICK_RESPONSES.map((qr, index) => (
+                    <button
+                      key={index}
+                      type="button"
+                      className="quick-response-chip"
+                      onClick={() => {
+                        setReply(qr.text);
+                        const textarea = document.getElementById("supportReply");
+                        if (textarea) {
+                          textarea.focus();
+                        }
+                      }}
+                      title={qr.text}
+                    >
+                      {qr.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <textarea
               id="supportReply"
               value={reply}
               onChange={(event) => setReply(event.target.value)}
-              placeholder="Write a response to the user"
+              onKeyDown={handleKeyDown}
+              placeholder="Write a response to the user..."
               disabled={sendingReply || status === "CLOSED"}
-              rows={5}
+              rows={4}
             />
             <div className="support-reply-actions">
               <span>
                 {status === "CLOSED"
                   ? "Closed tickets cannot receive replies."
-                  : "Replying will notify the user."}
+                  : "Replying will notify the user. Press Ctrl + Enter to send."}
               </span>
               <button
+                id="sendReplySubmitBtn"
                 className="support-btn primary"
                 type="submit"
                 disabled={
