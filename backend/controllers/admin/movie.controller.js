@@ -88,7 +88,18 @@ const addMovie = async (req, res) => {
     // ========================================
     // CREATE MOVIE
     // ========================================
-
+console.log("MOVIE CREATE PAYLOAD");
+console.log({
+  title,
+  poster,
+  banner,
+  trailerUrl,
+  videoUrl,
+  cast,
+  genre,
+  category,
+  language,
+});
     const movie = await Movie.create({
 
       title: req.body.title,
@@ -137,15 +148,31 @@ const addMovie = async (req, res) => {
     });
 
   } catch (error) {
+  console.error("================================");
+  console.error("ADD MOVIE ERROR");
+  console.error(error);
+  console.error(error.message);
 
-    console.error("ADD MOVIE ERROR:", error);
-
-    return res.status(500).json({
-      success: false,
-      message: "Failed to add movie",
-      error: error.message,
+  if (error.errors) {
+    Object.keys(error.errors).forEach((key) => {
+      console.error(
+        "VALIDATION:",
+        key,
+        error.errors[key]?.message
+      );
     });
   }
+
+  console.error("REQUEST BODY:");
+  console.log(req.body);
+
+  console.error("================================");
+
+  return res.status(500).json({
+    success: false,
+    message: error.message,
+  });
+}
 };
 
 // ========================================

@@ -107,12 +107,24 @@ export const createContent = async ({
   // Send the Cast details containing their direct Bunny URLs
   formData.append("cast", JSON.stringify(updatedCast));
 
+  console.log("POSTING MOVIE DATA");
+console.log({
+  posterUrl,
+  bannerUrl,
+  trailerUrl,
+  videoUrl,
+  cast: updatedCast,
+});
+
   // Post meta to the backend (Express backend will save to DB instantly!)
   const response = await API.post(endpoint, formData, {
     headers: {
       "Content-Type": "multipart/form-data",
     },
   });
+
+  console.log("MOVIE CREATED");
+console.log(response.data);
 
   // 7. If it is Web Series, upload individual episodes directly to Bunny CDN and save
   if (!isMovie && form.seasons.length > 0) {
