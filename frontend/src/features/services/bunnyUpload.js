@@ -2,6 +2,7 @@ import API from "../../api/axios";
 import axios from "axios";
 
 let cachedConfig = null;
+const MAX_BACKEND_FALLBACK_BYTES = 4 * 1024 * 1024;
 
 export const fetchBunnyConfig = async () => {
   if (cachedConfig) return cachedConfig;
@@ -88,6 +89,12 @@ export const uploadToBunny = async (file, type, subfolder, onProgress) => {
 
     return `${cleanCdnUrl}/${remoteFolder}/${filename}`;
   } catch (error) {
+    if (file.size > MAX_BACKEND_FALLBACK_BYTES) {
+      throw new Error(
+        "Direct Bunny upload failed. Enable CORS on the Bunny storage zone for this admin domain before uploading large videos."
+      );
+    }
+
     console.warn("Direct Bunny upload failed, falling back to backend proxy.", error);
     return uploadThroughBackend(file, type, subfolder, onProgress);
   }
