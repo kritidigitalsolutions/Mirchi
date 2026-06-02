@@ -165,30 +165,12 @@ export const uploadToBunny = async (
 ) => {
   if (!file) return "";
 
-  const isLargeMedia =
-    subfolder === "videos" ||
-    subfolder === "trailers";
-
-  if (isLargeMedia) {
-    console.log(
-      "USING DIRECT BUNNY UPLOAD:",
-      subfolder
-    );
-
-    return uploadDirectToBunny(
-      file,
-      type,
-      subfolder,
-      onProgress
-    );
-  }
-
   console.log(
-    "USING BACKEND BUNNY UPLOAD:",
+    "USING DIRECT BUNNY UPLOAD FOR:",
     subfolder
   );
 
-  return uploadThroughBackend(
+  return uploadDirectToBunny(
     file,
     type,
     subfolder,
