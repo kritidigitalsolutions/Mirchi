@@ -46,7 +46,7 @@ const corsOptions = {
     if (!origin) {
       return callback(null, true);
     }
-    
+
     // Check exact matches or wildcard
     if (allowedOrigins.includes(origin) || allowedOrigins.includes("*")) {
       return callback(null, true);

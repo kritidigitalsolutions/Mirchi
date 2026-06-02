@@ -13,7 +13,7 @@ export const createContent = async ({
 
   episodeVideoFiles,
   episodeThumbnailFiles,
-  
+
   onVideoProgress,
   onTrailerProgress,
   onEpisodeProgress,

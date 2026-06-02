@@ -1,16 +1,32 @@
 const fs = require("fs/promises");
+const https = require("https");
 const path = require("path");
 
-const normalizeBaseUrl = (value) => String(value || "").replace(/\/+$/, "");
+const normalizeBaseUrl = (value) => String(value || "").trim().replace(/\/+$/, "");
+
+const normalizeStorageHost = (value) => {
+  return String(value || "storage.bunnycdn.com")
+    .trim()
+    .replace(/^https?:\/\//i, "")
+    .replace(/\/+$/, "");
+};
+
+const getStorageHosts = (storageHost) => {
+  return [...new Set([storageHost, "storage.bunnycdn.com"].filter(Boolean))];
+};
+
+const encodePathPart = (part) => {
+  try {
+    return encodeURIComponent(decodeURIComponent(part));
+  } catch {
+    return encodeURIComponent(part);
+  }
+};
 
 const getConfig = () => {
-  const storageZone = process.env.BUNNY_STORAGE_ZONE;
-  const accessKey = process.env.BUNNY_ACCESS_KEY;
-  const region = (process.env.BUNNY_REGION || "").trim().toLowerCase();
-  const defaultHost = region && region !== "us"
-    ? `${region}.storage.bunnycdn.com`
-    : "storage.bunnycdn.com";
-  const storageHost = process.env.BUNNY_STORAGE_HOST || defaultHost;
+  const storageZone = String(process.env.BUNNY_STORAGE_ZONE || "").trim();
+  const accessKey = String(process.env.BUNNY_ACCESS_KEY || "").trim();
+  const storageHost = normalizeStorageHost(process.env.BUNNY_STORAGE_HOST);
   const cdnUrl = normalizeBaseUrl(process.env.BUNNY_CDN_URL);
 
   const missing = [];
@@ -26,6 +42,7 @@ const getConfig = () => {
     storageZone,
     accessKey,
     storageHost,
+    storageHosts: getStorageHosts(storageHost),
     cdnUrl,
   };
 };
@@ -35,19 +52,103 @@ const sanitizeRemotePath = (remotePath) => {
     .replace(/\\/g, "/")
     .replace(/^\/+/, "");
 
-  if (!normalized || normalized.includes("..")) {
+  const parts = normalized.split("/").filter(Boolean);
+
+  if (
+    !parts.length ||
+    parts.some((part) => part === "." || part === "..")
+  ) {
     throw new Error("Invalid Bunny remote path");
   }
 
-  return normalized
-    .split("/")
-    .map((part) => encodeURIComponent(part))
-    .join("/");
+  return parts.map(encodePathPart).join("/");
 };
 
 const buildPublicUrl = (remotePath) => {
   const { cdnUrl } = getConfig();
   return `${cdnUrl}/${sanitizeRemotePath(remotePath)}`;
+};
+
+const withUploadTimeout = async (uploadRequest) => {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => {
+    controller.abort();
+  }, 30 * 60 * 1000);
+
+  try {
+    return await uploadRequest(controller.signal);
+  } finally {
+    clearTimeout(timeout);
+  }
+};
+
+const requestWithHostFallback = async ({
+  hosts,
+  storageZone,
+  remotePath,
+  requestOptions,
+}) => {
+  let lastResponse = null;
+
+  for (const host of hosts) {
+    const requestUrl = `https://${host}/${storageZone}/${remotePath}`;
+    const response = await requestOptions(requestUrl);
+
+    if (response.ok || response.status !== 401) {
+      return response;
+    }
+
+    lastResponse = response;
+  }
+
+  return lastResponse;
+};
+
+const readResponseBody = (response) => {
+  if (typeof response.text === "function") {
+    return response.text().catch(() => "");
+  }
+
+  return Promise.resolve(response.body || "");
+};
+
+const uploadStreamRequest = ({
+  stream,
+  uploadUrl,
+  headers,
+  timeoutMs = 30 * 60 * 1000,
+}) => {
+  return new Promise((resolve, reject) => {
+    const req = https.request(uploadUrl, {
+      method: "PUT",
+      headers,
+      timeout: timeoutMs,
+    }, (res) => {
+      let body = "";
+
+      res.setEncoding("utf8");
+      res.on("data", (chunk) => {
+        body += chunk;
+      });
+
+      res.on("end", () => {
+        resolve({
+          ok: res.statusCode >= 200 && res.statusCode < 300,
+          status: res.statusCode,
+          statusText: res.statusMessage,
+          body,
+        });
+      });
+    });
+
+    req.on("timeout", () => {
+      req.destroy(new Error("Bunny upload timed out"));
+    });
+
+    req.on("error", reject);
+    stream.on("error", reject);
+    stream.pipe(req);
+  });
 };
 
 const uploadBufferToBunny = async ({
@@ -62,32 +163,28 @@ const uploadBufferToBunny = async ({
   const {
     storageZone,
     accessKey,
-    storageHost,
+    storageHosts,
   } = getConfig();
 
   const safeRemotePath = sanitizeRemotePath(remotePath);
-  const uploadUrl = `https://${storageHost}/${storageZone}/${safeRemotePath}`;
 
-const controller = new AbortController();
-
-const timeout = setTimeout(() => {
-  controller.abort();
-}, 30 * 60 * 1000); // 30 minutes timeout for large files
-
-const response = await fetch(uploadUrl, {
-  method: "PUT",
-  headers: {
-    AccessKey: accessKey,
-    "Content-Type": contentType,
-  },
-  body: buffer,
-  signal: controller.signal,
-});
-
-clearTimeout(timeout);
+  const response = await requestWithHostFallback({
+    hosts: storageHosts,
+    storageZone,
+    remotePath: safeRemotePath,
+    requestOptions: (uploadUrl) => withUploadTimeout((signal) => fetch(uploadUrl, {
+      method: "PUT",
+      headers: {
+        AccessKey: accessKey,
+        "Content-Type": contentType,
+      },
+      body: buffer,
+      signal,
+    })),
+  });
 
   if (!response.ok) {
-    const message = await response.text().catch(() => "");
+    const message = await readResponseBody(response);
     throw new Error(
       `Bunny upload failed (${response.status}): ${message || response.statusText}`
     );
@@ -95,7 +192,7 @@ clearTimeout(timeout);
 
   return {
     path: safeRemotePath,
-    url: buildPublicUrl(safeRemotePath),
+    url: `${getConfig().cdnUrl}/${safeRemotePath}`,
   };
 };
 
@@ -108,11 +205,10 @@ const uploadStreamToBunny = async ({
   const {
     storageZone,
     accessKey,
-    storageHost,
+    storageHosts,
   } = getConfig();
 
   const safeRemotePath = sanitizeRemotePath(remotePath);
-  const uploadUrl = `https://${storageHost}/${storageZone}/${safeRemotePath}`;
 
   const headers = {
     AccessKey: accessKey,
@@ -123,34 +219,23 @@ const uploadStreamToBunny = async ({
     headers["Content-Length"] = String(contentLength);
   }
 
-  const controller = new AbortController();
-
-  const timeout = setTimeout(() => {
-    controller.abort();
-  }, 30 * 60 * 1000); // 30 minutes timeout for large files
-
-  const response = await fetch(uploadUrl, {
-    method: "PUT",
+  const uploadUrl = `https://${storageHosts[0]}/${storageZone}/${safeRemotePath}`;
+  const response = await uploadStreamRequest({
+    stream,
+    uploadUrl,
     headers,
-    body: stream,
-    duplex: "half",
-    signal: controller.signal,
   });
 
-  clearTimeout(timeout);
-
   if (!response.ok) {
-    const message = await response.text().catch(() => "");
+    const message = await readResponseBody(response);
     throw new Error(
-      `Bunny upload failed (${response.status}): ${
-        message || response.statusText
-      }`
+      `Bunny upload failed (${response.status}): ${message || response.statusText}`
     );
   }
 
   return {
     path: safeRemotePath,
-    url: buildPublicUrl(safeRemotePath),
+    url: `${getConfig().cdnUrl}/${safeRemotePath}`,
   };
 };
 
@@ -198,7 +283,7 @@ const deleteFromBunny = async (remotePathOrUrl) => {
   const {
     storageZone,
     accessKey,
-    storageHost,
+    storageHosts,
     cdnUrl,
   } = getConfig();
 
@@ -209,17 +294,21 @@ const deleteFromBunny = async (remotePathOrUrl) => {
   }
 
   const safeRemotePath = sanitizeRemotePath(remotePath);
-  const deleteUrl = `https://${storageHost}/${storageZone}/${safeRemotePath}`;
 
-  const response = await fetch(deleteUrl, {
-    method: "DELETE",
-    headers: {
-      AccessKey: accessKey,
-    },
+  const response = await requestWithHostFallback({
+    hosts: storageHosts,
+    storageZone,
+    remotePath: safeRemotePath,
+    requestOptions: (deleteUrl) => fetch(deleteUrl, {
+      method: "DELETE",
+      headers: {
+        AccessKey: accessKey,
+      },
+    }),
   });
 
   if (!response.ok && response.status !== 404) {
-    const message = await response.text().catch(() => "");
+    const message = await readResponseBody(response);
     throw new Error(
       `Bunny delete failed (${response.status}): ${message || response.statusText}`
     );
