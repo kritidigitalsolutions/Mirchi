@@ -43,11 +43,21 @@ const storage = {
 
       const filename = `${uniqueName}${ext}`;
 
-      const result = await uploadStreamToBunny({
-        stream: file.stream,
-        remotePath: `${uploadInfo.remoteFolder}/${filename}`,
-        contentType: file.mimetype,
-      });
+     console.log("================================");
+console.log("UPLOAD START");
+console.log("FIELD:", file.fieldname);
+console.log("NAME:", file.originalname);
+console.log("TYPE:", file.mimetype);
+console.log("REMOTE PATH:", `${uploadInfo.remoteFolder}/${filename}`);
+
+const result = await uploadStreamToBunny({
+  stream: file.stream,
+  remotePath: `${uploadInfo.remoteFolder}/${filename}`,
+  contentType: file.mimetype,
+});
+
+console.log("BUNNY RESPONSE:", result);
+console.log("================================");
 
       cb(null, {
         filename,
@@ -57,8 +67,12 @@ const storage = {
         remotePath: result.path,
       });
     } catch (error) {
-      cb(error);
-    }
+  console.error("BUNNY UPLOAD ERROR");
+  console.error(error);
+  console.error(error.message);
+
+  cb(error);
+}
   },
 
   _removeFile: (req, file, cb) => {
