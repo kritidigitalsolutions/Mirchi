@@ -1,52 +1,5 @@
 const Movie = require("../../models/movie.model");
-const fs = require("fs");
-const path = require("path");
-const { deleteFromBunny } = require("../../cdn/bunnyCDN");
-
-// ========================================
-// HELPERS
-// ========================================
-
-const deleteFile = async (filePath) => {
-  if (!filePath) return;
-
-  if (
-    typeof filePath === "string" &&
-    filePath.startsWith("http")
-  ) {
-    try {
-      await deleteFromBunny(filePath);
-    } catch (err) {
-      console.error("BunnyCDN delete error:", err);
-    }
-    return;
-  }
-
-  try {
-    const fullPath = path.join(
-      __dirname,
-      "../../",
-      filePath
-    );
-
-    if (fs.existsSync(fullPath)) {
-      fs.unlinkSync(fullPath);
-    }
-  } catch (err) {
-    console.error(
-      "File deletion error:",
-      err
-    );
-  }
-};
-const deleteFiles = async (...files) => {
-  await Promise.all(
-    files
-      .filter(Boolean)
-      .map(file => deleteFile(file))
-  );
-};
-
+const { getMediaUrl, deleteMedia, deleteMediaFiles } = require("../../utils/mediaUrl");
 
 // ========================================
 // HELPERS
@@ -58,10 +11,6 @@ const parseJSON = (value, defaultValue = []) => {
   } catch {
     return defaultValue;
   }
-};
-
-const getFilePath = (file, path, fallback = "") => {
-  return file ? file.cdnUrl || file.path || `${path}/${file.filename}` : fallback;
 };
 
 
@@ -116,7 +65,7 @@ const addMovie = async (req, res) => {
 
       if (cast[index]) {
         cast[index].image =
-          getFilePath(file, "/uploads/movies/cast");
+          getMediaUrl(file);
       }
     });
 
@@ -154,29 +103,13 @@ const addMovie = async (req, res) => {
 
       language: req.body.language || "",
 
-      poster: getFilePath(
-        poster,
-        "/uploads/movies/posters",
-        req.body.poster
-      ),
+      poster: getMediaUrl(poster, req.body.poster),
 
-      banner: getFilePath(
-        banner,
-        "/uploads/movies/banners",
-        req.body.banner
-      ),
+      banner: getMediaUrl(banner, req.body.banner),
 
-      trailerUrl: getFilePath(
-        trailer,
-        "/uploads/movies/trailers",
-        req.body.trailerUrl
-      ),
+      trailerUrl: getMediaUrl(trailer, req.body.trailerUrl),
 
-      videoUrl: getFilePath(
-        video,
-        "/uploads/movies/videos",
-        req.body.videoUrl
-      ),
+      videoUrl: getMediaUrl(video, req.body.videoUrl),
 
 
       isComingSoon:
@@ -410,8 +343,8 @@ const updateMovie = async (req, res) => {
     // ========================================
 
     if (req.files?.poster?.[0]) {
-      await deleteFile(movie.poster);
-      movie.poster = getFilePath(req.files.poster[0], "/uploads/movies/posters");
+      await deleteMedia(movie.poster);
+      movie.poster = getMediaUrl(req.files.poster[0]);
     } else if (req.body.posterUrl !== undefined) {
       movie.poster = req.body.posterUrl;
     } else if (req.body.poster !== undefined) {
@@ -419,11 +352,8 @@ const updateMovie = async (req, res) => {
     }
 
     if (req.files?.banner?.[0]) {
-      await deleteFile(movie.banner);
-      movie.banner = getFilePath(
-        req.files.banner[0],
-        "/uploads/movies/banners"
-      );
+      await deleteMedia(movie.banner);
+      movie.banner = getMediaUrl(req.files.banner[0]);
     } else if (req.body.bannerUrl !== undefined) {
       movie.banner = req.body.bannerUrl;
     } else if (req.body.banner !== undefined) {
@@ -431,15 +361,15 @@ const updateMovie = async (req, res) => {
     }
 
     if (req.files?.trailer?.[0]) {
-      await deleteFile(movie.trailerUrl);
-      movie.trailerUrl = getFilePath(req.files.trailer[0], "/uploads/movies/trailers");
+      await deleteMedia(movie.trailerUrl);
+      movie.trailerUrl = getMediaUrl(req.files.trailer[0]);
     } else if (req.body.trailerUrl !== undefined) {
       movie.trailerUrl = req.body.trailerUrl;
     }
 
     if (req.files?.video?.[0]) {
-      await deleteFile(movie.videoUrl);
-      movie.videoUrl = getFilePath(req.files.video[0], "/uploads/movies/videos");
+      await deleteMedia(movie.videoUrl);
+      movie.videoUrl = getMediaUrl(req.files.video[0]);
     } else if (req.body.videoUrl !== undefined) {
       movie.videoUrl = req.body.videoUrl;
     }
@@ -465,21 +395,14 @@ const updateMovie = async (req, res) => {
 
         if (
           cast[index].image &&
-          cast[index].image !== getFilePath(
-            file,
-            "/uploads/movies/cast"
-          )
+          cast[index].image !== getMediaUrl(file)
         ) {
-          await deleteFile(
+          await deleteMedia(
             cast[index].image
           );
         }
 
-        cast[index].image =
-          getFilePath(
-            file,
-            "/uploads/movies/cast"
-          );
+        cast[index].image = getMediaUrl(file);
       }
     }
 
@@ -543,8 +466,8 @@ const deleteMovie = async (req, res) => {
     // Capture priority before deletion to shift other priorities
     const targetPriority = movie.priority || 0;
 
-    // Delete files
-    await deleteFiles(
+    // Delete files from BunnyCDN
+    await deleteMediaFiles(
       movie.poster,
       movie.banner,
       movie.trailerUrl,

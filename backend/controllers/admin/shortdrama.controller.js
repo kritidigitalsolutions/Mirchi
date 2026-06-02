@@ -6,41 +6,7 @@ const DramaEpisode = require(
   "../../models/dramaEpisode.model"
 );
 
-const fs = require("fs");
-const path = require("path");
-const { deleteFromBunny } = require("../../cdn/bunnyCDN");
-
-// DELETE FILE
-const deleteFile = async (filePath) => {
-  if (!filePath) return;
-
-  if (filePath.startsWith("http")) {
-    try {
-      await deleteFromBunny(filePath);
-    } catch (err) {
-      console.error("BunnyCDN delete error:", err);
-    }
-    return;
-  }
-
-  try {
-    const fullPath = path.join(
-      __dirname,
-      "../../",
-      filePath
-    );
-
-    if (fs.existsSync(fullPath)) {
-      fs.unlinkSync(fullPath);
-    }
-
-  } catch (err) {
-    console.error(
-      "File deletion error:",
-      err
-    );
-  }
-};
+const { getMediaUrl, deleteMedia } = require("../../utils/mediaUrl");
 
 
 // PARSE JSON
@@ -55,17 +21,6 @@ const parseJSON = (
   } catch {
     return defaultValue;
   }
-};
-
-
-const getFilePath = (
-  file,
-  path,
-  fallback = ""
-) => {
-  return file
-    ? file.cdnUrl || file.path || `${path}/${file.filename}`
-    : fallback;
 };
 
 
@@ -114,7 +69,7 @@ const addShortDrama = async (
 
       if (cast[index]) {
         cast[index].image =
-          getFilePath(file, "/uploads/shortdramas/cast");
+          getMediaUrl(file);
       }
     });
 
@@ -131,21 +86,18 @@ const addShortDrama = async (
         language:
           req.body.language || "",
 
-        poster: getFilePath(
+        poster: getMediaUrl(
           poster,
-          "/uploads/shortdramas/posters",
           req.body.poster
         ),
 
-        banner: getFilePath(
+        banner: getMediaUrl(
           banner,
-          "/uploads/shortdramas/banners",
           req.body.banner
         ),
 
-        trailerUrl: getFilePath(
+        trailerUrl: getMediaUrl(
           trailer,
-          "/uploads/shortdramas/trailers",
           req.body.trailerUrl
         ),
 
@@ -305,32 +257,32 @@ const updateShortDrama =
       // POSTER
       if (req.files?.poster?.[0]) {
 
-        deleteFile(drama.poster);
+        deleteMedia(drama.poster);
 
         drama.poster =
-          getFilePath(req.files.poster[0], "/uploads/shortdramas/posters");
+          getMediaUrl(req.files.poster[0]);
       }
 
 
       // BANNER
       if (req.files?.banner?.[0]) {
 
-        deleteFile(drama.banner);
+        deleteMedia(drama.banner);
 
         drama.banner =
-          getFilePath(req.files.banner[0], "/uploads/shortdramas/banners");
+          getMediaUrl(req.files.banner[0]);
       }
 
 
       // TRAILER
       if (req.files?.trailer?.[0]) {
 
-        deleteFile(
+        deleteMedia(
           drama.trailerUrl
         );
 
         drama.trailerUrl =
-          getFilePath(req.files.trailer[0], "/uploads/shortdramas/trailers");
+          getMediaUrl(req.files.trailer[0]);
       }
 
 
@@ -354,7 +306,7 @@ const updateShortDrama =
 
         if (cast[index]) {
           cast[index].image =
-            getFilePath(file, "/uploads/shortdramas/cast");
+            getMediaUrl(file);
         }
       });
 
@@ -398,16 +350,16 @@ const deleteShortDrama =
         });
       }
 
-      deleteFile(drama.poster);
+      deleteMedia(drama.poster);
 
-      deleteFile(drama.banner);
+      deleteMedia(drama.banner);
 
-      deleteFile(
+      deleteMedia(
         drama.trailerUrl
       );
 
       drama.cast.forEach((c) =>
-        deleteFile(c.image)
+        deleteMedia(c.image)
       );
 
 
@@ -419,8 +371,8 @@ const deleteShortDrama =
         });
 
       episodes.forEach((ep) => {
-        deleteFile(ep.videoUrl);
-        deleteFile(ep.thumbnail);
+        deleteMedia(ep.videoUrl);
+        deleteMedia(ep.thumbnail);
       });
 
       await DramaEpisode.deleteMany({

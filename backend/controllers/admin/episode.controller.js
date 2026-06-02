@@ -1,43 +1,6 @@
 const Episode = require("../../models/episode.model");
 const Series = require("../../models/series.model");
-const fs = require("fs");
-const path = require("path");
-const { deleteFromBunny } = require("../../cdn/bunnyCDN");
-
-// Helper to delete physical files
-const deleteFile = async (filePath) => {
-  if (!filePath) return;
-  if (
-    typeof filePath === "string" &&
-    filePath.startsWith("http")
-  ) {
-    try {
-      await deleteFromBunny(filePath);
-    } catch (err) {
-      console.error("BunnyCDN delete error:", err);
-    }
-    return;
-  }
-  try {
-    const fullPath = path.join(__dirname, "../../", filePath);
-    if (fs.existsSync(fullPath)) {
-      fs.unlinkSync(fullPath);
-    }
-  } catch (err) {
-    console.error("File deletion error:", err);
-  }
-};
-const deleteFiles = async (...files) => {
-  await Promise.all(
-    files
-      .filter(Boolean)
-      .map(file => deleteFile(file))
-  );
-};
-
-const getFilePath = (file, localPrefix, fallback = "") => {
-  return file ? file.cdnUrl || file.path || `${localPrefix}/${file.filename}` : fallback;
-};
+const { getMediaUrl, deleteMedia, deleteMediaFiles } = require("../../utils/mediaUrl");
 
 // Helper to update totalSeasons and totalEpisodes in Series
 const updateSeriesStats = async (seriesId) => {
@@ -67,8 +30,8 @@ const addEpisode = async (req, res) => {
       seasonNumber: Number(req.body.seasonNumber),
       episodeNumber: Number(req.body.episodeNumber),
       duration: req.body.duration,
-      videoUrl: getFilePath(video, "/uploads/episodes/videos", req.body.videoUrl || ""),
-      thumbnail: getFilePath(thumbnail, "/uploads/episodes/posters", req.body.thumbnailUrl || "")
+      videoUrl: getMediaUrl(video, req.body.videoUrl || ""),
+      thumbnail: getMediaUrl(thumbnail, req.body.thumbnailUrl || "")
     };
 
     const existingEpisode =
@@ -141,15 +104,15 @@ const updateEpisode = async (req, res) => {
         req.body.duration;
 
     if (video) {
-      await deleteFile(episode.videoUrl);
-      updateData.videoUrl = getFilePath(video, "/uploads/episodes/videos");
+      await deleteMedia(episode.videoUrl);
+      updateData.videoUrl = getMediaUrl(video);
     } else if (req.body.videoUrl) {
       updateData.videoUrl = req.body.videoUrl;
     }
 
     if (thumbnail) {
-      await deleteFile(episode.thumbnail);
-      updateData.thumbnail = getFilePath(thumbnail, "/uploads/episodes/posters");
+      await deleteMedia(episode.thumbnail);
+      updateData.thumbnail = getMediaUrl(thumbnail);
     } else if (req.body.thumbnailUrl) {
       updateData.thumbnail = req.body.thumbnailUrl;
     }
@@ -199,8 +162,8 @@ const deleteEpisode = async (req, res) => {
     const episode = await Episode.findById(req.params.id);
     if (!episode) return res.status(404).json({ success: false, message: "Episode not found" });
 
-    // Delete files
-    await deleteFiles(
+    // Delete files from BunnyCDN
+    await deleteMediaFiles(
       episode.videoUrl,
       episode.thumbnail
     );
@@ -227,7 +190,7 @@ const deleteSeason = async (req, res) => {
 
     await Promise.all(
       episodes.map(async (ep) => {
-        await deleteFiles(ep.videoUrl, ep.thumbnail);
+        await deleteMediaFiles(ep.videoUrl, ep.thumbnail);
       })
     );
 

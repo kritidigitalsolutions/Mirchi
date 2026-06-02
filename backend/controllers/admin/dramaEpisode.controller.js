@@ -6,46 +6,7 @@ const ShortDrama = require(
   "../../models/shortdrama.model"
 );
 
-const fs = require("fs");
-const path = require("path");
-const { deleteFromBunny } = require("../../cdn/bunnyCDN");
-
-const getFilePath = (file, path, fallback = "") => {
-  return file ? file.cdnUrl || file.path || `${path}/${file.filename}` : fallback;
-};
-
-// ========================================
-// DELETE FILE
-// ========================================
-const deleteFile = async (filePath) => {
-  if (!filePath) return;
-
-  if (filePath.startsWith("http")) {
-    try {
-      await deleteFromBunny(filePath);
-    } catch (err) {
-      console.error("BunnyCDN delete error:", err);
-    }
-    return;
-  }
-
-  try {
-    const fullPath = path.join(
-      __dirname,
-      "../../public",
-      filePath
-    );
-
-    if (fs.existsSync(fullPath)) {
-      fs.unlinkSync(fullPath);
-    }
-  } catch (err) {
-    console.error(
-      "File deletion error:",
-      err
-    );
-  }
-};
+const { getMediaUrl, deleteMedia } = require("../../utils/mediaUrl");
 
 
 // ========================================
@@ -128,15 +89,13 @@ const addDramaEpisode =
             req.body.isVertical !==
             "false",
 
-          videoUrl: getFilePath(
+          videoUrl: getMediaUrl(
             video,
-            "/uploads/dramaepisodes/videos",
             req.body.videoUrl || ""
           ),
 
-          thumbnail: getFilePath(
+          thumbnail: getMediaUrl(
             thumbnail,
-            "/uploads/dramaepisodes/posters",
             req.body.thumbnail || req.body.thumbnailUrl || ""
           ),
         });
@@ -292,12 +251,12 @@ const updateDramaEpisode =
       // VIDEO
       if (req.files?.video?.[0]) {
 
-        deleteFile(
+        deleteMedia(
           episode.videoUrl
         );
 
         episode.videoUrl =
-          getFilePath(req.files.video[0], "/uploads/dramaepisodes/videos");
+          getMediaUrl(req.files.video[0]);
       }
 
 
@@ -306,12 +265,12 @@ const updateDramaEpisode =
         req.files?.thumbnail?.[0]
       ) {
 
-        deleteFile(
+        deleteMedia(
           episode.thumbnail
         );
 
         episode.thumbnail =
-          getFilePath(req.files.thumbnail[0], "/uploads/dramaepisodes/posters");
+          getMediaUrl(req.files.thumbnail[0]);
       }
 
       await episode.save();
@@ -357,11 +316,11 @@ const deleteDramaEpisode =
         });
       }
 
-      deleteFile(
+      deleteMedia(
         episode.videoUrl
       );
 
-      deleteFile(
+      deleteMedia(
         episode.thumbnail
       );
 

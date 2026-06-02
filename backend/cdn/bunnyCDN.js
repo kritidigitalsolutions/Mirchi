@@ -6,7 +6,11 @@ const normalizeBaseUrl = (value) => String(value || "").replace(/\/+$/, "");
 const getConfig = () => {
   const storageZone = process.env.BUNNY_STORAGE_ZONE;
   const accessKey = process.env.BUNNY_ACCESS_KEY;
-  const storageHost = process.env.BUNNY_STORAGE_HOST || "storage.bunnycdn.com";
+  const region = (process.env.BUNNY_REGION || "").trim().toLowerCase();
+  const defaultHost = region && region !== "us"
+    ? `${region}.storage.bunnycdn.com`
+    : "storage.bunnycdn.com";
+  const storageHost = process.env.BUNNY_STORAGE_HOST || defaultHost;
   const cdnUrl = normalizeBaseUrl(process.env.BUNNY_CDN_URL);
 
   const missing = [];

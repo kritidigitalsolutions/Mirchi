@@ -3,7 +3,6 @@ const cors = require("cors");
 const helmet = require("helmet");
 const connectDB = require("./config/db");
 const createDefaultAdmin = require("./utils/createDefaultAdmin");
-const { uploadRoot } = require("./middlewares/upload.middleware");
 
 require("dotenv").config();
 
@@ -78,13 +77,7 @@ app.use(
 );
 
 
-// ========================================
-// STATIC FOLDER
-// ========================================
-app.use(
-  "/uploads",
-  express.static(uploadRoot)
-);
+
 
 
 // ========================================

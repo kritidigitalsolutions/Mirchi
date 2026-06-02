@@ -1,44 +1,6 @@
 const Series = require("../../models/series.model");
 const Episode = require("../../models/episode.model");
-const fs = require("fs");
-const path = require("path");
-const { deleteFromBunny } = require("../../cdn/bunnyCDN");
-
-// ========================================
-// HELPERS
-// ========================================
-
-const deleteFile = async (filePath) => {
-  if (!filePath) return;
-  if (
-    typeof filePath === "string" &&
-    filePath.startsWith("http")
-  ) {
-    try {
-      await deleteFromBunny(filePath);
-    } catch (err) {
-      console.error("BunnyCDN delete error:", err);
-    }
-    return;
-  }
-  try {
-    const fullPath = path.join(__dirname, "../../", filePath);
-    if (fs.existsSync(fullPath)) {
-      fs.unlinkSync(fullPath);
-    }
-  } catch (err) {
-    console.error("File deletion error:", err);
-  }
-};
-
-const deleteFiles = async (...files) => {
-  await Promise.all(
-    files
-      .filter(Boolean)
-      .map(file => deleteFile(file))
-  );
-};
-
+const { getMediaUrl, deleteMedia, deleteMediaFiles } = require("../../utils/mediaUrl");
 
 // ========================================
 // HELPERS
@@ -50,10 +12,6 @@ const parseJSON = (value, defaultValue = []) => {
   } catch {
     return defaultValue;
   }
-};
-
-const getFilePath = (file, path, fallback = "") => {
-  return file ? file.cdnUrl || file.path || `${path}/${file.filename}` : fallback;
 };
 
 
@@ -85,10 +43,7 @@ const addSeries = async (req, res) => {
       const file = req.files[key][0];
 
       if (cast[index]) {
-        cast[index].image = getFilePath(
-          file,
-          "/uploads/series/cast"
-        );
+        cast[index].image = getMediaUrl(file);
       }
     }
 
@@ -115,9 +70,9 @@ const addSeries = async (req, res) => {
       releaseYear: req.body.releaseYear || null,
       duration: req.body.duration || "",
       language: req.body.language || "",
-      poster: getFilePath(poster, "/uploads/series/posters", req.body.poster),
-      banner: getFilePath(banner, "/uploads/series/banners", req.body.banner),
-      trailerUrl: getFilePath(trailer, "/uploads/series/trailers", req.body.trailerUrl),
+      poster: getMediaUrl(poster, req.body.poster),
+      banner: getMediaUrl(banner, req.body.banner),
+      trailerUrl: getMediaUrl(trailer, req.body.trailerUrl),
       isComingSoon: req.body.isComingSoon === "true",
       releaseDate: req.body.releaseDate || null,
       isPremium: req.body.isPremium === "true",
@@ -235,8 +190,8 @@ const updateSeries = async (req, res) => {
     series.category = category;
 
     if (req.files?.poster?.[0]) {
-      await deleteFile(series.poster);
-      series.poster = getFilePath(req.files.poster[0], "/uploads/series/posters");
+      await deleteMedia(series.poster);
+      series.poster = getMediaUrl(req.files.poster[0]);
     } else if (req.body.posterUrl !== undefined) {
       series.poster = req.body.posterUrl;
     } else if (req.body.poster !== undefined) {
@@ -244,8 +199,8 @@ const updateSeries = async (req, res) => {
     }
 
     if (req.files?.banner?.[0]) {
-      await deleteFile(series.banner);
-      series.banner = getFilePath(req.files.banner[0], "/uploads/series/banners");
+      await deleteMedia(series.banner);
+      series.banner = getMediaUrl(req.files.banner[0]);
     } else if (req.body.bannerUrl !== undefined) {
       series.banner = req.body.bannerUrl;
     } else if (req.body.banner !== undefined) {
@@ -253,8 +208,8 @@ const updateSeries = async (req, res) => {
     }
 
     if (req.files?.trailer?.[0]) {
-      await deleteFile(series.trailerUrl);
-      series.trailerUrl = getFilePath(req.files.trailer[0], "/uploads/series/trailers");
+      await deleteMedia(series.trailerUrl);
+      series.trailerUrl = getMediaUrl(req.files.trailer[0]);
     } else if (req.body.trailerUrl !== undefined) {
       series.trailerUrl = req.body.trailerUrl;
     }
@@ -273,21 +228,14 @@ const updateSeries = async (req, res) => {
 
         if (
           cast[index].image &&
-          cast[index].image !== getFilePath(
-            file,
-            "/uploads/series/cast"
-          )
+          cast[index].image !== getMediaUrl(file)
         ) {
-          await deleteFile(
+          await deleteMedia(
             cast[index].image
           );
         }
 
-        cast[index].image =
-          getFilePath(
-            file,
-            "/uploads/series/cast"
-          );
+        cast[index].image = getMediaUrl(file);
       }
     }
     series.cast = cast;
@@ -344,14 +292,14 @@ const deleteSeries = async (req, res) => {
     // Capture priority before deletion to shift other priorities
     const targetPriority = series.priority || 0;
 
-    // Delete series files
-    await deleteFiles(series.poster, series.banner, series.trailerUrl, ...(series.cast || []).map(c => c.image));
+    // Delete series files from BunnyCDN
+    await deleteMediaFiles(series.poster, series.banner, series.trailerUrl, ...(series.cast || []).map(c => c.image));
     // Cascading delete episodes and their files
     const episodes = await Episode.find({ seriesId: id });
     await Promise.all(
       episodes.map(async (ep) => {
-        await deleteFile(ep.videoUrl);
-        await deleteFile(ep.thumbnail);
+        await deleteMedia(ep.videoUrl);
+        await deleteMedia(ep.thumbnail);
       })
     );
     await Episode.deleteMany({ seriesId: id });

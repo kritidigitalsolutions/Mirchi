@@ -43,7 +43,13 @@ router.get(
         success: true,
         storageZone: process.env.BUNNY_STORAGE_ZONE,
         accessKey: process.env.BUNNY_ACCESS_KEY,
-        storageHost: process.env.BUNNY_STORAGE_HOST || "storage.bunnycdn.com",
+        storageHost: (() => {
+          const region = (process.env.BUNNY_REGION || "").trim().toLowerCase();
+          const defaultHost = region && region !== "us"
+            ? `${region}.storage.bunnycdn.com`
+            : "storage.bunnycdn.com";
+          return process.env.BUNNY_STORAGE_HOST || defaultHost;
+        })(),
         cdnUrl: process.env.BUNNY_CDN_URL,
       });
     } catch (err) {

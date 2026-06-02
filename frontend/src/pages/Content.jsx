@@ -132,6 +132,10 @@ export default function Content() {
     const isFullUrl = /^(https?:\/\/|data:|blob:|\/\/)/i.test(url);
     if (isFullUrl) return url;
 
+    if (url.startsWith("/uploads") || url.includes("uploads/")) {
+      console.warn(`[LEGACY] Media url using local filesystem path detected: ${url}. Migrate this database entry to BunnyCDN.`);
+    }
+
     // Otherwise, append BASE_URL and ensure proper slash handling
     const cleanBase = BASE_URL.endsWith("/") ? BASE_URL.slice(0, -1) : BASE_URL;
     const cleanPath = url.startsWith("/") ? url : `/${url}`;

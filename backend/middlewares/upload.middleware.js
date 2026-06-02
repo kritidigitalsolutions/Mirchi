@@ -1,28 +1,8 @@
 const multer = require("multer");
 const path = require("path");
-const fs = require("fs");
-const os = require("os");
 const {
-  uploadBufferToBunny,
   uploadStreamToBunny,
 } = require("../cdn/bunnyCDN");
-
-const isVercel = Boolean(process.env.VERCEL);
-const uploadRoot = isVercel
-  ? path.join(os.tmpdir(), "uploads")
-  : path.join(process.cwd(), "uploads");
-
-const ensureDir = (dir) => {
-  try {
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-  } catch (err) {
-    console.error(`Error creating directory ${dir}:`, err.message);
-  }
-};
-
-ensureDir(uploadRoot);
 
 const getUploadInfo = (req, file) => {
   let type = "movies";
@@ -50,7 +30,6 @@ const getUploadInfo = (req, file) => {
   return {
     type,
     subfolder,
-    localFolder: path.join(uploadRoot, type, subfolder),
     remoteFolder: `${type}/${subfolder}`,
   };
 };
@@ -60,9 +39,9 @@ const storage = {
     try {
       const uploadInfo = getUploadInfo(req, file);
       const uniqueName = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-const ext = path.extname(file.originalname).toLowerCase();
+      const ext = path.extname(file.originalname).toLowerCase();
 
-const filename = `${uniqueName}${ext}`;
+      const filename = `${uniqueName}${ext}`;
 
       const result = await uploadStreamToBunny({
         stream: file.stream,
@@ -109,10 +88,9 @@ const fileFilter = (req, file, cb) => {
 const upload = multer({
   storage,
   fileFilter,
- limits: {
-  fileSize: Number(process.env.MAX_UPLOAD_SIZE) || 500 * 1024 * 1024,
-},
+  limits: {
+    fileSize: Number(process.env.MAX_UPLOAD_SIZE) || 500 * 1024 * 1024,
+  },
 });
 
 module.exports = upload;
-module.exports.uploadRoot = uploadRoot;

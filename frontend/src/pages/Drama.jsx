@@ -48,6 +48,11 @@ export default function Drama() {
   const getFullUrl = (url) => {
     if (!url) return "";
     if (/^(https?:\/\/|data:|blob:|\/\/)/i.test(url)) return url;
+
+    if (url.startsWith("/uploads") || url.includes("uploads/")) {
+      console.warn(`[LEGACY] Media url using local filesystem path detected: ${url}. Migrate this database entry to BunnyCDN.`);
+    }
+
     const cleanBase = BASE_URL.endsWith("/") ? BASE_URL.slice(0, -1) : BASE_URL;
     const cleanPath = url.startsWith("/") ? url : `/${url}`;
     return `${cleanBase}${cleanPath}`;
