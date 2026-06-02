@@ -55,47 +55,19 @@ const uploadThroughBackend = async (file, type, subfolder, onProgress) => {
  * @param {function} onProgress - Progress callback function receiving percent uploaded.
  * @returns {Promise<string>} The public BunnyCDN URL of the uploaded file.
  */
-export const uploadToBunny = async (file, type, subfolder, onProgress) => {
+//commented direct upload , backend upload only
+export const uploadToBunny = async (
+  file,
+  type,
+  subfolder,
+  onProgress
+) => {
   if (!file) return "";
 
-  const config = await fetchBunnyConfig();
-  const { storageHost, storageZone, accessKey, cdnUrl } = config;
-
-  if (!storageHost || !storageZone || !accessKey || !cdnUrl) {
-    return uploadThroughBackend(file, type, subfolder, onProgress);
-  }
-
-  const remoteFolder = `${safePathSegment(type)}/${safePathSegment(subfolder)}`;
-  const filename = `${Date.now()}-${Math.round(Math.random() * 1e9)}${getExtension(file)}`;
-  const cleanStorageHost = String(storageHost).replace(/^https?:\/\//i, "").replace(/\/+$/, "");
-  const cleanCdnUrl = String(cdnUrl).replace(/\/+$/, "");
-  const uploadUrl = `https://${cleanStorageHost}/${safePathSegment(storageZone)}/${remoteFolder}/${filename}`;
-
-  try {
-    await axios.put(uploadUrl, file, {
-      headers: {
-        AccessKey: accessKey,
-        "Content-Type": file.type || "application/octet-stream",
-      },
-      onUploadProgress: (progressEvent) => {
-        if (onProgress && progressEvent.total) {
-          const percentCompleted = Math.round(
-            (progressEvent.loaded * 100) / progressEvent.total
-          );
-          onProgress(percentCompleted);
-        }
-      },
-    });
-
-    return `${cleanCdnUrl}/${remoteFolder}/${filename}`;
-  } catch (error) {
-    if (file.size > MAX_BACKEND_FALLBACK_BYTES) {
-      throw new Error(
-        "Direct Bunny upload failed. Enable CORS on the Bunny storage zone for this admin domain before uploading large videos."
-      );
-    }
-
-    console.warn("Direct Bunny upload failed, falling back to backend proxy.", error);
-    return uploadThroughBackend(file, type, subfolder, onProgress);
-  }
+  return uploadThroughBackend(
+    file,
+    type,
+    subfolder,
+    onProgress
+  );
 };
