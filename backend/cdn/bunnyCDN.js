@@ -5,10 +5,16 @@ const path = require("path");
 const normalizeBaseUrl = (value) => String(value || "").trim().replace(/\/+$/, "");
 
 const normalizeStorageHost = (value) => {
-  return String(value || "storage.bunnycdn.com")
-    .trim()
-    .replace(/^https?:\/\//i, "")
-    .replace(/\/+$/, "");
+  if (value) {
+    return String(value)
+      .trim()
+      .replace(/^https?:\/\//i, "")
+      .replace(/\/+$/, "");
+  }
+  const region = (process.env.BUNNY_REGION || "").trim().toLowerCase();
+  return region && region !== "us"
+    ? `${region}.storage.bunnycdn.com`
+    : "storage.bunnycdn.com";
 };
 
 const getStorageHosts = (storageHost) => {
