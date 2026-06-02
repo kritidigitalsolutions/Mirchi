@@ -90,15 +90,15 @@ const addMovie = async (req, res) => {
     // ========================================
 console.log("MOVIE CREATE PAYLOAD");
 console.log({
-  title,
-  poster,
-  banner,
-  trailerUrl,
-  videoUrl,
+  title: req.body.title,
+  poster: req.body.poster,
+  banner: req.body.banner,
+  trailerUrl: req.body.trailerUrl,
+  videoUrl: req.body.videoUrl,
   cast,
   genre,
   category,
-  language,
+  language: req.body.language,
 });
     const movie = await Movie.create({
 
