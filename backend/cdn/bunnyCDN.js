@@ -11,14 +11,104 @@ const normalizeStorageHost = (value) => {
       .replace(/^https?:\/\//i, "")
       .replace(/\/+$/, "");
   }
-  const region = (process.env.BUNNY_REGION || "").trim().toLowerCase();
-  return region && region !== "us"
-    ? `${region}.storage.bunnycdn.com`
-    : "storage.bunnycdn.com";
+
+  return "storage.bunnycdn.com";
 };
 
 const getStorageHosts = (storageHost) => {
   return [...new Set([storageHost, "storage.bunnycdn.com"].filter(Boolean))];
+};
+
+let discoveredConfigPromise = null;
+
+const getArrayResponseItems = (payload) => {
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.Items)) return payload.Items;
+  return [];
+};
+
+const selectStorageZone = (zones) => {
+  const activeZones = zones.filter((zone) => !zone.Deleted);
+
+  if (!activeZones.length) {
+    throw new Error("No active Bunny storage zones found for BUNNY_ACCESS_KEY");
+  }
+
+  if (activeZones.length === 1) {
+    return activeZones[0];
+  }
+
+  const zonesWithPullZone = activeZones.filter((zone) => {
+    return Array.isArray(zone.PullZones) && zone.PullZones.length > 0;
+  });
+
+  if (zonesWithPullZone.length === 1) {
+    return zonesWithPullZone[0];
+  }
+
+  return zonesWithPullZone[0] || activeZones[0];
+};
+
+const selectCdnUrl = (zone) => {
+  const pullZones = Array.isArray(zone.PullZones) ? zone.PullZones : [];
+  const enabledPullZone = pullZones.find((pullZone) => {
+    return pullZone?.Enabled && !pullZone?.Suspended;
+  }) || pullZones[0];
+
+  const hostnames = Array.isArray(enabledPullZone?.Hostnames)
+    ? enabledPullZone.Hostnames
+    : [];
+
+  const hostname =
+    hostnames.find((item) => item?.IsSystemHostname)?.Value ||
+    hostnames.find((item) => item?.Value)?.Value ||
+    (enabledPullZone?.Name ? `${enabledPullZone.Name}.b-cdn.net` : "");
+
+  if (!hostname) {
+    throw new Error("No Bunny pull zone hostname found for the selected storage zone");
+  }
+
+  return normalizeBaseUrl(`https://${hostname}`);
+};
+
+const discoverConfigFromBunny = async (accountAccessKey) => {
+  const response = await fetch("https://api.bunny.net/storagezone", {
+    headers: {
+      AccessKey: accountAccessKey,
+    },
+  });
+
+  if (!response.ok) {
+    const message = await readResponseBody(response);
+    throw new Error(
+      `Bunny config discovery failed (${response.status}): ${message || response.statusText}`
+    );
+  }
+
+  const zones = getArrayResponseItems(await response.json());
+  const envStorageZone = String(process.env.BUNNY_STORAGE_ZONE || "").trim();
+  const selectedZone = envStorageZone
+    ? zones.find((zone) => String(zone.Name || "").trim() === envStorageZone)
+    : selectStorageZone(zones);
+
+  if (!selectedZone) {
+    throw new Error(`Bunny storage zone not found: ${envStorageZone}`);
+  }
+
+  const storageHost = normalizeStorageHost(selectedZone.StorageHostname);
+  const storageAccessKey = String(selectedZone.Password || "").trim();
+
+  if (!storageAccessKey) {
+    throw new Error("Selected Bunny storage zone is missing an upload password");
+  }
+
+  return {
+    storageZone: String(selectedZone.Name || "").trim(),
+    accessKey: storageAccessKey,
+    storageHost,
+    storageHosts: getStorageHosts(storageHost),
+    cdnUrl: selectCdnUrl(selectedZone),
+  };
 };
 
 const encodePathPart = (part) => {
@@ -36,12 +126,14 @@ const getConfig = () => {
   const cdnUrl = normalizeBaseUrl(process.env.BUNNY_CDN_URL);
 
   const missing = [];
-  if (!storageZone) missing.push("BUNNY_STORAGE_ZONE");
   if (!accessKey) missing.push("BUNNY_ACCESS_KEY");
-  if (!cdnUrl) missing.push("BUNNY_CDN_URL");
 
   if (missing.length) {
     throw new Error(`Missing Bunny CDN config: ${missing.join(", ")}`);
+  }
+
+  if (!storageZone || !cdnUrl) {
+    return null;
   }
 
   return {
@@ -51,6 +143,21 @@ const getConfig = () => {
     storageHosts: getStorageHosts(storageHost),
     cdnUrl,
   };
+};
+
+const getConfigAsync = async () => {
+  const staticConfig = getConfig();
+  if (staticConfig) {
+    return staticConfig;
+  }
+
+  if (!discoveredConfigPromise) {
+    discoveredConfigPromise = discoverConfigFromBunny(
+      String(process.env.BUNNY_ACCESS_KEY || "").trim()
+    );
+  }
+
+  return discoveredConfigPromise;
 };
 
 const sanitizeRemotePath = (remotePath) => {
@@ -71,7 +178,10 @@ const sanitizeRemotePath = (remotePath) => {
 };
 
 const buildPublicUrl = (remotePath) => {
-  const { cdnUrl } = getConfig();
+  const { cdnUrl } = getConfig() || {};
+  if (!cdnUrl) {
+    throw new Error("Bunny CDN URL is not available until config discovery completes");
+  }
   return `${cdnUrl}/${sanitizeRemotePath(remotePath)}`;
 };
 
@@ -170,7 +280,7 @@ const uploadBufferToBunny = async ({
     storageZone,
     accessKey,
     storageHosts,
-  } = getConfig();
+  } = await getConfigAsync();
 
   const safeRemotePath = sanitizeRemotePath(remotePath);
 
@@ -198,7 +308,7 @@ const uploadBufferToBunny = async ({
 
   return {
     path: safeRemotePath,
-    url: `${getConfig().cdnUrl}/${safeRemotePath}`,
+    url: `${(await getConfigAsync()).cdnUrl}/${safeRemotePath}`,
   };
 };
 
@@ -212,7 +322,7 @@ const uploadStreamToBunny = async ({
     storageZone,
     accessKey,
     storageHosts,
-  } = getConfig();
+  } = await getConfigAsync();
 
   const safeRemotePath = sanitizeRemotePath(remotePath);
 
@@ -241,7 +351,7 @@ const uploadStreamToBunny = async ({
 
   return {
     path: safeRemotePath,
-    url: `${getConfig().cdnUrl}/${safeRemotePath}`,
+    url: `${(await getConfigAsync()).cdnUrl}/${safeRemotePath}`,
   };
 };
 
@@ -291,7 +401,7 @@ const deleteFromBunny = async (remotePathOrUrl) => {
     accessKey,
     storageHosts,
     cdnUrl,
-  } = getConfig();
+  } = await getConfigAsync();
 
   let remotePath = String(remotePathOrUrl || "");
 

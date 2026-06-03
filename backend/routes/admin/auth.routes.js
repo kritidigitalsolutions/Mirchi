@@ -135,7 +135,7 @@ router.get(
   getAdminProfile
 );
 
-// Get Bunny CDN credentials for client-side uploads
+// Direct Bunny credentials must stay on the backend.
 router.get(
   "/bunny-config",
   isAdmin,
@@ -143,16 +143,7 @@ router.get(
     try {
       res.json({
         success: true,
-        storageZone: process.env.BUNNY_STORAGE_ZONE,
-        accessKey: process.env.BUNNY_ACCESS_KEY,
-        storageHost: (() => {
-          const region = (process.env.BUNNY_REGION || "").trim().toLowerCase();
-          const defaultHost = region && region !== "us"
-            ? `${region}.storage.bunnycdn.com`
-            : "storage.bunnycdn.com";
-          return process.env.BUNNY_STORAGE_HOST || defaultHost;
-        })(),
-        cdnUrl: process.env.BUNNY_CDN_URL,
+        uploadMode: "backend",
       });
     } catch (err) {
       res.status(500).json({ success: false, message: err.message });
