@@ -461,7 +461,20 @@ export default function Content() {
       const textFields = ["title", "description", "language", "duration", "rating", "releaseYear", "isPremium", "isComingSoon", "releaseDate", "priority"];
 
       textFields.forEach(k => {
-        if (editData[k] !== undefined) formData.append(k, editData[k]);
+        const value = editData[k];
+
+        if (value === undefined || value === null) {
+          return;
+        }
+
+        if (
+          k === "releaseDate" &&
+          (value === "" || value === "null" || Number.isNaN(Date.parse(value)))
+        ) {
+          return;
+        }
+
+        formData.append(k, value);
       });
       if (editData.genre) formData.append("genre", JSON.stringify(editData.genre));
       if (editData.category) formData.append("category", JSON.stringify(editData.category));

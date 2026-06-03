@@ -31,6 +31,20 @@ const sanitizeCast = (cast = []) => {
     }));
 };
 
+const normalizeDateInput = (value) => {
+  if (
+    value === undefined ||
+    value === null ||
+    value === "" ||
+    value === "null" ||
+    value === "undefined"
+  ) {
+    return null;
+  }
+
+  return value;
+};
+
 
 
 
@@ -91,7 +105,7 @@ const addSeries = async (req, res) => {
       banner: getMediaUrl(banner, req.body.banner),
       trailerUrl: getMediaUrl(trailer, req.body.trailerUrl),
       isComingSoon: req.body.isComingSoon === "true",
-      releaseDate: req.body.releaseDate || null,
+      releaseDate: normalizeDateInput(req.body.releaseDate),
       isPremium: req.body.isPremium === "true",
       rating: req.body.rating || 0,
       cast: sanitizeCast(cast),
@@ -200,9 +214,14 @@ const updateSeries = async (req, res) => {
     if (req.body.releaseYear) series.releaseYear = req.body.releaseYear;
     if (req.body.duration) series.duration = req.body.duration;
     if (req.body.language) series.language = req.body.language;
-    if (req.body.releaseDate) series.releaseDate = req.body.releaseDate;
+    if (req.body.releaseDate !== undefined) {
+      series.releaseDate = normalizeDateInput(req.body.releaseDate);
+    }
     if (req.body.rating) series.rating = req.body.rating;
     series.isComingSoon = req.body.isComingSoon === "true";
+    if (!series.isComingSoon && req.body.releaseDate === undefined) {
+      series.releaseDate = null;
+    }
     series.isPremium = req.body.isPremium === "true";
     series.category = category;
 
