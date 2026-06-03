@@ -160,6 +160,22 @@ const getConfigAsync = async () => {
   return discoveredConfigPromise;
 };
 
+const getClientUploadConfig = async () => {
+  const {
+    storageZone,
+    accessKey,
+    storageHosts,
+    cdnUrl,
+  } = await getConfigAsync();
+
+  return {
+    storageZone,
+    accessKey,
+    storageHost: storageHosts[0],
+    cdnUrl,
+  };
+};
+
 const sanitizeRemotePath = (remotePath) => {
   const normalized = String(remotePath || "")
     .replace(/\\/g, "/")
@@ -436,6 +452,7 @@ const deleteFromBunny = async (remotePathOrUrl) => {
 module.exports = {
   buildPublicUrl,
   deleteFromBunny,
+  getClientUploadConfig,
   uploadBufferToBunny,
   uploadFileToBunny,
   uploadMulterFileToBunny,

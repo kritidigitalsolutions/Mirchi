@@ -5,7 +5,10 @@ const path = require("path");
 const router = express.Router();
 
 const { isAdmin } = require("../../middlewares/admin.middleware");
-const { uploadStreamToBunny } = require("../../cdn/bunnyCDN");
+const {
+  getClientUploadConfig,
+  uploadStreamToBunny,
+} = require("../../cdn/bunnyCDN");
 
 const {
   loginAdmin,
@@ -135,15 +138,16 @@ router.get(
   getAdminProfile
 );
 
-// Direct Bunny credentials must stay on the backend.
 router.get(
   "/bunny-config",
   isAdmin,
-  (req, res) => {
+  async (req, res) => {
     try {
+      const config = await getClientUploadConfig();
+
       res.json({
         success: true,
-        uploadMode: "backend",
+        ...config,
       });
     } catch (err) {
       res.status(500).json({ success: false, message: err.message });
