@@ -87,7 +87,6 @@ router.get(
 
 router.patch(
   "/:id",
-
   isAdmin,
   seriesUpload,
   updateSeries

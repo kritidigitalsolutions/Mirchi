@@ -404,7 +404,21 @@ export default function Content() {
       const typeFolder = contentType === "movies" ? "movies" : "series";
 
       // 1. Direct upload cast image files and update payload URLs
-      const castPayload = (editData.cast || []).map(c => ({ name: c.name, image: c.image || "" }));
+      const invalidCast = (editData.cast || []).find((c, idx) => {
+        const hasImage = Boolean(c.image || castFiles[idx]);
+        return hasImage && !String(c.name || "").trim();
+      });
+
+      if (invalidCast) {
+        throw new Error("Cast member name is required when a cast image is set");
+      }
+
+      const castPayload = (editData.cast || [])
+        .map(c => ({
+          name: String(c.name || "").trim(),
+          image: c.image || "",
+        }))
+        .filter(c => c.name || c.image);
       const castEntries = Object.entries(castFiles);
       for (const [idxStr, file] of castEntries) {
         const idx = parseInt(idxStr, 10);
@@ -469,7 +483,8 @@ export default function Content() {
       closeModal();
       fetchData();
     } catch (err) {
-      alert("Save failed: " + (err.response?.data?.message || err.message));
+      console.error("CONTENT SAVE ERROR:", err.response?.data || err);
+      alert("Save failed: " + (err.response?.data?.error || err.response?.data?.message || err.message));
     } finally {
       setUploadProgress(0);
       setUploadPhase("");

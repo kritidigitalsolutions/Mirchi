@@ -14,6 +14,23 @@ const parseJSON = (value, defaultValue = []) => {
   }
 };
 
+const sanitizeCast = (cast = []) => {
+  if (!Array.isArray(cast)) {
+    return [];
+  }
+
+  return cast
+    .map((member) => ({
+      name: String(member?.name || "").trim(),
+      image: String(member?.image || "").trim(),
+    }))
+    .filter((member) => member.name || member.image)
+    .map((member) => ({
+      ...member,
+      name: member.name || "Unknown",
+    }));
+};
+
 
 
 
@@ -77,7 +94,7 @@ const addSeries = async (req, res) => {
       releaseDate: req.body.releaseDate || null,
       isPremium: req.body.isPremium === "true",
       rating: req.body.rating || 0,
-      cast,
+      cast: sanitizeCast(cast),
       category,
       priority,
     });
@@ -238,7 +255,7 @@ const updateSeries = async (req, res) => {
         cast[index].image = getMediaUrl(file);
       }
     }
-    series.cast = cast;
+    series.cast = sanitizeCast(cast);
 
     // ========================================
     // PRIORITY ALGORITHM FOR UPDATE

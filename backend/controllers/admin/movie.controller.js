@@ -13,6 +13,23 @@ const parseJSON = (value, defaultValue = []) => {
   }
 };
 
+const sanitizeCast = (cast = []) => {
+  if (!Array.isArray(cast)) {
+    return [];
+  }
+
+  return cast
+    .map((member) => ({
+      name: String(member?.name || "").trim(),
+      image: String(member?.image || "").trim(),
+    }))
+    .filter((member) => member.name || member.image)
+    .map((member) => ({
+      ...member,
+      name: member.name || "Unknown",
+    }));
+};
+
 
 // ========================================
 // ADD MOVIE
@@ -134,7 +151,7 @@ console.log({
 
       rating: req.body.rating || 0,
 
-      cast,
+      cast: sanitizeCast(cast),
 
       category,
 
@@ -435,7 +452,7 @@ const updateMovie = async (req, res) => {
 
 
 
-    movie.cast = cast;
+    movie.cast = sanitizeCast(cast);
 
     // ========================================
     // PRIORITY ALGORITHM FOR UPDATE
