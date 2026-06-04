@@ -71,7 +71,7 @@ const uploadDirectToBunny = async (
   onProgress
 ) => {
   const {
-    storageHost,
+    storageHosts = [],
     storageZone,
     accessKey,
     cdnUrl,
@@ -86,32 +86,56 @@ const uploadDirectToBunny = async (
       subfolder
     )}`;
 
-  const uploadUrl =
-    `https://${storageHost}/${storageZone}/${remoteFolder}/${filename}`;
+  let lastError = null;
 
-  const response = await axios.put(uploadUrl, file, {
-    headers: {
-      AccessKey: accessKey,
-      "Content-Type":
-        file.type || "application/octet-stream",
-    },
-    onUploadProgress: (progressEvent) => {
-      if (onProgress && progressEvent.total) {
-        const percentCompleted = Math.round(
-          (progressEvent.loaded * 100) /
-            progressEvent.total
-        );
+  for (const storageHost of storageHosts) {
+    const uploadUrl =
+      `https://${storageHost}/${storageZone}/${remoteFolder}/${filename}`;
 
-        onProgress(percentCompleted);
+    try {
+      const response = await axios.put(uploadUrl, file, {
+        headers: {
+          AccessKey: accessKey,
+          "Content-Type":
+            file.type || "application/octet-stream",
+        },
+        onUploadProgress: (progressEvent) => {
+          if (onProgress && progressEvent.total) {
+            const percentCompleted = Math.round(
+              (progressEvent.loaded * 100) /
+                progressEvent.total
+            );
+
+            onProgress(percentCompleted);
+          }
+        },
+      });
+
+      if (response.status >= 200 && response.status < 300) {
+        return `${cdnUrl}/${remoteFolder}/${filename}`;
       }
-    },
-  });
 
-  if (response.status < 200 || response.status >= 300) {
-    throw new Error(`Bunny upload failed (${response.status})`);
+      lastError = new Error(
+        `Bunny upload failed (${response.status})`
+      );
+    } catch (err) {
+      lastError = err;
+      const status = err?.response?.status;
+      const isRetryable = status === 401 || status === 403 || !err?.response;
+
+      if (!isRetryable) {
+        break;
+      }
+
+      // Try the next storage host if available.
+    }
   }
 
-  return `${cdnUrl}/${remoteFolder}/${filename}`;
+  if (lastError) {
+    throw lastError;
+  }
+
+  throw new Error("Bunny upload failed");
 };
 
 export const uploadToBunny = async (
@@ -135,10 +159,14 @@ export const uploadToBunny = async (
       onProgress
     );
   } catch (err) {
-    const isBunnyCorsOrNetworkIssue =
-      !err?.response && file.size <= 4 * 1024 * 1024;
+    const status = err?.response?.status;
+    const shouldFallbackToBackend =
+      !err?.response ||
+      status === 401 ||
+      status === 403 ||
+      status === 0;
 
-    if (!isBunnyCorsOrNetworkIssue) {
+    if (!shouldFallbackToBackend) {
       throw err;
     }
 

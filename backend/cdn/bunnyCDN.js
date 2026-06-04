@@ -172,6 +172,7 @@ const getClientUploadConfig = async () => {
     storageZone,
     accessKey,
     storageHost: storageHosts[0],
+    storageHosts,
     cdnUrl,
   };
 };
