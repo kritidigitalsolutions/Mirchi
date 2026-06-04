@@ -36,7 +36,7 @@ const defaultAllowed = [
   "http://localhost:5174",
   "https://mirchi-admin-panel.vercel.app",
   "https://mirchi-sigma.vercel.app",
-  "https://vermillion-babka-e7d74b.netlify.app"
+  "https://jazzy-sunflower-4b9b98.netlify.app/#/splash"
 ];
 
 const allowedOrigins = [...new Set([...frontendUrls, ...adminUrls, ...defaultAllowed])];
