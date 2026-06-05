@@ -99,12 +99,27 @@ const fileFilter = (req, file, cb) => {
   }
 };
 
+// Replace the multer instantiation block
+
+const MAX_UPLOAD_SIZE = Number(process.env.MAX_UPLOAD_SIZE);
+if (!MAX_UPLOAD_SIZE) {
+  throw new Error("MAX_UPLOAD_SIZE env variable is not set — check your .env file");
+}
+
 const upload = multer({
   storage,
   fileFilter,
   limits: {
-    fileSize: Number(process.env.MAX_UPLOAD_SIZE) || 500 * 1024 * 1024,
+    fileSize: MAX_UPLOAD_SIZE,  // driven entirely by .env, no hardcoded fallback
   },
 });
+
+// const upload = multer({
+//   storage,
+//   fileFilter,
+//   limits: {
+//     fileSize: Number(process.env.MAX_UPLOAD_SIZE) || 500 * 1024 * 1024,
+//   },
+// });
 
 module.exports = upload;
