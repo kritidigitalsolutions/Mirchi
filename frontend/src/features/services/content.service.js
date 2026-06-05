@@ -53,9 +53,11 @@ export const createContent = async ({
   // 4. Upload Trailer directly to Bunny CDN
   let trailerUrl = form.trailerUrl || "";
   if (trailerFile) {
-    if (onVideoProgress) onVideoProgress(40);
-    trailerUrl = await uploadToBunny(trailerFile, typeFolder, "trailers");
-  }
+  trailerUrl = await uploadToBunny(trailerFile, typeFolder, "trailers", (percent) => {
+    const scaledPercent = 25 + Math.round(percent * 0.15); // maps to 25%→40% range
+    if (onTrailerProgress) onTrailerProgress(scaledPercent);
+  });
+}
 
   // 5. Upload Movie Main Video directly to Bunny CDN
   let videoUrl = form.videoUrl || "";

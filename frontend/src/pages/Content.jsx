@@ -445,8 +445,13 @@ export default function Content() {
       // 4. Direct upload trailer
       let trailerUrl = uploadData.trailerUrl || "";
       if (uploadData.trailer) {
-        trailerUrl = await uploadToBunny(uploadData.trailer, typeFolder, "trailers");
-      }
+  trailerUrl = await uploadToBunny(
+    uploadData.trailer,
+    typeFolder,
+    "trailers",
+    (percent) => setUploadProgress(percent)   // ✅ add this
+  );
+}
 
       // 5. Direct upload video (movies only)
       let videoUrl = uploadData.videoUrl || "";
