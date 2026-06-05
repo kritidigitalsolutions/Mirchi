@@ -6,6 +6,8 @@ const upload = require(
   "../../middlewares/upload.middleware"
 );
 
+const validateFileSizes = require("../../middlewares/validateFileSizes");
+
 const {
   isAdmin
 } = require("../../middlewares/admin.middleware");
