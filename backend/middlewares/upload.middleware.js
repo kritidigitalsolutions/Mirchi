@@ -12,6 +12,7 @@ const getUploadInfo = (req, file) => {
   if (req.originalUrl.includes("/drama-episodes")) type = "dramaepisodes";
   if (req.originalUrl.includes("/shortdramas")) type = "shortdramas";
   if (req.originalUrl.includes("/user")) type = "profile";
+  if (req.originalUrl.includes("/support")) type = "support";
 
   let subfolder = "others";
 
@@ -25,6 +26,8 @@ const getUploadInfo = (req, file) => {
     subfolder = "trailers";
   } else if (file.fieldname.startsWith("castImage_")) {
     subfolder = "cast";
+  } else if (file.fieldname === "attachments") {
+    subfolder = "attachments";
   }
 
   return {
@@ -92,11 +95,32 @@ const fileFilter = (req, file, cb) => {
     "video/quicktime",
   ];
 
-  if (allowedMimeTypes.includes(file.mimetype)) {
-    cb(null, true);
+  if (req.originalUrl && req.originalUrl.includes("/support")) {
+    const allowedSupportTypes = [
+      "application/pdf",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "application/vnd.ms-excel",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "text/plain",
+      "application/zip",
+      "application/x-zip-compressed",
+      "application/octet-stream",
+    ];
+
+    if (
+      allowedMimeTypes.includes(file.mimetype) ||
+      allowedSupportTypes.includes(file.mimetype)
+    ) {
+      return cb(null, true);
+    }
   } else {
-    cb(new Error("Invalid file type"), false);
+    if (allowedMimeTypes.includes(file.mimetype)) {
+      return cb(null, true);
+    }
   }
+
+  cb(new Error("Invalid file type"), false);
 };
 
 // Replace the multer instantiation block

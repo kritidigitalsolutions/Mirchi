@@ -14,6 +14,9 @@ import {
   Tag,
   User,
   X,
+  Paperclip,
+  FileText,
+  Download,
 } from "lucide-react";
 import API from "../api/axios";
 import "./SupportDetails.css";
@@ -76,8 +79,10 @@ export default function SupportDetails({ ticketId }) {
   const [error, setError] = useState("");
   const [ticketsLoading, setTicketsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [replyFiles, setReplyFiles] = useState([]);
 
   const threadEndRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   const scrollToBottom = (behavior = "smooth") => {
     if (threadEndRef.current) {
@@ -233,14 +238,28 @@ export default function SupportDetails({ ticketId }) {
     event.preventDefault();
 
     const trimmedReply = reply.trim();
-    if (!activeTicketId || !trimmedReply) return;
+    if (!activeTicketId) return;
+    if (!trimmedReply && replyFiles.length === 0) return;
 
     try {
       setSendingReply(true);
-      await API.post(`/admin/support/reply/${activeTicketId}`, {
-        message: trimmedReply,
+      const formData = new FormData();
+      formData.append("message", trimmedReply);
+      replyFiles.forEach((file) => {
+        formData.append("attachments", file);
       });
+
+      await API.post(`/admin/support/reply/${activeTicketId}`, formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
       setReply("");
+      setReplyFiles([]);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
       fetchTicket();
       fetchTickets();
     } catch (err) {
@@ -512,6 +531,44 @@ export default function SupportDetails({ ticketId }) {
                         <time>{formatDate(message.createdAt)}</time>
                       </div>
                       <p>{message.message}</p>
+                      {message.attachments && message.attachments.length > 0 && (
+                        <div className="support-message-attachments" style={{ marginTop: 10, display: "flex", flexWrap: "wrap", gap: 10 }}>
+                          {message.attachments.map((url, idx) => {
+                            const isImage = /\.(jpeg|jpg|gif|png|webp)($|\?)/i.test(url);
+                            const filename = url.substring(url.lastIndexOf("/") + 1).split("-").slice(1).join("-") || `attachment-${idx + 1}`;
+                            return (
+                              <a
+                                key={idx}
+                                href={url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="support-attachment-chip"
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: 8,
+                                  background: "var(--bg)",
+                                  padding: "6px 12px",
+                                  borderRadius: 8,
+                                  fontSize: "0.82rem",
+                                  color: "var(--text-soft)",
+                                  border: "1px solid var(--border)",
+                                  textDecoration: "none",
+                                  transition: "all 0.2s"
+                                }}
+                              >
+                                {isImage ? (
+                                  <img src={url} alt={filename} style={{ width: 32, height: 32, objectFit: "cover", borderRadius: 4 }} />
+                                ) : (
+                                  <FileText size={16} style={{ color: "var(--primary)" }} />
+                                )}
+                                <span style={{ maxWidth: 150, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={filename}>{filename}</span>
+                                <Download size={14} style={{ opacity: 0.6 }} />
+                              </a>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
                   </article>
                 );
@@ -557,18 +614,85 @@ export default function SupportDetails({ ticketId }) {
               disabled={sendingReply || status === "CLOSED"}
               rows={4}
             />
-            <div className="support-reply-actions">
-              <span>
-                {status === "CLOSED"
-                  ? "Closed tickets cannot receive replies."
-                  : "Replying will notify the user. Press Ctrl + Enter to send."}
-              </span>
+
+            {replyFiles.length > 0 && (
+              <div className="support-reply-selected-files" style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 4 }}>
+                {replyFiles.map((file, idx) => (
+                  <div
+                    key={idx}
+                    className="selected-file-chip"
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                      background: "rgba(255,255,255,0.05)",
+                      border: "1px solid var(--border)",
+                      padding: "4px 8px",
+                      borderRadius: 6,
+                      fontSize: "0.8rem"
+                    }}
+                  >
+                    <FileText size={13} style={{ color: "var(--primary)" }} />
+                    <span style={{ maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{file.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => setReplyFiles(prev => prev.filter((_, i) => i !== idx))}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        color: "var(--text-muted)",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        padding: 2
+                      }}
+                      title="Remove file"
+                    >
+                      <X size={12} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="support-reply-actions" style={{ marginTop: 6 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1 }}>
+                <input
+                  type="file"
+                  id="supportAttachmentInput"
+                  ref={fileInputRef}
+                  style={{ display: "none" }}
+                  multiple
+                  onChange={(e) => {
+                    if (e.target.files) {
+                      const filesArray = Array.from(e.target.files);
+                      setReplyFiles(prev => [...prev, ...filesArray].slice(0, 5));
+                    }
+                  }}
+                  disabled={sendingReply || status === "CLOSED"}
+                />
+                <button
+                  type="button"
+                  className="support-btn ghost"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={sendingReply || status === "CLOSED"}
+                  title="Add attachments (Max 5)"
+                  style={{ minWidth: "auto", minHeight: "38px", height: "38px", padding: "0 10px", display: "flex", alignItems: "center", justifyContent: "center" }}
+                >
+                  <Paperclip size={18} />
+                </button>
+                <span className="reply-help-text">
+                  {status === "CLOSED"
+                    ? "Closed tickets cannot receive replies."
+                    : "Replying will notify the user. Ctrl + Enter to send."}
+                </span>
+              </div>
               <button
                 id="sendReplySubmitBtn"
                 className="support-btn primary"
                 type="submit"
                 disabled={
-                  sendingReply || status === "CLOSED" || !reply.trim()
+                  sendingReply || status === "CLOSED" || (!reply.trim() && replyFiles.length === 0)
                 }
               >
                 {sendingReply ? (

@@ -29,6 +29,17 @@ exports.createTicket = async (
       });
     }
 
+    let attachments = [];
+    if (req.files && req.files.length > 0) {
+      attachments = req.files.map(file => file.cdnUrl || file.path);
+    } else if (req.body.attachments) {
+      attachments = Array.isArray(req.body.attachments)
+        ? req.body.attachments
+        : typeof req.body.attachments === "string"
+          ? [req.body.attachments]
+          : [];
+    }
+
     // ========================================
     // CREATE TICKET
     // ========================================
@@ -39,24 +50,26 @@ exports.createTicket = async (
         category,
         lastMessage: message,
         status: "OPEN",
+        attachments,
       });
 
     // ========================================
     // CREATE FIRST MESSAGE
     // ========================================
-    await SupportMessage.create({
+    const firstMessage = await SupportMessage.create({
       ticket: ticket._id,
       senderType: "USER",
       senderModel: "User",
       senderId: req.user.id,
       message,
+      attachments,
     });
 
     res.status(201).json({
       success: true,
-      message:
-        "Ticket created successfully",
+      message: "Ticket created successfully",
       ticket,
+      firstMessage,
     });
 
   } catch (error) {
@@ -207,6 +220,17 @@ exports.replyToTicket = async (
       });
     }
 
+    let attachments = [];
+    if (req.files && req.files.length > 0) {
+      attachments = req.files.map(file => file.cdnUrl || file.path);
+    } else if (req.body.attachments) {
+      attachments = Array.isArray(req.body.attachments)
+        ? req.body.attachments
+        : typeof req.body.attachments === "string"
+          ? [req.body.attachments]
+          : [];
+    }
+
     // ========================================
     // CREATE MESSAGE
     // ========================================
@@ -216,6 +240,7 @@ exports.replyToTicket = async (
       senderModel: "User",
       senderId: req.user.id,
       message,
+      attachments,
     });
 
     // ========================================
@@ -225,6 +250,10 @@ exports.replyToTicket = async (
 
     // customer replied again
     ticket.status = "OPEN";
+
+    if (attachments && attachments.length > 0) {
+      ticket.attachments = [...(ticket.attachments || []), ...attachments];
+    }
 
     await ticket.save();
 

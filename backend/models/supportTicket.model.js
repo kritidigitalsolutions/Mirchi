@@ -69,6 +69,14 @@ const supportTicketSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+
+    // ========================================
+    // ATTACHMENTS
+    // ========================================
+    attachments: {
+      type: [String],
+      default: [],
+    },
   },
   {
     timestamps: true,

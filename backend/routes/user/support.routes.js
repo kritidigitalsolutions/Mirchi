@@ -6,6 +6,8 @@ const {
   isAuth,
 } = require("../../middlewares/auth.middleware");
 
+const upload = require("../../middlewares/upload.middleware");
+
 const {
   createTicket,
   getMyTickets,
@@ -21,6 +23,7 @@ const {
 router.post(
   "/",
   isAuth,
+  upload.array("attachments", 5),
   createTicket
 );
 
@@ -51,6 +54,7 @@ router.get(
 router.post(
   "/reply/:id",
   isAuth,
+  upload.array("attachments", 5),
   replyToTicket
 );
 

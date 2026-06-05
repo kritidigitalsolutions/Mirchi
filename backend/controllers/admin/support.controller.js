@@ -139,6 +139,17 @@ exports.adminReplyTicket =
         });
       }
 
+      let attachments = [];
+      if (req.files && req.files.length > 0) {
+        attachments = req.files.map(file => file.cdnUrl || file.path);
+      } else if (req.body.attachments) {
+        attachments = Array.isArray(req.body.attachments)
+          ? req.body.attachments
+          : typeof req.body.attachments === "string"
+            ? [req.body.attachments]
+            : [];
+      }
+
       // ========================================
       // CREATE ADMIN MESSAGE
       // ========================================
@@ -148,6 +159,7 @@ exports.adminReplyTicket =
         senderModel: "Admin",
         senderId: req.user.id,
         message,
+        attachments,
       });
 
       // ========================================
@@ -157,6 +169,10 @@ exports.adminReplyTicket =
 
       // waiting for customer response
       ticket.status = "PENDING";
+
+      if (attachments && attachments.length > 0) {
+        ticket.attachments = [...(ticket.attachments || []), ...attachments];
+      }
 
       await ticket.save();
 

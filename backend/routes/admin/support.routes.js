@@ -6,6 +6,8 @@ const {
   isAdmin,
 } = require("../../middlewares/admin.middleware");
 
+const upload = require("../../middlewares/upload.middleware");
+
 const {
   getAllTickets,
   getAdminSingleTicket,
@@ -41,6 +43,7 @@ router.get(
 router.post(
   "/reply/:id",
   isAdmin,
+  upload.array("attachments", 5),
   adminReplyTicket
 );
 
