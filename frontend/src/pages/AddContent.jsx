@@ -203,54 +203,66 @@ export default function AddContent() {
   };
 
   // Submit
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+ // Submit
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  setLoading(true);
+  setUploadProgress(0);
+  setUploadPhase("main");
 
-    setLoading(true);
+  try {
+    await createContent({
+      form,
+      videoFile, posterFile, bannerFile, trailerFile,
+      castFiles,
+      episodeVideoFiles, episodeThumbnailFiles,
+
+      onTrailerProgress: (percent) => {
+        setUploadProgress(percent);
+      },
+
+      onVideoProgress: (percent) => {
+        setUploadProgress(percent);
+        if (percent === 100) {
+          setUploadPhase(form.type === "movie" ? "complete" : "episodes");
+        }
+      },
+
+      onEpisodeProgress: (current, total, percent) => {
+        setUploadPhase("episodes");
+        setCurrentEpisodeInfo({ current, total });
+        setUploadProgress(percent);
+        if (current === total && percent === 100) {
+          setUploadPhase("complete");
+        }
+      },                              // ← callback ends here, no reset inside
+    });
+
+    alert("Content published successfully! 🚀");
+
+    // ✅ Reset HERE — after await resolves, everything is done
+    resetForm();
+    setVideoFile(null);
+    setPosterFile(null);
+    setBannerFile(null);
+    setTrailerFile(null);
+    setEpisodeVideoFiles({});
+    setEpisodeThumbnailFiles({});
+    setCastFiles({});
     setUploadProgress(0);
-    setUploadPhase("main");
+    setUploadPhase("");
+    setCurrentEpisodeInfo({ current: 0, total: 0 });
 
-    try {
-      await createContent({
-  form,
-  videoFile, posterFile, bannerFile, trailerFile,
-  castFiles,
-  episodeVideoFiles, episodeThumbnailFiles,
+  } catch (err) {
+    console.error(err);
+    alert(err.response?.data?.message || "Error publishing content");
+    setUploadProgress(0);
+    setUploadPhase("");
+  }
 
-  onTrailerProgress: (percent) => {       // ✅ add this
-    setUploadProgress(percent);
-  },
-
-  onVideoProgress: (percent) => {
-    setUploadProgress(percent);
-    if (percent === 100) {
-      setUploadPhase(form.type === "movie" ? "complete" : "episodes");
-    }
-  },
-  onEpisodeProgress: (current, total, percent) => {
-    setUploadPhase("episodes");
-    setCurrentEpisodeInfo({ current, total });
-    setUploadProgress(percent);
-    if (current === total && percent === 100) {
-      setUploadPhase("complete");
-    }
-  },
-});
-
-    } catch (err) {
-      console.error(err);
-
-      alert(
-        err.response?.data?.message ||
-        "Error publishing content"
-      );
-
-      setUploadProgress(0);
-      setUploadPhase("");
-    }
-
-    setLoading(false);
-  };
+  setLoading(false);
+};
+  
 
   return (
     <div className="add-content-page">

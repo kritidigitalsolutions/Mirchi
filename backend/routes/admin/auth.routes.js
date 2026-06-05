@@ -102,7 +102,7 @@ const bunnyStorage = {
 const bunnyUpload = multer({
   storage: bunnyStorage,
   limits: {
-    fileSize: Number(process.env.MAX_UPLOAD_SIZE) || 500 * 1024 * 1024,
+    fileSize: Number(process.env.MAX_UPLOAD_SIZE),
   },
 });
 

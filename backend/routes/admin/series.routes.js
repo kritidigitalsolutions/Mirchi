@@ -59,12 +59,14 @@ const seriesUpload =
 // ========================================
 // ROUTES (Protected)
 // ========================================
-router.post(
-  "/add",
-  isAdmin,
-  seriesUpload,
-  addSeries
-);
+router.post("/add", isAdmin, seriesUpload, validateFileSizes, addSeries);
+router.patch("/:id", isAdmin, seriesUpload, validateFileSizes, updateSeries);
+// router.post(
+//   "/add",
+//   isAdmin,
+//   seriesUpload,
+//   addSeries
+// );
 
 router.get(
   "/",
@@ -85,12 +87,12 @@ router.get(
   getSeriesById
 );
 
-router.patch(
-  "/:id",
-  isAdmin,
-  seriesUpload,
-  updateSeries
-);
+// router.patch(
+//   "/:id",
+//   isAdmin,
+//   seriesUpload,
+//   updateSeries
+// );
 
 router.delete(
   "/:id",

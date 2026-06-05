@@ -70,12 +70,14 @@ const movieUpload = upload.fields([
 // ========================================
 // ROUTES (Protected)
 // ========================================
-router.post(
-  "/add",
-  isAdmin,
-  movieUpload,
-  addMovie
-);
+router.post("/add", isAdmin, movieUpload, validateFileSizes, addMovie);
+router.patch("/:id", isAdmin, movieUpload, validateFileSizes, updateMovie);
+// router.post(
+//   "/add",
+//   isAdmin,
+//   movieUpload,
+//   addMovie
+// );
 
 router.get(
   "/",
@@ -96,12 +98,12 @@ router.get(
   getMovieById
 );
 
-router.patch(
-  "/:id",
-  isAdmin,
-  movieUpload,
-  updateMovie
-);
+// router.patch(
+//   "/:id",
+//   isAdmin,
+//   movieUpload,
+//   updateMovie
+// );
 
 router.delete(
   "/:id",

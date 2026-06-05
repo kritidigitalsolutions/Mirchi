@@ -41,12 +41,14 @@ const episodeUpload =
 // ========================================
 // ROUTES (Protected)
 // ========================================
-router.post(
-  "/add",
-  isAdmin,
-  episodeUpload,
-  addEpisode
-);
+router.post("/add", isAdmin, episodeUpload, validateFileSizes, addEpisode);
+router.patch("/:id", isAdmin, episodeUpload, validateFileSizes, updateEpisode);
+// router.post(
+//   "/add",
+//   isAdmin,
+//   episodeUpload,
+//   addEpisode
+// );
 
 router.get(
   "/",
@@ -61,13 +63,13 @@ router.get(
 );
 
 
-router.patch(
-  "/:id",
+// router.patch(
+//   "/:id",
 
-  isAdmin,
-  episodeUpload,
-  updateEpisode
-);
+//   isAdmin,
+//   episodeUpload,
+//   updateEpisode
+// );
 
 router.delete(
   "/season/:seriesId/:seasonNumber",
