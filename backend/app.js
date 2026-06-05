@@ -141,6 +141,8 @@ const dramaEpisodeUserRoutes = require(
   "./routes/user/dramaEpisode.routes"
 );
 
+const updateUpcomingStatus = require("./middlewares/updateUpcomingStatus.middleware");
+
 app.use(
   "/api/admin/auth",
   adminAuthRoutes
@@ -158,11 +160,13 @@ app.use(
 
 app.use(
   "/api/admin/movies",
+  updateUpcomingStatus,
   movieRoutes
 );
 
 app.use(
   "/api/admin/series",
+  updateUpcomingStatus,
   seriesRoutes
 );
 
@@ -173,6 +177,7 @@ app.use(
 
 app.use(
   "/api/admin/content",
+  updateUpcomingStatus,
   contentAdminRoutes
 );
 
@@ -219,11 +224,11 @@ app.use(
   userRoutes
 );
 
-app.use("/api/movies", movieUserRoutes);
+app.use("/api/movies", updateUpcomingStatus, movieUserRoutes);
 
-app.use("/api/series", seriesUserRoutes);
+app.use("/api/series", updateUpcomingStatus, seriesUserRoutes);
 
-app.use("/api/content", contentUserRoutes);
+app.use("/api/content", updateUpcomingStatus, contentUserRoutes);
 
 //legal routes for admin
 const adminLegal = require("./routes/admin/legal.routes");
