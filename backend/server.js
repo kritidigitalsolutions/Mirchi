@@ -24,10 +24,14 @@ const startServer = async () => {
       console.log(`✅ Server running on port ${PORT}`);
     });
 
-    // Support large file uploads by increasing timeouts to 20 minutes
+    // Upload timeout: 20 minutes for large video uploads
     server.timeout = 20 * 60 * 1000;
-    server.keepAliveTimeout = 20 * 60 * 1000;
-    server.headersTimeout = 21 * 60 * 1000;
+
+    // CRITICAL: keepAliveTimeout MUST be less than Nginx keepalive_timeout (default 75s).
+    // If it is greater, Nginx reuses a keep-alive connection that Node has already
+    // decided to close → race condition → 504 Gateway Timeout + hung curl connections.
+    server.keepAliveTimeout = 65 * 1000;          // 65 seconds (< Nginx's 75s default)
+    server.headersTimeout   = 66 * 1000;          // must be > keepAliveTimeout
 
 
 

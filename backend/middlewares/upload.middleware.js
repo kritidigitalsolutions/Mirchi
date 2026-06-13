@@ -123,18 +123,21 @@ const fileFilter = (req, file, cb) => {
   cb(new Error("Invalid file type"), false);
 };
 
-// Replace the multer instantiation block
-
-const MAX_UPLOAD_SIZE = Number(process.env.MAX_UPLOAD_SIZE);
-if (!MAX_UPLOAD_SIZE) {
-  throw new Error("MAX_UPLOAD_SIZE env variable is not set — check your .env file");
-}
+// Lazy-evaluated so a missing env var doesn't crash app startup and abort
+// all route registration. The error is thrown at first upload request instead.
+const getMaxUploadSize = () => {
+  const size = Number(process.env.MAX_UPLOAD_SIZE);
+  if (!size) {
+    throw new Error("MAX_UPLOAD_SIZE env variable is not set — check your .env file");
+  }
+  return size;
+};
 
 const upload = multer({
   storage,
   fileFilter,
   limits: {
-    fileSize: MAX_UPLOAD_SIZE,  // driven entirely by .env, no hardcoded fallback
+    fileSize: getMaxUploadSize(),  // driven entirely by .env, no hardcoded fallback
   },
 });
 
