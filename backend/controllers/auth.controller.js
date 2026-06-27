@@ -459,3 +459,70 @@ exports.googleLogin = async (req, res) => {
     });
   }
 };
+
+// ========================================
+// WEBSITE SSO LOGIN
+// ========================================
+exports.websiteSSOLogin = async (req, res) => {
+  try {
+
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return res.status(401).json({
+        success: false,
+        message: "Authorization token missing",
+      });
+    }
+
+    const appToken = authHeader.split(" ")[1];
+
+    let decoded;
+
+    try {
+      decoded = jwt.verify(
+        appToken,
+        process.env.JWT_SECRET
+      );
+    } catch (err) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid or expired token",
+      });
+    }
+
+    const user = await User.findById(decoded.id);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    // Generate fresh website token
+    const websiteToken = generateUserToken(user);
+
+    return res.status(200).json({
+      success: true,
+      message: "Website login successful",
+      token: websiteToken,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        profileImage: user.profileImage,
+        role: user.role,
+      },
+    });
+
+  } catch (error) {
+    console.error("WEBSITE SSO LOGIN:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};

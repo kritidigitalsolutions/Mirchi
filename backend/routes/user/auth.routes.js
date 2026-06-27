@@ -6,6 +6,7 @@ const {
   sendOTP,
   verifyOtp,
   googleLogin,
+  websiteSSOLogin,
 } = require("../../controllers/auth.controller");
 
 
@@ -32,6 +33,14 @@ router.post(
 router.post(
   "/google-login",
   googleLogin
+);
+
+// ========================================
+// WEBSITE SSO LOGIN
+// ========================================
+router.post(
+  "/website-login",
+  websiteSSOLogin
 );
 
 
