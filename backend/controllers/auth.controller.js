@@ -6,6 +6,10 @@ const User = require("../models/user.model");
 const { admin } = require("../config/firebase");
 const { OAuth2Client } = require("google-auth-library");
 
+
+const { sendOtpSms } = require("../services/pinnacleSmsService");
+
+
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 
@@ -52,7 +56,9 @@ const generateUserToken = (user) => {
 
 
 // ========================================
-// SEND OTP
+
+// SEND OTP  (Pinnacle SMS integrated)
+
 // ========================================
 exports.sendOTP = async (req, res) => {
   try {
@@ -106,6 +112,35 @@ exports.sendOTP = async (req, res) => {
       100000 + Math.random() * 900000
     ).toString();
 
+
+    // Pinnacle needs a plain 10-digit number, no +91 prefix
+    const tenDigitPhone = normalizedPhone.replace(
+      /^\+91/,
+      ""
+    );
+
+    // Send the SMS via Pinnacle BEFORE saving to DB —
+    // we don't want an OTP record for an SMS that never went out.
+    const smsResult = await sendOtpSms(
+      tenDigitPhone,
+      otp
+    );
+    console.log("\n========== SMS RESULT ==========");
+console.log(JSON.stringify(smsResult, null, 2));
+
+    if (!smsResult.success) {
+      console.error(
+        "PINNACLE SEND OTP FAILED:",
+        smsResult.error
+      );
+
+      return res.status(502).json({
+        success: false,
+        message:
+          "Failed to send OTP. Please try again.",
+      });
+    }
+
     // remove old otp
     await OTP.deleteMany({
       phone: normalizedPhone,
@@ -128,17 +163,22 @@ exports.sendOTP = async (req, res) => {
     const isNewUser =
       !user || !user.profileComplete;
 
-    // console otp
-    console.log(
-      `📱 OTP for ${normalizedPhone}: ${otp} | isNewUser: ${isNewUser}`
-    );
+
+    // Keep this for local/dev debugging ONLY.
+    // Logging real OTPs in production logs is a security risk.
+    if (process.env.NODE_ENV !== "production") {
+      console.log(
+        `📱 OTP for ${normalizedPhone}: ${otp} | isNewUser: ${isNewUser}`
+      );
+    }
 
     return res.status(200).json({
       success: true,
-      message: `OTP generated successfully. Your OTP is: ${otp}`,
+      message: `OTP sent successfully to ${normalizedPhone}`,
       isNewUser,
-      otp,
-    });
+      // ⚠️ Do NOT return the otp in the API response in production.
+      // otp,
+    }); 
 
   } catch (error) {
     console.error(
