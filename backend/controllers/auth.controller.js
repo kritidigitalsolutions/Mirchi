@@ -11,7 +11,13 @@ const { sendOtpSms } = require("../services/pinnacleSmsService");
 
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+// ========================================
+// DUMMY USER (Development)
+// ========================================
+const DUMMY_PHONE = "+919999999999";
+const DUMMY_OTP = "123456";
 
+const isDummyUser = (phone) => phone === DUMMY_PHONE;
 
 // ========================================
 // FORMAT INDIAN PHONE
@@ -73,6 +79,32 @@ exports.sendOTP = async (req, res) => {
 
     const normalizedPhone =
       formatIndianPhone(phone);
+
+      // ========================================
+// DUMMY USER
+// ========================================
+if (isDummyUser(normalizedPhone)) {
+  let user = await User.findOne({
+    phone: DUMMY_PHONE,
+  });
+
+  if (!user) {
+    user = await User.create({
+      phone: DUMMY_PHONE,
+      name: "Dummy User",
+      username: "@dummyuser",
+      role: "USER",
+      profileComplete: true,
+      profileImage: "",
+    });
+  }
+
+  return res.status(200).json({
+    success: true,
+    message: "Dummy OTP generated",
+    isNewUser: false,
+  });
+}
 
     // indian mobile validation
     const phoneRegex =
@@ -215,6 +247,51 @@ exports.verifyOtp = async (req, res) => {
     const normalizedOtp = String(
       otp
     ).trim();
+
+    // ========================================
+// DUMMY USER LOGIN
+// ========================================
+if (isDummyUser(normalizedPhone)) {
+  if (normalizedOtp !== DUMMY_OTP) {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid OTP",
+    });
+  }
+
+  let user = await User.findOne({
+    phone: DUMMY_PHONE,
+  });
+
+  if (!user) {
+    user = await User.create({
+      phone: DUMMY_PHONE,
+      name: "Dummy User",
+      username: "@dummyuser",
+      role: "USER",
+      profileComplete: true,
+      profileImage: "",
+    });
+  }
+
+  const token = generateUserToken(user);
+
+  return res.status(200).json({
+    success: true,
+    message: "OTP verified successfully",
+    token,
+    isNewUser: false,
+    user: {
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+      profileImage: user.profileImage,
+      profileComplete: user.profileComplete,
+      role: user.role,
+    },
+  });
+}
 
     const otpRecord =
       await OTP.findOne({
