@@ -68,7 +68,7 @@ const subscriptionSchema =
       },
 
       // ========================================
-      // RAZORPAY ORDER ID
+      // Merchant transaction ID (SabPaisa merchantTxnId)
       // ========================================
 
       subscriptionId: {

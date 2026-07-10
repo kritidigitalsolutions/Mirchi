@@ -273,6 +273,11 @@ exports.checkSubscription = async (
 
     const userId = req.user.id;
 
+    console.log("[SUBSCRIPTION] STATUS_CHECK_RECEIVED", {
+      userId,
+      at: new Date().toISOString(),
+    });
+
     let subscription =
       await Subscription.findOne({
         user: userId,
@@ -291,6 +296,11 @@ exports.checkSubscription = async (
       subscription.status !==
         "active"
     ) {
+      console.log("[SUBSCRIPTION] STATUS_CHECK_NO_ACTIVE_SUBSCRIPTION", {
+        userId,
+        foundSubscriptionId: subscription?._id?.toString() || null,
+        foundStatus: subscription?.status || null,
+      });
       return res.status(403).json({
         success: false,
         message:
@@ -327,7 +337,19 @@ exports.checkSubscription = async (
       remainingDays,
     });
 
+    console.log("[SUBSCRIPTION] STATUS_CHECK_ACTIVE", {
+      userId,
+      subscriptionId: subscription._id.toString(),
+      planId: subscription.plan?._id?.toString() || subscription.plan?.toString(),
+      remainingDays,
+    });
+
   } catch (error) {
+
+    console.error("[SUBSCRIPTION] STATUS_CHECK_FAILED", {
+      userId: req.user?.id,
+      message: error.message,
+    });
 
     console.error(
       "Check Subscription Error:",

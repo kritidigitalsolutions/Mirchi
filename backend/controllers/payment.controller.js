@@ -161,7 +161,8 @@ const sabPaisaWebhook = async (req, res) => {
       return res.status(400).send('Missing signature');
     }
     const [timestamp, receivedSignature] = signatureHeader.split('.');
-    if (!timestamp || !receivedSignature || Math.abs(Math.floor(Date.now() / 1000) - Number(timestamp)) > 300) {
+    // SabPaisa sends its webhook timestamp in milliseconds, not seconds.
+    if (!timestamp || !receivedSignature || Math.abs(Date.now() - Number(timestamp)) > 300000) {
       paymentLog('WEBHOOK_REJECTED', { reason: 'Invalid or expired signature timestamp' });
       return res.status(400).send('Invalid or expired signature timestamp');
     }
@@ -219,8 +220,6 @@ const sabPaisaReturn = (req, res) => {
 module.exports = {
   createOrder,
   verifyPayment,
-  createSabPaisaPayment: createOrder,
-  verifySabPaisaPayment: verifyPayment,
   sabPaisaWebhook,
   sabPaisaReturn,
 };

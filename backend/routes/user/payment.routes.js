@@ -1,17 +1,3 @@
-// const express = require("express");
-// const router = express.Router();
-
-// const { isAuth } = require("../../middlewares/auth.middleware");
-// const {
-//   createOrder,
-//   verifyPayment
-// } = require("../../controllers/payment.controller");
-
-// router.post("/create-order", isAuth, createOrder);
-// router.post("/verify", isAuth, verifyPayment);
-
-// module.exports = router;
-
 const express = require("express");
 const router = express.Router();
 
@@ -20,8 +6,6 @@ const { isAuth } = require("../../middlewares/auth.middleware");
 const {
   createOrder,
   verifyPayment,
-  createSabPaisaPayment,
-  verifySabPaisaPayment,
   sabPaisaWebhook,
   sabPaisaReturn,
 } = require("../../controllers/payment.controller");
@@ -37,14 +21,12 @@ router.use((req, res, next) => {
   next();
 });
 
-// ── Razorpay (existing) ──
+// SabPaisa payment APIs
 router.post("/create-order", isAuth, createOrder);
 router.post("/verify", isAuth, verifyPayment);
 
-// ── SabPaisa (new) ──
-router.post("/sabpaisa/create", isAuth, createSabPaisaPayment);
-router.post("/sabpaisa/verify", isAuth, verifySabPaisaPayment);
-router.post("/webhook", sabPaisaWebhook);      // NO isAuth — SabPaisa calls this
-router.get("/return", sabPaisaReturn);          // NO isAuth — browser redirect
+// These are called by SabPaisa, not by an authenticated app user.
+router.post("/webhook", sabPaisaWebhook);
+router.get("/return", sabPaisaReturn);
 
 module.exports = router;

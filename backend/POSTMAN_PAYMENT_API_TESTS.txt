@@ -1,0 +1,196 @@
+MIRCHI OTT — SABPAISA PAYMENT API POSTMAN TESTS
+================================================
+
+BASE URL
+--------
+Production: https://api.mirchiapp.in
+Local:      http://localhost:5001
+
+Postman environment variables
+-----------------------------
+baseUrl = https://api.mirchiapp.in
+token   = Paste the USER JWT returned by your login/OTP API
+planId  = Paste an active Plan MongoDB _id
+
+IMPORTANT
+---------
+1. Do not send SABPAISA_SECRET_KEY, SABPAISA_WEBHOOK_SECRET, clientSecret,
+   or Authorization token in screenshots/chat.
+2. The user must not have an active subscription before purchasing another plan.
+3. Webhook is called only by SabPaisa. A plain Postman call correctly returns
+   400 Missing signature.
+
+
+1) CREATE SABPAISA PAYMENT ORDER
+--------------------------------
+Method: POST
+URL: {{baseUrl}}/api/payment/create-order
+
+Headers:
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+Body (raw JSON):
+{
+  "planId": "{{planId}}"
+}
+
+Optional promo-code body:
+{
+  "planId": "{{planId}}",
+  "promoCode": "WELCOME10"
+}
+
+Expected: 200 OK
+Example response:
+{
+  "success": true,
+  "checkoutUrl": "https://checkout.sabpaisa.in/checkout/...",
+  "paymentId": "sppay_...",
+  "merchantTxnId": "txn_...",
+  "amount": 1
+}
+
+Save merchantTxnId from the response as Postman variable:
+merchantTxnId = response.merchantTxnId
+
+Postman Tests tab script (optional):
+if (pm.response.code === 200) {
+  const response = pm.response.json();
+  pm.environment.set("merchantTxnId", response.merchantTxnId);
+  pm.environment.set("checkoutUrl", response.checkoutUrl);
+}
+
+Then open checkoutUrl in browser and finish the SabPaisa payment.
+
+
+2) CHECK PAYMENT VERIFICATION / SUBSCRIPTION
+---------------------------------------------
+Method: POST
+URL: {{baseUrl}}/api/payment/verify
+
+Headers:
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+Body (raw JSON):
+{
+  "merchantTxnId": "{{merchantTxnId}}"
+}
+
+Expected before signed SabPaisa webhook arrives: 202 Accepted
+{
+  "success": false,
+  "message": "Payment is awaiting SabPaisa confirmation"
+}
+
+Expected after signed SabPaisa webhook succeeds: 200 OK
+{
+  "success": true,
+  "message": "Payment verified",
+  "subscription": {
+    "status": "active"
+  }
+}
+
+
+3) CHECK ACTIVE SUBSCRIPTION STATUS
+------------------------------------
+Method: GET
+URL: {{baseUrl}}/api/subscription/status
+
+Headers:
+Authorization: Bearer {{token}}
+
+Expected after payment activation: 200 OK
+{
+  "success": true,
+  "subscription": {
+    "status": "active"
+  },
+  "remainingDays": 1
+}
+
+Expected before activation/no subscription: 403 Forbidden
+{
+  "success": false,
+  "message": "No active subscription"
+}
+
+Note: This 403 means no active subscription record exists. It does NOT mean
+your Bearer token is invalid. Invalid/missing token normally returns 401.
+
+
+4) CANCEL ACTIVE SUBSCRIPTION (OPTIONAL TEST)
+----------------------------------------------
+Method: DELETE
+URL: {{baseUrl}}/api/subscription/cancel
+
+Headers:
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+Body (raw JSON):
+{
+  "subscriptionId": "PASTE_SUBSCRIPTION_ID_FROM_STATUS_RESPONSE"
+}
+
+Expected: 200 OK
+{
+  "success": true,
+  "message": "Subscription cancelled"
+}
+
+
+5) SABPAISA WEBHOOK — CONNECTIVITY CHECK ONLY
+----------------------------------------------
+Method: POST
+URL: {{baseUrl}}/api/payment/webhook
+
+Headers:
+Content-Type: application/json
+
+Body: leave empty
+
+Expected: 400 Bad Request
+Missing signature
+
+This is CORRECT. It proves the endpoint is online and rejects unauthenticated
+requests. Do not attempt to activate a payment manually through Postman.
+
+The real request is sent by SabPaisa with:
+Content-Type: application/json
+X-SabPaisa-Signature: <timestamp-in-milliseconds>.<base64-hmac-sha256>
+X-SabPaisa-Timestamp: <timestamp-in-milliseconds>
+X-SabPaisa-Event: payment.success
+
+Webhook URL to configure in the SabPaisa merchant dashboard:
+https://api.mirchiapp.in/api/payment/webhook
+
+
+6) SABPAISA RETURN URL — BROWSER FLOW ONLY
+-------------------------------------------
+Method: GET
+URL: {{baseUrl}}/api/payment/return
+
+This endpoint is called by SabPaisa after checkout and redirects the browser to:
+https://mirchiapp.in/payment-result?txnId=<merchantTxnId>&status=SUCCESS
+
+Do not use this endpoint to activate a payment. The signed webhook is the
+trusted server-to-server confirmation.
+
+
+TERMINAL LOGS TO EXPECT DURING A SUCCESSFUL PAYMENT
+---------------------------------------------------
+[PAYMENT] CREATE_REQUEST_RECEIVED
+[PAYMENT] SABPAISA_CREATE_REQUEST
+[PAYMENT] SABPAISA_CREATE_RESPONSE
+[PAYMENT] TRANSACTION_SAVED
+[PAYMENT] WEBHOOK_RECEIVED
+[PAYMENT] WEBHOOK_SIGNATURE_VALID
+[PAYMENT] SUBSCRIPTION_ACTIVATED
+[SUBSCRIPTION] STATUS_CHECK_ACTIVE
+
+If WEBHOOK_RECEIVED does not appear after payment, check the SabPaisa dashboard
+webhook URL and that the deployed API environment contains the correct
+SABPAISA_WEBHOOK_SECRET.
