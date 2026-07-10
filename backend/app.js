@@ -76,7 +76,8 @@ app.use((req, res, next) => {
   return next();
 });
 
-app.use(express.json());
+// Preserve the exact SabPaisa webhook body for HMAC verification.
+app.use(express.json({ verify: (req, res, buffer) => { req.rawBody = buffer; } }));
 
 app.use(
   express.urlencoded({
