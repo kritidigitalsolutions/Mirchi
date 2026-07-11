@@ -138,6 +138,60 @@ const uploadDirectToBunny = async (
   throw new Error("Bunny upload failed");
 };
 
+const uploadDirectToBunnyStream = async (file, onProgress) => {
+  const {
+    streamLibraryId,
+    streamApiKey,
+    streamPullZone,
+  } = await fetchBunnyConfig();
+
+  if (!streamLibraryId || !streamApiKey || !streamPullZone) {
+    throw new Error("Missing Bunny Stream configuration credentials");
+  }
+
+  // 1. Create the video
+  const createUrl = `https://video.bunnycdn.com/library/${streamLibraryId}/videos`;
+  const createRes = await axios.post(
+    createUrl,
+    { title: file.name || `Video-${Date.now()}` },
+    {
+      headers: {
+        AccessKey: streamApiKey,
+        "Content-Type": "application/json",
+      },
+    }
+  );
+
+  const videoId = createRes?.data?.guid;
+  if (!videoId) {
+    throw new Error("Failed to create video GUID from Bunny Stream");
+  }
+
+  // 2. Upload the video file
+  const uploadUrl = `https://video.bunnycdn.com/library/${streamLibraryId}/videos/${videoId}`;
+  const uploadRes = await axios.put(uploadUrl, file, {
+    headers: {
+      AccessKey: streamApiKey,
+      "Content-Type": "application/octet-stream",
+    },
+    onUploadProgress: (progressEvent) => {
+      if (onProgress && progressEvent.total) {
+        const percentCompleted = Math.round(
+          (progressEvent.loaded * 100) /
+            progressEvent.total
+        );
+        onProgress(percentCompleted);
+      }
+    },
+  });
+
+  if (uploadRes.status < 200 || uploadRes.status >= 300) {
+    throw new Error(`Bunny Stream upload failed with status ${uploadRes.status}`);
+  }
+
+  return `https://${streamPullZone}.b-cdn.net/${videoId}/playlist.m3u8`;
+};
+
 export const uploadToBunny = async (
   file,
   type,
@@ -146,19 +200,26 @@ export const uploadToBunny = async (
 ) => {
   if (!file) return "";
 
+  const isVideo = subfolder === "videos" || subfolder === "trailers";
+
   console.log(
-    "USING DIRECT BUNNY UPLOAD FOR:",
+    `USING DIRECT ${isVideo ? "BUNNY STREAM" : "BUNNY STORAGE"} UPLOAD FOR:`,
     subfolder
   );
 
   try {
-    return await uploadDirectToBunny(
-      file,
-      type,
-      subfolder,
-      onProgress
-    );
+    if (isVideo) {
+      return await uploadDirectToBunnyStream(file, onProgress);
+    } else {
+      return await uploadDirectToBunny(
+        file,
+        type,
+        subfolder,
+        onProgress
+      );
+    }
   } catch (err) {
+    console.error("Direct upload failed, falling back to backend:", err);
     const status = err?.response?.status;
     const shouldFallbackToBackend =
       !err?.response ||

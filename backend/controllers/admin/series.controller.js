@@ -107,6 +107,8 @@ const addSeries = async (req, res) => {
       isComingSoon: req.body.isComingSoon === "true",
       releaseDate: normalizeDateInput(req.body.releaseDate),
       isPremium: req.body.isPremium === "true",
+      is18: req.body.is18 === "true" || req.body["is18+"] === "true" || req.body.is18 === true || req.body["is18+"] === true,
+      "is18+": req.body.is18 === "true" || req.body["is18+"] === "true" || req.body.is18 === true || req.body["is18+"] === true,
       rating: req.body.rating || 0,
       cast: sanitizeCast(cast),
       category,
@@ -223,6 +225,13 @@ const updateSeries = async (req, res) => {
       series.releaseDate = null;
     }
     series.isPremium = req.body.isPremium === "true";
+    if (req.body.is18 !== undefined || req.body["is18+"] !== undefined) {
+      const val = req.body.is18 !== undefined ? req.body.is18 : req.body["is18+"];
+      const is18Val = val === "true" || val === true;
+      series.is18 = is18Val;
+      series["is18+"] = is18Val;
+      series.markModified("is18+");
+    }
     series.category = category;
 
     if (req.files?.poster?.[0]) {

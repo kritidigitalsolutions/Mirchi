@@ -282,6 +282,38 @@ export default function BasicInfoSection({
             Premium Content
           </span>
         </label>
+
+        <label
+          className="checkbox-row"
+          style={{
+            flex: 1,
+            minWidth: "200px",
+            background:
+              "rgba(255, 165, 0, 0.1)",
+            borderColor:
+              "rgba(255, 165, 0, 0.2)",
+          }}
+        >
+          <input
+            type="checkbox"
+            name="is18+"
+            onChange={ch}
+            checked={form["is18+"]}
+          />
+
+          <span
+            style={{
+              color: "orange",
+            }}
+          >
+            <Layers
+              size={16}
+              style={{ marginRight: 8 }}
+            />
+
+            18+ Content
+          </span>
+        </label>
       </div>
 
       {form.isComingSoon && (

@@ -2,6 +2,7 @@ const multer = require("multer");
 const path = require("path");
 const {
   uploadStreamToBunny,
+  uploadStreamToBunnyStream,
 } = require("../cdn/bunnyCDN");
 
 const getUploadInfo = (req, file) => {
@@ -53,11 +54,22 @@ console.log("NAME:", file.originalname);
 console.log("TYPE:", file.mimetype);
 console.log("REMOTE PATH:", `${uploadInfo.remoteFolder}/${filename}`);
 
-const result = await uploadStreamToBunny({
-  stream: file.stream,
-  remotePath: `${uploadInfo.remoteFolder}/${filename}`,
-  contentType: file.mimetype,
-});
+const isVideo = uploadInfo.subfolder === "videos" || uploadInfo.subfolder === "trailers";
+
+let result;
+if (isVideo) {
+  result = await uploadStreamToBunnyStream({
+    stream: file.stream,
+    fileName: filename,
+    contentType: file.mimetype,
+  });
+} else {
+  result = await uploadStreamToBunny({
+    stream: file.stream,
+    remotePath: `${uploadInfo.remoteFolder}/${filename}`,
+    contentType: file.mimetype,
+  });
+}
 
 console.log("BUNNY RESPONSE:", result);
 console.log("================================");
@@ -67,7 +79,7 @@ console.log("================================");
         destination: uploadInfo.remoteFolder,
         path: result.url,
         cdnUrl: result.url,
-        remotePath: result.path,
+        remotePath: result.videoId ? `stream:${result.videoId}` : result.path,
       });
     } catch (error) {
   console.error("BUNNY UPLOAD ERROR");

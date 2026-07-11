@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef } from "react";
 import API, { BASE_URL } from "../api/axios";
-import { uploadToBunny } from "../features/services/bunnyUpload";
+import { uploadToBunny, fetchBunnyConfig } from "../features/services/bunnyUpload";
 
 import "./Content.css";
 import {
   Eye, Edit2, Trash2, X, Play, Film, Tv,
   Search, Plus, ChevronRight, ChevronLeft, ChevronDown, User, Calendar, Video,
-  Activity, Upload
+  Activity, Upload, Layers
 } from "lucide-react";
 
 /* ===================== PAGINATION COMPONENT ===================== */
@@ -84,6 +84,7 @@ export default function Content() {
   };
 
   const [contentType, setContentType] = useState("movies");
+  const [show18Plus, setShow18Plus] = useState(true);
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -142,11 +143,42 @@ export default function Content() {
     return `${cleanBase}${cleanPath}`;
   };
 
+  const [bunnyConfig, setBunnyConfig] = useState(null);
+
+  useEffect(() => {
+    fetchBunnyConfig()
+      .then(setBunnyConfig)
+      .catch((err) => console.error("Error loading bunny config:", err));
+  }, []);
+
   const getYouTubeId = (url) => {
     if (!url) return null;
     const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
     const match = url.match(regExp);
     return (match && match[2].length === 11) ? match[2] : null;
+  };
+
+  const isEmbedUrl = (url) => {
+    if (!url) return false;
+    return url.includes("iframe.mediadelivery.net") || url.includes("b-cdn.net") || !!getYouTubeId(url);
+  };
+
+  const getEmbedUrl = (url) => {
+    if (!url) return "";
+    const ytId = getYouTubeId(url);
+    if (ytId) {
+      return `https://www.youtube.com/embed/${ytId}`;
+    }
+
+    // Check if it is a Bunny Stream playlist URL
+    // Format: https://vz-<zone>.b-cdn.net/<videoId>/playlist.m3u8
+    const bcdnMatch = url.match(/\.b-cdn\.net\/([a-zA-Z0-9-]+)\/playlist\.m3u8/);
+    if (bcdnMatch && bunnyConfig?.streamLibraryId) {
+      const videoId = bcdnMatch[1];
+      return `https://iframe.mediadelivery.net/embed/${bunnyConfig.streamLibraryId}/${videoId}`;
+    }
+
+    return url;
   };
 
 
@@ -246,6 +278,7 @@ export default function Content() {
   };
 
   const displayData = searchResults !== null ? searchResults : data;
+  const filteredDisplayData = displayData.filter(item => show18Plus || !(item.is18 || item["is18+"]));
 
   /* ===================== SERIES / EPISODES ===================== */
   const handleSeriesClick = (series) => {
@@ -463,7 +496,7 @@ export default function Content() {
 
       const formData = new FormData();
       // Basic text fields
-      const textFields = ["title", "description", "language", "duration", "rating", "releaseYear", "isPremium", "isComingSoon", "releaseDate", "priority"];
+      const textFields = ["title", "description", "language", "duration", "rating", "releaseYear", "isPremium", "isComingSoon", "releaseDate", "priority", "is18", "is18+"];
 
       textFields.forEach(k => {
         const value = editData[k];
@@ -685,6 +718,17 @@ export default function Content() {
           </div>
 
           <div style={{ marginLeft: "auto", display: "flex", gap: 12, alignItems: "center" }}>
+            <label className="checkbox-row" style={{ background: "rgba(255, 165, 0, 0.1)", borderColor: "rgba(255, 165, 0, 0.2)", padding: "6px 12px", borderRadius: "8px", display: "flex", alignItems: "center", gap: 8, cursor: "pointer", margin: 0 }}>
+              <input
+                type="checkbox"
+                checked={show18Plus}
+                onChange={(e) => setShow18Plus(e.target.checked)}
+              />
+              <span style={{ color: "orange", display: "flex", alignItems: "center", gap: 4, fontSize: "0.85rem", fontWeight: "bold" }}>
+                <Layers size={14} /> Show 18+ Content
+              </span>
+            </label>
+
             <SearchBar
               placeholder={`Quick search ${contentType}...`}
               onSearchChange={(q) => {
@@ -723,15 +767,18 @@ export default function Content() {
                     </tr>
                   </thead>
                   <tbody>
-                    {displayData.length === 0 ? (
+                    {filteredDisplayData.length === 0 ? (
                       <tr><td colSpan={8}>No movies found</td></tr>
-                    ) : displayData.map(movie => (
+                    ) : filteredDisplayData.map(movie => (
                       <tr key={movie._id}>
                         <td>
                           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                             <img src={getFullUrl(movie.poster)} alt="" style={{ width: 40, height: 60, objectFit: "cover", borderRadius: 4 }} />
                             <div>
-                              <div style={{ fontWeight: 600 }}>{movie.title}</div>
+                              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                <div style={{ fontWeight: 600 }}>{movie.title}</div>
+                                {(movie.is18 || movie["is18+"]) && <span style={{ background: "orange", color: "white", padding: "1px 4px", borderRadius: 4, fontSize: "0.7rem", fontWeight: "bold" }}>18+</span>}
+                              </div>
                               <div style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>{movie.duration}</div>
                               {isLocked(movie) && (
                                 <div style={{ fontSize: "0.75rem", color: "var(--orange)" }}>
@@ -798,15 +845,18 @@ export default function Content() {
                     </tr>
                   </thead>
                   <tbody>
-                    {displayData.length === 0 ? (
+                    {filteredDisplayData.length === 0 ? (
                       <tr><td colSpan={8}>No series found</td></tr>
-                    ) : displayData.map(series => (
+                    ) : filteredDisplayData.map(series => (
                       <tr key={series._id}>
                         <td>
                           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                             <img src={getFullUrl(series.poster)} alt="" style={{ width: 40, height: 60, objectFit: "cover", borderRadius: 4 }} />
                             <div>
-                              <div style={{ fontWeight: 600 }}>{series.title}</div>
+                              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                <div style={{ fontWeight: 600 }}>{series.title}</div>
+                                {(series.is18 || series["is18+"]) && <span style={{ background: "orange", color: "white", padding: "1px 4px", borderRadius: 4, fontSize: "0.7rem", fontWeight: "bold" }}>18+</span>}
+                              </div>
                               {isLocked(series) && (
                                 <div style={{ fontSize: "0.75rem", color: "var(--orange)" }}>
                                   <Calendar size={11} style={{ marginRight: 3, verticalAlign: "middle" }} />
@@ -1157,26 +1207,26 @@ export default function Content() {
 
                   {selectedEpisode?.videoUrl ? (
                     <div className="view-video-section">
-                      {getYouTubeId(selectedEpisode.videoUrl) ? (
-                        <iframe
-                          src={`https://www.youtube.com/embed/${getYouTubeId(selectedEpisode.videoUrl)}`}
-                          title="Episode Video"
-                          frameBorder="0"
-                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                          allowFullScreen
-                          className="view-video-player"
-                          style={{ aspectRatio: "16/9", height: "auto" }}
-                        ></iframe>
-                      ) : (
-                        <>
-                          <video ref={videoRef} controls className="view-video-player" src={getFullUrl(selectedEpisode.videoUrl)}>
-                            Your browser does not support the video tag.
-                          </video>
-                          <button className="btn btn-primary pip-btn" onClick={() => videoRef.current?.requestPictureInPicture?.()}>
-                            <Tv size={18} style={{ marginRight: 6 }} /> PiP
-                          </button>
-                        </>
-                      )}
+                       {isEmbedUrl(selectedEpisode.videoUrl) ? (
+                         <iframe
+                           src={getEmbedUrl(selectedEpisode.videoUrl)}
+                           title="Episode Video"
+                           frameBorder="0"
+                           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                           allowFullScreen
+                           className="view-video-player"
+                           style={{ aspectRatio: "16/9", height: "auto" }}
+                         ></iframe>
+                       ) : (
+                         <>
+                           <video ref={videoRef} controls className="view-video-player" src={getFullUrl(selectedEpisode.videoUrl)}>
+                             Your browser does not support the video tag.
+                           </video>
+                           <button className="btn btn-primary pip-btn" onClick={() => videoRef.current?.requestPictureInPicture?.()}>
+                             <Tv size={18} style={{ marginRight: 6 }} /> PiP
+                           </button>
+                         </>
+                       )}
                     </div>
                   ) : (
                     <div style={{ padding: "20px", background: "var(--bg3)", borderRadius: "var(--radius-sm)", textAlign: "center", color: "var(--text-muted)" }}>
@@ -1256,8 +1306,8 @@ export default function Content() {
                     <div className="vp-section-label"><Play size={14} /> Trailer</div>
                     {selectedItem.trailerUrl ? (
                       <div className="vp-video-wrap">
-                        {getYouTubeId(selectedItem.trailerUrl) ? (
-                          <iframe src={`https://www.youtube.com/embed/${getYouTubeId(selectedItem.trailerUrl)}`} title="Trailer" frameBorder="0" allowFullScreen></iframe>
+                        {isEmbedUrl(selectedItem.trailerUrl) ? (
+                          <iframe src={getEmbedUrl(selectedItem.trailerUrl)} title="Trailer" frameBorder="0" allowFullScreen></iframe>
                         ) : (
                           <video controls src={getFullUrl(selectedItem.trailerUrl)}></video>
                         )}
@@ -1276,8 +1326,8 @@ export default function Content() {
                       <div className="vp-section-label"><Film size={14} /> Full Movie</div>
                       {!isLocked(selectedItem) && (selectedItem.videoUrl || selectedItem.video) ? (
                         <div className="vp-video-wrap">
-                          {getYouTubeId(selectedItem.videoUrl || selectedItem.video) ? (
-                            <iframe src={`https://www.youtube.com/embed/${getYouTubeId(selectedItem.videoUrl || selectedItem.video)}`} title="Full Movie" frameBorder="0" allowFullScreen></iframe>
+                          {isEmbedUrl(selectedItem.videoUrl || selectedItem.video) ? (
+                            <iframe src={getEmbedUrl(selectedItem.videoUrl || selectedItem.video)} title="Full Movie" frameBorder="0" allowFullScreen></iframe>
                           ) : (
                             <video ref={videoRef} controls src={getFullUrl(selectedItem.videoUrl || selectedItem.video)}></video>
                           )}
@@ -1442,6 +1492,13 @@ export default function Content() {
                     <div className="form-row">
                       <label className="form-label">Premium</label>
                       <select className="form-input" value={editData.isPremium ? "yes" : "no"} onChange={e => setEditData(s => ({ ...s, isPremium: e.target.value === "yes" }))}>
+                        <option value="no">No</option>
+                        <option value="yes">Yes</option>
+                      </select>
+                    </div>
+                    <div className="form-row">
+                      <label className="form-label">18+ Content</label>
+                      <select className="form-input" value={editData.is18 || editData["is18+"] ? "yes" : "no"} onChange={e => setEditData(s => ({ ...s, is18: e.target.value === "yes", "is18+": e.target.value === "yes" }))}>
                         <option value="no">No</option>
                         <option value="yes">Yes</option>
                       </select>

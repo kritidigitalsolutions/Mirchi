@@ -105,6 +105,11 @@ const addShortDrama = async (
           req.body.isPremium ===
           "true",
 
+        is18:
+          req.body.is18 === "true" || req.body["is18+"] === "true" || req.body.is18 === true || req.body["is18+"] === true,
+        "is18+":
+          req.body.is18 === "true" || req.body["is18+"] === "true" || req.body.is18 === true || req.body["is18+"] === true,
+
         status:
           req.body.status ||
           "ongoing",
@@ -248,6 +253,14 @@ const updateShortDrama =
       drama.isPremium =
         req.body.isPremium ===
         "true";
+
+      if (req.body.is18 !== undefined || req.body["is18+"] !== undefined) {
+        const val = req.body.is18 !== undefined ? req.body.is18 : req.body["is18+"];
+        const is18Val = val === "true" || val === true;
+        drama.is18 = is18Val;
+        drama["is18+"] = is18Val;
+        drama.markModified("is18+");
+      }
 
       drama.status =
         req.body.status ||

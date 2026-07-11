@@ -149,6 +149,11 @@ console.log({
       isPremium:
         req.body.isPremium === "true",
 
+      is18:
+        req.body.is18 === "true" || req.body["is18+"] === "true" || req.body.is18 === true || req.body["is18+"] === true,
+      "is18+":
+        req.body.is18 === "true" || req.body["is18+"] === "true" || req.body.is18 === true || req.body["is18+"] === true,
+
       rating: req.body.rating || 0,
 
       cast: sanitizeCast(cast),
@@ -379,6 +384,14 @@ const updateMovie = async (req, res) => {
 
     movie.isPremium =
       req.body.isPremium === "true";
+
+    if (req.body.is18 !== undefined || req.body["is18+"] !== undefined) {
+      const val = req.body.is18 !== undefined ? req.body.is18 : req.body["is18+"];
+      const is18Val = val === "true" || val === true;
+      movie.is18 = is18Val;
+      movie["is18+"] = is18Val;
+      movie.markModified("is18+");
+    }
 
     movie.category = category;
 

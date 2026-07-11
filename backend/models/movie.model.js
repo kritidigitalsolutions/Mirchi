@@ -66,9 +66,58 @@ const movieSchema = new mongoose.Schema(
 
     videoUrl: String,
 
+    videoSource: {
+      type: String,
+      default: ""
+    },
+
+    storageType: {
+      type: String,
+      default: ""
+    },
+
+    videoId: {
+      type: String,
+      default: ""
+    },
+
+    streamUrl: {
+      type: String,
+      default: ""
+    },
+
+    playlistUrl: {
+      type: String,
+      default: ""
+    },
+
+    playbackUrl: {
+      type: String,
+      default: ""
+    },
+
+    thumbnailUrl: {
+      type: String,
+      default: ""
+    },
+
+    encodingStatus: {
+      type: String,
+      default: ""
+    },
+
     trailerUrl: String,
 
     isPremium: {
+      type: Boolean,
+      default: false
+    },
+
+    is18: {
+      type: Boolean,
+      default: false
+    },
+    "is18+": {
       type: Boolean,
       default: false
     },
@@ -137,6 +186,43 @@ movieSchema.index({
 movieSchema.index({
   title: "text",
   description: "text"
+});
+
+const { parseBunnyStreamUrl } = require("../cdn/bunnyCDN");
+
+movieSchema.pre("save", function () {
+  if (this.videoUrl) {
+    const streamData = parseBunnyStreamUrl(this.videoUrl);
+    if (streamData) {
+      this.videoUrl = streamData.videoUrl;
+      this.videoSource = streamData.videoSource;
+      this.storageType = streamData.storageType;
+      this.videoId = streamData.videoId;
+      this.streamUrl = streamData.streamUrl;
+      this.playlistUrl = streamData.playlistUrl;
+      this.playbackUrl = streamData.playbackUrl;
+      this.thumbnailUrl = streamData.thumbnailUrl;
+      this.encodingStatus = streamData.encodingStatus;
+    }
+  }
+});
+
+movieSchema.pre("findOneAndUpdate", function () {
+  const update = this.getUpdate();
+  if (update) {
+    if (update.videoUrl) {
+      const streamData = parseBunnyStreamUrl(update.videoUrl);
+      if (streamData) {
+        Object.assign(update, streamData);
+      }
+    }
+    if (update.$set && update.$set.videoUrl) {
+      const streamData = parseBunnyStreamUrl(update.$set.videoUrl);
+      if (streamData) {
+        Object.assign(update.$set, streamData);
+      }
+    }
+  }
 });
 
 module.exports = mongoose.model(

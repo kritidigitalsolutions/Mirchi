@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import API, { BASE_URL } from "../api/axios";
-import { uploadToBunny } from "../features/services/bunnyUpload";
+import { uploadToBunny, fetchBunnyConfig } from "../features/services/bunnyUpload";
 import "./Content.css";
 import {
   Eye, Edit2, Trash2, X, Play, Film,
@@ -14,6 +14,7 @@ export default function Drama() {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState(null);
   const [isSearching, setIsSearching] = useState(false);
+  const [show18Plus, setShow18Plus] = useState(true);
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -56,6 +57,43 @@ export default function Drama() {
     const cleanBase = BASE_URL.endsWith("/") ? BASE_URL.slice(0, -1) : BASE_URL;
     const cleanPath = url.startsWith("/") ? url : `/${url}`;
     return `${cleanBase}${cleanPath}`;
+  };
+
+  const [bunnyConfig, setBunnyConfig] = useState(null);
+
+  useEffect(() => {
+    fetchBunnyConfig()
+      .then(setBunnyConfig)
+      .catch((err) => console.error("Error loading bunny config:", err));
+  }, []);
+
+  const getYouTubeId = (url) => {
+    if (!url) return null;
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+    const match = url.match(regExp);
+    return (match && match[2].length === 11) ? match[2] : null;
+  };
+
+  const isEmbedUrl = (url) => {
+    if (!url) return false;
+    return url.includes("iframe.mediadelivery.net") || url.includes("b-cdn.net") || !!getYouTubeId(url);
+  };
+
+  const getEmbedUrl = (url) => {
+    if (!url) return "";
+    const ytId = getYouTubeId(url);
+    if (ytId) {
+      return `https://www.youtube.com/embed/${ytId}`;
+    }
+
+    // Check if it is a Bunny Stream playlist URL
+    const bcdnMatch = url.match(/\.b-cdn\.net\/([a-zA-Z0-9-]+)\/playlist\.m3u8/);
+    if (bcdnMatch && bunnyConfig?.streamLibraryId) {
+      const videoId = bcdnMatch[1];
+      return `https://iframe.mediadelivery.net/embed/${bunnyConfig.streamLibraryId}/${videoId}`;
+    }
+
+    return url;
   };
 
   /* ── FETCH ── */
@@ -113,6 +151,7 @@ export default function Drama() {
 
   const clearSearch = () => { setSearchQuery(""); setSearchResults(null); };
   const displayData = searchResults !== null ? searchResults : data;
+  const filteredDisplayData = displayData.filter(item => show18Plus || !(item.is18 || item["is18+"]));
 
   /* ── DRAMA CLICK ── */
   const handleDramaClick = (drama) => {
@@ -186,7 +225,7 @@ export default function Drama() {
       }
 
       const formData = new FormData();
-      ["title", "description", "language", "isPremium", "status", "priority"].forEach(k => {
+      ["title", "description", "language", "isPremium", "status", "priority", "is18", "is18+"].forEach(k => {
         if (editData[k] !== undefined) formData.append(k, editData[k]);
       });
       if (editData.genre) formData.append("genre", JSON.stringify(Array.isArray(editData.genre) ? editData.genre : editData.genre.split(",").map(s => s.trim()).filter(Boolean)));
@@ -341,6 +380,17 @@ export default function Drama() {
         {/* Search */}
         <div className="filter-row" style={{ display: "flex", gap: 12, marginBottom: 32, flexWrap: "wrap", alignItems: "center", borderBottom: "1px solid var(--border)", paddingBottom: "20px" }}>
           <div style={{ marginLeft: "auto", display: "flex", gap: 12, alignItems: "center" }}>
+            <label className="checkbox-row" style={{ background: "rgba(255, 165, 0, 0.1)", borderColor: "rgba(255, 165, 0, 0.2)", padding: "6px 12px", borderRadius: "8px", display: "flex", alignItems: "center", gap: 8, cursor: "pointer", margin: 0 }}>
+              <input
+                type="checkbox"
+                checked={show18Plus}
+                onChange={(e) => setShow18Plus(e.target.checked)}
+              />
+              <span style={{ color: "orange", display: "flex", alignItems: "center", gap: 4, fontSize: "0.85rem", fontWeight: "bold" }}>
+                <Layers size={14} /> Show 18+ Content
+              </span>
+            </label>
+
             <div className="search-bar" style={{ minWidth: "300px" }}>
               <Search size={18} className="search-icon" />
               <input
@@ -385,15 +435,18 @@ export default function Drama() {
                     </tr>
                   </thead>
                   <tbody>
-                    {displayData.length === 0 ? (
+                    {filteredDisplayData.length === 0 ? (
                       <tr><td colSpan={7}>No dramas found</td></tr>
-                    ) : displayData.map(drama => (
+                    ) : filteredDisplayData.map(drama => (
                       <tr key={drama._id}>
                         <td>
                           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                             <img src={getFullUrl(drama.poster)} alt="" style={{ width: 40, height: 60, objectFit: "cover", borderRadius: 4 }} onError={e => e.target.style.display = "none"} />
                             <div>
-                              <div style={{ fontWeight: 600 }}>{drama.title}</div>
+                              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                <div style={{ fontWeight: 600 }}>{drama.title}</div>
+                                {(drama.is18 || drama["is18+"]) && <span style={{ background: "orange", color: "white", padding: "1px 4px", borderRadius: 4, fontSize: "0.7rem", fontWeight: "bold" }}>18+</span>}
+                              </div>
                               <div style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>{drama.language}</div>
                             </div>
                           </div>
@@ -681,6 +734,10 @@ export default function Drama() {
                     <input type="checkbox" checked={!!editData.isPremium} onChange={e => setEditData(p => ({ ...p, isPremium: e.target.checked }))} />
                     <Lock size={14} /> Premium
                   </label>
+                  <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
+                    <input type="checkbox" checked={!!(editData.is18 || editData["is18+"])} onChange={e => setEditData(p => ({ ...p, is18: e.target.checked, "is18+": e.target.checked }))} />
+                    <Layers size={14} /> 18+ Content
+                  </label>
                 </div>
 
                 {/* Media Uploads */}
@@ -744,12 +801,23 @@ export default function Drama() {
             {modalMode === "ep-view" && selectedEpisode && (
               <div style={{ padding: "20px" }}>
                 {selectedEpisode.videoUrl ? (
-                  <video
-                    controls
-                    autoPlay
-                    style={{ width: "100%", borderRadius: 10, maxHeight: 400 }}
-                    src={getFullUrl(selectedEpisode.videoUrl)}
-                  />
+                  isEmbedUrl(selectedEpisode.videoUrl) ? (
+                    <iframe
+                      src={getEmbedUrl(selectedEpisode.videoUrl)}
+                      title="Episode Video"
+                      frameBorder="0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                      style={{ width: "100%", height: 350, borderRadius: 10, border: "none" }}
+                    ></iframe>
+                  ) : (
+                    <video
+                      controls
+                      autoPlay
+                      style={{ width: "100%", borderRadius: 10, maxHeight: 400 }}
+                      src={getFullUrl(selectedEpisode.videoUrl)}
+                    />
+                  )
                 ) : <p style={{ color: "var(--text-muted)" }}>No video uploaded for this episode.</p>}
                 <div style={{ marginTop: 16 }}>
                   <h3>Episode {selectedEpisode.episodeNumber}: {selectedEpisode.title}</h3>

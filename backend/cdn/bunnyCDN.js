@@ -412,15 +412,164 @@ const uploadMulterFileToBunny = async (file, remoteFolder = "") => {
   });
 };
 
+const parseBunnyStreamUrl = (url) => {
+  if (!url || typeof url !== "string") return null;
+
+  // HLS URL format: https://vz-<zone>.b-cdn.net/<videoId>/playlist.m3u8
+  const bcdnMatch = url.match(/https:\/\/([a-zA-Z0-9-]+)\.b-cdn\.net\/([a-zA-Z0-9-]+)\/playlist\.m3u8/);
+  if (bcdnMatch) {
+    const pullZone = bcdnMatch[1];
+    const videoId = bcdnMatch[2];
+    return {
+      videoId,
+      videoUrl: url,
+      streamUrl: url,
+      playlistUrl: url,
+      playbackUrl: url,
+      thumbnailUrl: `https://${pullZone}.b-cdn.net/${videoId}/thumbnail.jpg`,
+      videoSource: "bunny_stream",
+      storageType: "bunny_stream",
+      encodingStatus: "processing",
+    };
+  }
+
+  // Embed URL format: https://iframe.mediadelivery.net/embed/<libraryId>/<videoId>
+  const iframeMatch = url.match(/https:\/\/iframe\.mediadelivery\.net\/embed\/(\d+)\/([a-zA-Z0-9-]+)/);
+  if (iframeMatch) {
+    const libraryId = iframeMatch[1];
+    const videoId = iframeMatch[2];
+    const pullZone = String(process.env.BUNNY_STREAM_PULL_ZONE || "vz-98ca1951-b15").trim();
+    const playlistUrl = `https://${pullZone}.b-cdn.net/${videoId}/playlist.m3u8`;
+
+    return {
+      videoId,
+      videoUrl: playlistUrl,
+      streamUrl: playlistUrl,
+      playlistUrl,
+      playbackUrl: playlistUrl,
+      thumbnailUrl: `https://${pullZone}.b-cdn.net/${videoId}/thumbnail.jpg`,
+      videoSource: "bunny_stream",
+      storageType: "bunny_stream",
+      encodingStatus: "processing",
+    };
+  }
+
+  return null;
+};
+
+const uploadStreamToBunnyStream = async ({
+  stream,
+  fileName,
+  contentType = "application/octet-stream",
+}) => {
+  const libraryId = String(process.env.BUNNY_STREAM_LIBRARY_ID || "").trim();
+  const apiKey = String(process.env.BUNNY_STREAM_API_KEY || "").trim();
+
+  if (!libraryId || !apiKey) {
+    throw new Error("Missing Bunny Stream library ID or API key config");
+  }
+
+  // 1. Create a video placeholder in Bunny Stream
+  const createResponse = await fetch(`https://video.bunnycdn.com/library/${libraryId}/videos`, {
+    method: "POST",
+    headers: {
+      AccessKey: apiKey,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      title: fileName || `Video-${Date.now()}`,
+    }),
+  });
+
+  if (!createResponse.ok) {
+    const text = await readResponseBody(createResponse);
+    throw new Error(`Failed to create video on Bunny Stream (${createResponse.status}): ${text}`);
+  }
+
+  const createData = await createResponse.json();
+  const videoGuid = createData.guid;
+
+  if (!videoGuid) {
+    throw new Error("Bunny Stream did not return a valid video GUID");
+  }
+
+  // 2. Upload the stream to Bunny Stream PUT API
+  const uploadUrl = `https://video.bunnycdn.com/library/${libraryId}/videos/${videoGuid}`;
+  const response = await uploadStreamRequest({
+    stream,
+    uploadUrl,
+    headers: {
+      AccessKey: apiKey,
+      "Content-Type": contentType,
+    },
+  });
+
+  if (!response.ok) {
+    const message = await readResponseBody(response);
+    throw new Error(
+      `Bunny Stream upload failed (${response.status}): ${message}`
+    );
+  }
+
+  const pullZone = String(process.env.BUNNY_STREAM_PULL_ZONE || "vz-98ca1951-b15").trim();
+  const playlistUrl = `https://${pullZone}.b-cdn.net/${videoGuid}/playlist.m3u8`;
+
+  return {
+    videoId: videoGuid,
+    url: playlistUrl,
+  };
+};
+
 const deleteFromBunny = async (remotePathOrUrl) => {
+  let remotePath = String(remotePathOrUrl || "");
+
+  // Detect and handle Bunny Stream deletion
+  if (
+    remotePath.includes("iframe.mediadelivery.net") || 
+    (remotePath.includes(".b-cdn.net") && remotePath.includes("/playlist.m3u8")) ||
+    remotePath.startsWith("stream:")
+  ) {
+    let videoId = "";
+    let libraryId = String(process.env.BUNNY_STREAM_LIBRARY_ID || "").trim();
+
+    if (remotePath.startsWith("stream:")) {
+      videoId = remotePath.split(":")[1];
+    } else {
+      const matchIframe = remotePath.match(/\/embed\/(\d+)\/([a-zA-Z0-9-]+)/);
+      const matchM3u8 = remotePath.match(/\.b-cdn\.net\/([a-zA-Z0-9-]+)\/playlist\.m3u8/);
+      if (matchIframe) {
+        libraryId = matchIframe[1];
+        videoId = matchIframe[2];
+      } else if (matchM3u8) {
+        videoId = matchM3u8[1];
+      }
+    }
+
+    const apiKey = String(process.env.BUNNY_STREAM_API_KEY || "").trim();
+
+    if (libraryId && videoId && apiKey) {
+      const response = await fetch(`https://video.bunnycdn.com/library/${libraryId}/videos/${videoId}`, {
+        method: "DELETE",
+        headers: {
+          AccessKey: apiKey,
+        },
+      });
+
+      if (!response.ok && response.status !== 404) {
+        const message = await readResponseBody(response);
+        throw new Error(`Bunny Stream delete failed (${response.status}): ${message}`);
+      }
+      return true;
+    }
+    return false;
+  }
+
   const {
     storageZone,
     accessKey,
     storageHosts,
     cdnUrl,
   } = await getConfigAsync();
-
-  let remotePath = String(remotePathOrUrl || "");
 
   if (remotePath.startsWith(cdnUrl)) {
     remotePath = remotePath.slice(cdnUrl.length);
@@ -454,8 +603,10 @@ module.exports = {
   buildPublicUrl,
   deleteFromBunny,
   getClientUploadConfig,
+  parseBunnyStreamUrl,
   uploadBufferToBunny,
   uploadFileToBunny,
   uploadMulterFileToBunny,
   uploadStreamToBunny,
+  uploadStreamToBunnyStream,
 };

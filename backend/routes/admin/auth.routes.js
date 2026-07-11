@@ -8,6 +8,7 @@ const { isAdmin } = require("../../middlewares/admin.middleware");
 const {
   getClientUploadConfig,
   uploadStreamToBunny,
+  uploadStreamToBunnyStream,
 } = require("../../cdn/bunnyCDN");
 
 const {
@@ -77,17 +78,29 @@ const bunnyStorage = {
       }
 
       const filename = `${Date.now()}-${Math.round(Math.random() * 1e9)}${safeExtension(file)}`;
-      const result = await uploadStreamToBunny({
-        stream: file.stream,
-        remotePath: `${target.type}/${target.subfolder}/${filename}`,
-        contentType: file.mimetype,
-      });
+      
+      const isVideo = target.subfolder === "videos" || target.subfolder === "trailers";
+
+      let result;
+      if (isVideo) {
+        result = await uploadStreamToBunnyStream({
+          stream: file.stream,
+          fileName: filename,
+          contentType: file.mimetype,
+        });
+      } else {
+        result = await uploadStreamToBunny({
+          stream: file.stream,
+          remotePath: `${target.type}/${target.subfolder}/${filename}`,
+          contentType: file.mimetype,
+        });
+      }
 
       cb(null, {
         filename,
         path: result.url,
         cdnUrl: result.url,
-        remotePath: result.path,
+        remotePath: result.videoId ? `stream:${result.videoId}` : result.path,
       });
     } catch (err) {
       cb(err);
@@ -148,6 +161,9 @@ router.get(
       res.json({
         success: true,
         ...config,
+        streamLibraryId: process.env.BUNNY_STREAM_LIBRARY_ID,
+        streamApiKey: process.env.BUNNY_STREAM_API_KEY,
+        streamPullZone: process.env.BUNNY_STREAM_PULL_ZONE,
       });
     } catch (err) {
       res.status(500).json({ success: false, message: err.message });
