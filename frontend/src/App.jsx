@@ -8,23 +8,39 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 
+// ── Auto-Reload Helper for ChunkLoadError after Re-deploy ──
+const lazyLoad = (importFunc) =>
+  lazy(async () => {
+    try {
+      const module = await importFunc();
+      sessionStorage.removeItem("chunk-error-reloaded");
+      return module;
+    } catch (error) {
+      if (!sessionStorage.getItem("chunk-error-reloaded")) {
+        sessionStorage.setItem("chunk-error-reloaded", "true");
+        window.location.reload();
+      }
+      return Promise.reject(error);
+    }
+  });
+
 // ── Lazy Loaded Dashboard Pages ──
-const DashboardHome = lazy(() => import("./pages/Dashboard"));
-const UsersPage = lazy(() => import("./pages/UsersPage"));
-const AddContent = lazy(() => import("./pages/AddContent"));
-const Content = lazy(() => import("./pages/Content"));
-const RatingsPage = lazy(() => import("./pages/Ratings"));
-const PlansPage = lazy(() => import("./pages/Plans"));
-const PromoVoucher = lazy(() => import("./pages/PromoVoucher"));
-const SubscriptionPage = lazy(() => import("./pages/Subscriptions"));
-const NotificationsPage = lazy(() => import("./pages/Notifications"));
-const SupportDetails = lazy(() => import("./pages/SupportDetails"));
-const LegalPage = lazy(() => import("./pages/LegalPage"));
-const HelpPage = lazy(() => import("./pages/HelpPage"));
-const Settings = lazy(() => import("./pages/Settings"));
-const DramaPage = lazy(() => import("./pages/Drama"));
-const AddDramaPage = lazy(() => import("./pages/AddDrama"));
-const SubAdminsPage = lazy(() => import("./pages/SubAdmins"));
+const DashboardHome = lazyLoad(() => import("./pages/Dashboard"));
+const UsersPage = lazyLoad(() => import("./pages/UsersPage"));
+const AddContent = lazyLoad(() => import("./pages/AddContent"));
+const Content = lazyLoad(() => import("./pages/Content"));
+const RatingsPage = lazyLoad(() => import("./pages/Ratings"));
+const PlansPage = lazyLoad(() => import("./pages/Plans"));
+const PromoVoucher = lazyLoad(() => import("./pages/PromoVoucher"));
+const SubscriptionPage = lazyLoad(() => import("./pages/Subscriptions"));
+const NotificationsPage = lazyLoad(() => import("./pages/Notifications"));
+const SupportDetails = lazyLoad(() => import("./pages/SupportDetails"));
+const LegalPage = lazyLoad(() => import("./pages/LegalPage"));
+const HelpPage = lazyLoad(() => import("./pages/HelpPage"));
+const Settings = lazyLoad(() => import("./pages/Settings"));
+const DramaPage = lazyLoad(() => import("./pages/Drama"));
+const AddDramaPage = lazyLoad(() => import("./pages/AddDrama"));
+const SubAdminsPage = lazyLoad(() => import("./pages/SubAdmins"));
 
 // ── Toast Context ──
 const ToastContext = createContext();
