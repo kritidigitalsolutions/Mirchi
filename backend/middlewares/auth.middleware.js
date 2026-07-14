@@ -41,15 +41,13 @@ const isAuth = async (
     next();
 
   } catch (error) {
-    console.error(
-      "Auth Middleware Error:",
-      error.message
-    );
+    console.error("JWT NAME:", error.name);
+    console.error("JWT MESSAGE:", error.message);
+    console.error(error);
 
     return res.status(401).json({
       success: false,
-      message:
-        "Invalid or expired token",
+      message: "Invalid or expired token"
     });
   }
 };
