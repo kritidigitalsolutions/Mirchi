@@ -37,11 +37,11 @@ const defaultAllowed = [
   "https://mirchi-admin-panel.vercel.app",
   "https://mirchi-sigma.vercel.app",
   "https://jazzy-sunflower-4b9b98.netlify.app",
-  "https://mirchiapp.in/",
-  "https://admin.mirchiapp.in/"
+  "https://mirchiapp.in",
+  "https://admin.mirchiapp.in"
 ];
 
-const allowedOrigins = [...new Set([...frontendUrls, ...adminUrls, ...defaultAllowed])];
+const allowedOrigins = [...new Set([...frontendUrls, ...adminUrls, ...defaultAllowed.map(url => url.trim().replace(/\/$/, ""))])];
 
 const corsOptions = {
   origin: (origin, callback) => {
