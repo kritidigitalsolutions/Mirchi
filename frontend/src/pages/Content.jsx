@@ -6,7 +6,7 @@ import "./Content.css";
 import {
   Eye, Edit2, Trash2, X, Play, Film, Tv,
   Search, Plus, ChevronRight, ChevronLeft, ChevronDown, User, Calendar, Video,
-  Activity, Upload, Layers
+  Activity, Upload, Layers, Check
 } from "lucide-react";
 
 /* ===================== PAGINATION COMPONENT ===================== */
@@ -84,7 +84,8 @@ export default function Content() {
   };
 
   const [contentType, setContentType] = useState("movies");
-  const [show18Plus, setShow18Plus] = useState(true);
+  const [subType, setSubType] = useState("non-adult");
+  const [isHideAdult, setIsHideAdult] = useState(false);
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -151,6 +152,104 @@ export default function Content() {
       .catch((err) => console.error("Error loading bunny config:", err));
   }, []);
 
+  const [allCategories, setAllCategories] = useState([]);
+  const [showAddCatInput, setShowAddCatInput] = useState(false);
+  const [newCatName, setNewCatName] = useState("");
+  const [addingCat, setAddingCat] = useState(false);
+  const [editingCatId, setEditingCatId] = useState(null);
+  const [editingCatName, setEditingCatName] = useState("");
+  const [updatingCat, setUpdatingCat] = useState(false);
+
+  useEffect(() => {
+    API.get("/admin/categories")
+      .then((res) => {
+        if (res.data?.data) {
+          setAllCategories(res.data.data.map((c) => ({ label: c.name, value: c.slug, id: c._id })));
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const toggleEditCategory = (value) => {
+    setEditData((s) => {
+      const current = Array.isArray(s.category) ? s.category : (s.category ? [s.category] : []);
+      const updated = current.includes(value)
+        ? current.filter((c) => c !== value)
+        : [...current, value];
+      return { ...s, category: updated };
+    });
+  };
+
+  const handleAddCategory = async () => {
+    const trimmed = newCatName.trim();
+    if (!trimmed) return;
+    setAddingCat(true);
+    try {
+      const res = await API.post("/admin/categories", { name: trimmed });
+      if (res.data?.data) {
+        const created = res.data.data;
+        const newEntry = { label: created.name, value: created.slug, id: created._id };
+        setAllCategories((prev) => [...prev, newEntry]);
+        setEditData((s) => {
+          if (!s) return s;
+          const current = Array.isArray(s.category) ? s.category : (s.category ? [s.category] : []);
+          return { ...s, category: [...current, created.slug] };
+        });
+      }
+    } catch (err) {
+      alert(err?.response?.data?.message || "Failed to add category");
+    } finally {
+      setAddingCat(false);
+      setNewCatName("");
+      setShowAddCatInput(false);
+    }
+  };
+
+  const handleDeleteCategory = async (id, value) => {
+    try {
+      await API.delete(`/admin/categories/${id}`);
+      setAllCategories((prev) => prev.filter((c) => c.id !== id));
+      setEditData((s) => {
+        if (!s) return s;
+        const current = Array.isArray(s.category) ? s.category : (s.category ? [s.category] : []);
+        return { ...s, category: current.filter((v) => v !== value) };
+      });
+    } catch (err) {
+      alert(err?.response?.data?.message || "Failed to delete category");
+    }
+  };
+
+  const handleUpdateCategory = async (id, oldSlug) => {
+    const trimmed = editingCatName.trim();
+    if (!trimmed) return;
+    setUpdatingCat(true);
+    try {
+      const res = await API.put(`/admin/categories/${id}`, { name: trimmed });
+      if (res.data?.data) {
+        const updated = res.data.data;
+        setAllCategories((prev) =>
+          prev.map((c) =>
+            c.id === id ? { ...c, label: updated.name, value: updated.slug } : c
+          )
+        );
+        setEditData((s) => {
+          if (!s) return s;
+          const current = Array.isArray(s.category) ? s.category : (s.category ? [s.category] : []);
+          return {
+            ...s,
+            category: current.map((v) => (v === oldSlug ? updated.slug : v)),
+          };
+        });
+      }
+    } catch (err) {
+      alert(err?.response?.data?.message || "Failed to update category");
+    } finally {
+      setUpdatingCat(false);
+      setEditingCatId(null);
+      setEditingCatName("");
+    }
+  };
+
   const getYouTubeId = (url) => {
     if (!url) return null;
     const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
@@ -212,9 +311,18 @@ export default function Content() {
       const res = await API.get(`${endpoint}?page=${currentPage}&limit=10`, { signal });
 
       const key = contentType === "movies" ? "movies" : "series";
-      setData(res.data[key] || []);
+      const fetchedData = res.data[key] || [];
+      setData(fetchedData);
       setTotalPages(res.data.pages || 1);
       setTotalItems(res.data.total || 0);
+
+      // Set isHideAdult based on fetched content
+      const adultItems = fetchedData.filter(item => item.is18plus);
+      if (adultItems.length > 0) {
+        setIsHideAdult(adultItems.every(item => item.isHide));
+      } else {
+        setIsHideAdult(false);
+      }
 
       setSelectedSeries(null);
       setEpisodes([]);
@@ -277,8 +385,37 @@ export default function Content() {
     setSearchResults(null);
   };
 
+  const handleToggleHideAdult = async (checked) => {
+    const confirmMsg = checked
+      ? "Are you sure you want to HIDE all 18+ (Adult) content from users?"
+      : "Are you sure you want to UNHIDE all 18+ (Adult) content for users?";
+
+    if (!window.confirm(confirmMsg)) return;
+
+    try {
+      setLoading(true);
+      const res = await API.put("/admin/content/toggle-hide-18", { isHide: checked });
+      if (res.data.success) {
+        setIsHideAdult(checked);
+        const controller = new AbortController();
+        await fetchData(controller.signal);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Failed to toggle visibility status: " + (err.response?.data?.message || err.message));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const displayData = searchResults !== null ? searchResults : data;
-  const filteredDisplayData = displayData.filter(item => show18Plus || !(item.is18 || item["is18+"]));
+  const filteredDisplayData = displayData.filter(item => {
+    if (subType === "adult") {
+      return item.is18plus === true;
+    } else {
+      return item.is18plus !== true;
+    }
+  });
 
   /* ===================== SERIES / EPISODES ===================== */
   const handleSeriesClick = (series) => {
@@ -496,7 +633,7 @@ export default function Content() {
 
       const formData = new FormData();
       // Basic text fields
-      const textFields = ["title", "description", "language", "duration", "rating", "releaseYear", "isPremium", "isComingSoon", "releaseDate", "priority", "is18", "is18+"];
+      const textFields = ["title", "description", "language", "duration", "rating", "releaseYear", "isPremium", "isComingSoon", "releaseDate", "priority", "is18plus", "allAges", "isHide"];
 
       textFields.forEach(k => {
         const value = editData[k];
@@ -699,46 +836,95 @@ export default function Content() {
 
       <div className="content-box">
         {/* Type Selector + Search */}
-        <div className="filter-row" style={{ display: "flex", gap: 12, marginBottom: 32, flexWrap: "wrap", alignItems: "center", borderBottom: "1px solid var(--border)", paddingBottom: "20px" }}>
-          <div className="tab-group" style={{ display: "flex", background: "var(--bg3)", padding: "4px", borderRadius: "12px", gap: "4px" }}>
-            <button
-              className={`btn ${contentType === "movies" ? "btn-primary" : "btn-ghost"}`}
-              onClick={() => { setContentType("movies"); setCurrentPage(1); }}
-              style={{ borderRadius: "8px", boxShadow: contentType === "movies" ? "var(--shadow-sm)" : "none" }}
-            >
-              <Film size={18} /> Movies
-            </button>
-            <button
-              className={`btn ${contentType === "series" ? "btn-primary" : "btn-ghost"}`}
-              onClick={() => { setContentType("series"); setCurrentPage(1); }}
-              style={{ borderRadius: "8px", boxShadow: contentType === "series" ? "var(--shadow-sm)" : "none" }}
-            >
-              <Tv size={18} /> Series
-            </button>
+        <div className="filter-row" style={{ display: "flex", flexDirection: "column", gap: 16, marginBottom: 32, borderBottom: "1px solid var(--border)", paddingBottom: "20px" }}>
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center", width: "100%" }}>
+            {/* Main Type Selector */}
+            <div className="tab-group" style={{ display: "flex", background: "var(--bg3)", padding: "4px", borderRadius: "12px", gap: "4px" }}>
+              <button
+                className={`btn ${contentType === "movies" ? "btn-primary" : "btn-ghost"}`}
+                onClick={() => { setContentType("movies"); setCurrentPage(1); }}
+                style={{ borderRadius: "8px", boxShadow: contentType === "movies" ? "var(--shadow-sm)" : "none" }}
+              >
+                <Film size={18} /> Movies
+              </button>
+              <button
+                className={`btn ${contentType === "series" ? "btn-primary" : "btn-ghost"}`}
+                onClick={() => { setContentType("series"); setCurrentPage(1); }}
+                style={{ borderRadius: "8px", boxShadow: contentType === "series" ? "var(--shadow-sm)" : "none" }}
+              >
+                <Tv size={18} /> Series
+              </button>
+            </div>
+
+            {/* Quick Search */}
+            <div style={{ marginLeft: "auto", display: "flex", gap: 12, alignItems: "center" }}>
+              <SearchBar
+                placeholder={`Quick search ${contentType}...`}
+                onSearchChange={(q) => {
+                  setSearchQuery(q);
+                  if (!q.trim()) { setSearchResults(null); return; }
+                  doSearch(q.trim());
+                }}
+                onClear={clearSearch}
+                initialValue={searchQuery}
+              />
+            </div>
           </div>
 
-          <div style={{ marginLeft: "auto", display: "flex", gap: 12, alignItems: "center" }}>
-            <label className="checkbox-row" style={{ background: "rgba(255, 165, 0, 0.1)", borderColor: "rgba(255, 165, 0, 0.2)", padding: "6px 12px", borderRadius: "8px", display: "flex", alignItems: "center", gap: 8, cursor: "pointer", margin: 0 }}>
-              <input
-                type="checkbox"
-                checked={show18Plus}
-                onChange={(e) => setShow18Plus(e.target.checked)}
-              />
-              <span style={{ color: "orange", display: "flex", alignItems: "center", gap: 4, fontSize: "0.85rem", fontWeight: "bold" }}>
-                <Layers size={14} /> Show 18+ Content
-              </span>
-            </label>
+          {/* Sub-toggle: Adult & Non-Adult with distinct colors & Hide switch */}
+          <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+            <span style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--text-muted)", marginRight: 4 }}>Age Filter:</span>
+            <div className="tab-group" style={{ display: "flex", background: "var(--bg3)", padding: "4px", borderRadius: "12px", gap: "4px" }}>
+              <button
+                type="button"
+                onClick={() => setSubType("non-adult")}
+                style={{
+                  borderRadius: "8px",
+                  fontSize: "0.85rem",
+                  padding: "6px 16px",
+                  border: "none",
+                  cursor: "pointer",
+                  fontWeight: 600,
+                  transition: "all 0.2s ease",
+                  background: subType === "non-adult" ? "linear-gradient(135deg, #28a745, #218838)" : "transparent",
+                  color: subType === "non-adult" ? "#ffffff" : "var(--text-muted)",
+                  boxShadow: subType === "non-adult" ? "0 2px 8px rgba(40, 167, 69, 0.3)" : "none"
+                }}
+              >
+                Non-Adult
+              </button>
+              <button
+                type="button"
+                onClick={() => setSubType("adult")}
+                style={{
+                  borderRadius: "8px",
+                  fontSize: "0.85rem",
+                  padding: "6px 16px",
+                  border: "none",
+                  cursor: "pointer",
+                  fontWeight: 600,
+                  transition: "all 0.2s ease",
+                  background: subType === "adult" ? "linear-gradient(135deg, #ff8c00, #e07b00)" : "transparent",
+                  color: subType === "adult" ? "#ffffff" : "var(--text-muted)",
+                  boxShadow: subType === "adult" ? "0 2px 8px rgba(255, 140, 0, 0.3)" : "none"
+                }}
+              >
+                Adult
+              </button>
+            </div>
 
-            <SearchBar
-              placeholder={`Quick search ${contentType}...`}
-              onSearchChange={(q) => {
-                setSearchQuery(q);
-                if (!q.trim()) { setSearchResults(null); return; }
-                doSearch(q.trim());
-              }}
-              onClear={clearSearch}
-              initialValue={searchQuery}
-            />
+            {subType === "adult" && (
+              <label className="checkbox-row" style={{ background: "rgba(255, 69, 58, 0.1)", borderColor: "rgba(255, 69, 58, 0.2)", padding: "6px 12px", borderRadius: "8px", display: "flex", alignItems: "center", gap: 8, cursor: "pointer", margin: 0, marginLeft: 8 }}>
+                <input
+                  type="checkbox"
+                  checked={isHideAdult}
+                  onChange={(e) => handleToggleHideAdult(e.target.checked)}
+                />
+                <span style={{ color: "#ff453a", display: "flex", alignItems: "center", gap: 4, fontSize: "0.85rem", fontWeight: "bold" }}>
+                  <Layers size={14} /> Hide Adult Content
+                </span>
+              </label>
+            )}
           </div>
         </div>
 
@@ -763,12 +949,12 @@ export default function Content() {
                 <table className="tbl">
                   <thead>
                     <tr>
-                      <th>Title</th><th>Genre</th><th>Year</th><th>Rating</th><th>Priority</th><th>Premium</th><th>Status</th><th>Actions</th>
+                      <th>Title</th><th>Genre</th><th>Category</th><th>Year</th><th>Rating</th><th>Priority</th><th>Premium</th><th>Status</th><th>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredDisplayData.length === 0 ? (
-                      <tr><td colSpan={8}>No movies found</td></tr>
+                      <tr><td colSpan={9}>No movies found</td></tr>
                     ) : filteredDisplayData.map(movie => (
                       <tr key={movie._id}>
                         <td>
@@ -777,7 +963,7 @@ export default function Content() {
                             <div>
                               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                                 <div style={{ fontWeight: 600 }}>{movie.title}</div>
-                                {(movie.is18 || movie["is18+"]) && <span style={{ background: "orange", color: "white", padding: "1px 4px", borderRadius: 4, fontSize: "0.7rem", fontWeight: "bold" }}>18+</span>}
+                                {movie.is18plus && <span style={{ background: "orange", color: "white", padding: "1px 4px", borderRadius: 4, fontSize: "0.7rem", fontWeight: "bold" }}>18+</span>}
                               </div>
                               <div style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>{movie.duration}</div>
                               {isLocked(movie) && (
@@ -790,13 +976,26 @@ export default function Content() {
                           </div>
                         </td>
                         <td>{Array.isArray(movie.genre) ? movie.genre.join(", ") : movie.genre}</td>
+                        <td>
+                          {Array.isArray(movie.category) && movie.category.length > 0 ? (
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                              {movie.category.map((c, idx) => (
+                                <span key={idx} style={{ background: "rgba(108,99,255,0.2)", color: "#9f99ff", padding: "2px 6px", borderRadius: 10, fontSize: "0.75rem", fontWeight: 500 }}>
+                                  {c}
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <span style={{ color: "var(--text-muted)", fontSize: "0.8rem" }}>—</span>
+                          )}
+                        </td>
                         <td>{movie.releaseYear}</td>
                         <td>{movie.rating}</td>
                         <td><strong>{movie.priority || 0}</strong></td>
                         <td><span className={`badge ${movie.isPremium ? "badge-active" : "badge-draft"}`}>{movie.isPremium ? "Premium" : "Free"}</span></td>
                         <td>
-                          <span className={`badge ${isLocked(movie) ? "badge-coming" : "badge-pub"}`}>
-                            {isLocked(movie) ? "Coming Soon" : "Published"}
+                          <span className={`badge ${isLocked(movie) ? "badge-coming" : (movie.isHide ? "badge-draft" : "badge-pub")}`}>
+                            {isLocked(movie) ? "Coming Soon" : (movie.isHide ? "Hidden" : "Published")}
                           </span>
                         </td>
                         <td>
@@ -841,12 +1040,12 @@ export default function Content() {
                 <table className="tbl">
                   <thead>
                     <tr>
-                      <th>Title</th><th>Genre</th><th>Year</th><th>Rating</th><th>Priority</th><th>Seasons</th><th>Status</th><th>Actions</th>
+                      <th>Title</th><th>Genre</th><th>Category</th><th>Year</th><th>Rating</th><th>Priority</th><th>Seasons</th><th>Status</th><th>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredDisplayData.length === 0 ? (
-                      <tr><td colSpan={8}>No series found</td></tr>
+                      <tr><td colSpan={9}>No series found</td></tr>
                     ) : filteredDisplayData.map(series => (
                       <tr key={series._id}>
                         <td>
@@ -855,7 +1054,7 @@ export default function Content() {
                             <div>
                               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                                 <div style={{ fontWeight: 600 }}>{series.title}</div>
-                                {(series.is18 || series["is18+"]) && <span style={{ background: "orange", color: "white", padding: "1px 4px", borderRadius: 4, fontSize: "0.7rem", fontWeight: "bold" }}>18+</span>}
+                                {series.is18plus && <span style={{ background: "orange", color: "white", padding: "1px 4px", borderRadius: 4, fontSize: "0.7rem", fontWeight: "bold" }}>18+</span>}
                               </div>
                               {isLocked(series) && (
                                 <div style={{ fontSize: "0.75rem", color: "var(--orange)" }}>
@@ -867,13 +1066,26 @@ export default function Content() {
                           </div>
                         </td>
                         <td>{Array.isArray(series.genre) ? series.genre.join(", ") : series.genre}</td>
+                        <td>
+                          {Array.isArray(series.category) && series.category.length > 0 ? (
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                              {series.category.map((c, idx) => (
+                                <span key={idx} style={{ background: "rgba(108,99,255,0.2)", color: "#9f99ff", padding: "2px 6px", borderRadius: 10, fontSize: "0.75rem", fontWeight: 500 }}>
+                                  {c}
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <span style={{ color: "var(--text-muted)", fontSize: "0.8rem" }}>—</span>
+                          )}
+                        </td>
                         <td>{series.releaseYear}</td>
                         <td>{series.rating}</td>
                         <td><strong>{series.priority || 0}</strong></td>
                         <td>{series.totalSeasons}</td>
                         <td>
-                          <span className={`badge ${isLocked(series) ? "badge-coming" : "badge-pub"}`}>
-                            {isLocked(series) ? "Coming Soon" : "Published"}
+                          <span className={`badge ${isLocked(series) ? "badge-coming" : (series.isHide ? "badge-draft" : "badge-pub")}`}>
+                            {isLocked(series) ? "Coming Soon" : (series.isHide ? "Hidden" : "Published")}
                           </span>
                         </td>
                         <td>
@@ -1496,11 +1708,32 @@ export default function Content() {
                         <option value="yes">Yes</option>
                       </select>
                     </div>
+                    <div className="form-row" style={{ display: "flex", flexDirection: "column", gap: "8px", gridColumn: "span 2" }}>
+                      <label className="form-label">Age Classification</label>
+                      <div className="content-type-toggle" style={{ display: "flex", width: "100%", background: "var(--bg3)", padding: "4px", borderRadius: "12px", gap: "4px" }}>
+                        <button
+                          type="button"
+                          className={`btn ${editData.allAges || (!editData.allAges && !editData.is18plus) ? "btn-primary" : "btn-ghost"}`}
+                          onClick={() => setEditData(s => ({ ...s, allAges: true, is18plus: false }))}
+                          style={{ flex: 1, borderRadius: "8px", fontSize: "0.85rem", padding: "8px" }}
+                        >
+                          All ages Content (Non-Adult)
+                        </button>
+                        <button
+                          type="button"
+                          className={`btn ${editData.is18plus ? "btn-primary" : "btn-ghost"}`}
+                          onClick={() => setEditData(s => ({ ...s, allAges: false, is18plus: true }))}
+                          style={{ flex: 1, borderRadius: "8px", fontSize: "0.85rem", padding: "8px" }}
+                        >
+                          18+ Content (Adult)
+                        </button>
+                      </div>
+                    </div>
                     <div className="form-row">
-                      <label className="form-label">18+ Content</label>
-                      <select className="form-input" value={editData.is18 || editData["is18+"] ? "yes" : "no"} onChange={e => setEditData(s => ({ ...s, is18: e.target.value === "yes", "is18+": e.target.value === "yes" }))}>
-                        <option value="no">No</option>
-                        <option value="yes">Yes</option>
+                      <label className="form-label">Hide Content</label>
+                      <select className="form-input" value={editData.isHide ? "yes" : "no"} onChange={e => setEditData(s => ({ ...s, isHide: e.target.value === "yes" }))}>
+                        <option value="no">No (Visible)</option>
+                        <option value="yes">Yes (Hidden)</option>
                       </select>
                     </div>
                     <div className="form-row">
@@ -1510,14 +1743,240 @@ export default function Content() {
                         <option value="yes">Yes</option>
                       </select>
                     </div>
-                    <div className="form-row">
-                      <label className="form-label">Category</label>
-                      <select className="form-input" value={editData.category?.[0] || ""} onChange={e => setEditData(s => ({ ...s, category: e.target.value ? [e.target.value] : [] }))}>
-                        <option value="">None</option>
-                        <option value="trending">Trending</option>
-                        <option value="top10">Top 10</option>
-                        <option value="recommended">Recommended</option>
-                      </select>
+                    <div className="form-row" style={{ gridColumn: "1 / -1" }}>
+                      <label className="form-label" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <span>Categories</span>
+                        {!showAddCatInput && (
+                          <button
+                            type="button"
+                            onClick={() => setShowAddCatInput(true)}
+                            style={{
+                              background: "rgba(108,99,255,0.2)",
+                              border: "1px solid rgba(108,99,255,0.4)",
+                              color: "#fff",
+                              borderRadius: "12px",
+                              padding: "2px 10px",
+                              fontSize: "11px",
+                              cursor: "pointer",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: "3px"
+                            }}
+                          >
+                            <Plus size={11} /> Add Category
+                          </button>
+                        )}
+                      </label>
+
+                      <div style={{
+                        display: "flex",
+                        flexWrap: "wrap",
+                        gap: "8px",
+                        padding: "10px 12px",
+                        background: "rgba(255,255,255,0.04)",
+                        border: "1px solid rgba(255,255,255,0.12)",
+                        borderRadius: "8px",
+                        minHeight: "46px",
+                        alignItems: "center",
+                      }}>
+                        {allCategories.map(({ label, value, id }) => {
+                          if (id && editingCatId === id) {
+                            return (
+                              <div key={value} style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                                <input
+                                  autoFocus
+                                  type="text"
+                                  value={editingCatName}
+                                  onChange={(e) => setEditingCatName(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") handleUpdateCategory(id, value);
+                                    if (e.key === "Escape") { setEditingCatId(null); setEditingCatName(""); }
+                                  }}
+                                  style={{
+                                    padding: "3px 8px",
+                                    borderRadius: "15px",
+                                    border: "1px solid #6c63ff",
+                                    background: "rgba(108,99,255,0.15)",
+                                    color: "#fff",
+                                    fontSize: "12px",
+                                    outline: "none",
+                                    width: "110px",
+                                  }}
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => handleUpdateCategory(id, value)}
+                                  disabled={updatingCat || !editingCatName.trim()}
+                                  style={{
+                                    padding: "3px 8px",
+                                    borderRadius: "15px",
+                                    border: "none",
+                                    background: "linear-gradient(135deg, #6c63ff, #4f46e5)",
+                                    color: "#fff",
+                                    fontSize: "11px",
+                                    fontWeight: "600",
+                                    cursor: updatingCat ? "not-allowed" : "pointer",
+                                  }}
+                                  title="Save"
+                                >
+                                  {updatingCat ? "..." : <Check size={11} />}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => { setEditingCatId(null); setEditingCatName(""); }}
+                                  style={{
+                                    padding: "3px 6px",
+                                    borderRadius: "15px",
+                                    border: "1px solid rgba(255,255,255,0.2)",
+                                    background: "transparent",
+                                    color: "rgba(255,255,255,0.6)",
+                                    fontSize: "11px",
+                                    cursor: "pointer",
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                  }}
+                                  title="Cancel"
+                                >
+                                  <X size={11} />
+                                </button>
+                              </div>
+                            );
+                          }
+
+                          const currentCats = Array.isArray(editData?.category)
+                            ? editData.category
+                            : (editData?.category ? [editData.category] : []);
+                          const selected = currentCats.includes(value);
+
+                          return (
+                            <button
+                              key={value}
+                              type="button"
+                              onClick={() => toggleEditCategory(value)}
+                              style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "5px",
+                                padding: "4px 12px",
+                                borderRadius: "20px",
+                                border: selected
+                                  ? "1px solid #6c63ff"
+                                  : "1px solid rgba(255,255,255,0.18)",
+                                background: selected
+                                  ? "linear-gradient(135deg, #6c63ff, #4f46e5)"
+                                  : "transparent",
+                                color: selected ? "#fff" : "rgba(255,255,255,0.6)",
+                                fontSize: "13px",
+                                fontWeight: selected ? "600" : "400",
+                                cursor: "pointer",
+                                transition: "all 0.2s ease",
+                              }}
+                            >
+                              {selected && <Check size={11} />}
+                              {label}
+                              {id && (
+                                <span style={{ display: "inline-flex", alignItems: "center", gap: "3px", marginLeft: "2px" }}>
+                                  <span
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setEditingCatId(id);
+                                      setEditingCatName(label);
+                                    }}
+                                    style={{
+                                      display: "inline-flex",
+                                      alignItems: "center",
+                                      justifyContent: "center",
+                                      padding: "1px",
+                                      borderRadius: "50%",
+                                      opacity: 0.75,
+                                      cursor: "pointer",
+                                    }}
+                                    title="Rename category"
+                                  >
+                                    <Edit2 size={11} />
+                                  </span>
+                                  <span
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDeleteCategory(id, value);
+                                    }}
+                                    style={{
+                                      display: "inline-flex",
+                                      alignItems: "center",
+                                      justifyContent: "center",
+                                      padding: "1px",
+                                      borderRadius: "50%",
+                                      opacity: 0.75,
+                                      cursor: "pointer",
+                                    }}
+                                    title="Delete category"
+                                  >
+                                    <X size={12} />
+                                  </span>
+                                </span>
+                              )}
+                            </button>
+                          );
+                        })}
+
+                        {showAddCatInput && (
+                          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                            <input
+                              autoFocus
+                              type="text"
+                              value={newCatName}
+                              onChange={(e) => setNewCatName(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") handleAddCategory();
+                                if (e.key === "Escape") { setShowAddCatInput(false); setNewCatName(""); }
+                              }}
+                              placeholder="Category name..."
+                              style={{
+                                padding: "4px 10px",
+                                borderRadius: "20px",
+                                border: "1px solid #6c63ff",
+                                background: "rgba(108,99,255,0.15)",
+                                color: "#fff",
+                                fontSize: "12px",
+                                outline: "none",
+                                width: "130px",
+                              }}
+                            />
+                            <button
+                              type="button"
+                              onClick={handleAddCategory}
+                              disabled={addingCat || !newCatName.trim()}
+                              style={{
+                                padding: "4px 10px",
+                                borderRadius: "20px",
+                                border: "none",
+                                background: "linear-gradient(135deg, #6c63ff, #4f46e5)",
+                                color: "#fff",
+                                fontSize: "12px",
+                                fontWeight: "600",
+                                cursor: addingCat ? "not-allowed" : "pointer",
+                              }}
+                            >
+                              {addingCat ? "..." : "Add"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => { setShowAddCatInput(false); setNewCatName(""); }}
+                              style={{
+                                padding: "4px 8px",
+                                borderRadius: "20px",
+                                border: "1px solid rgba(255,255,255,0.2)",
+                                background: "transparent",
+                                color: "rgba(255,255,255,0.6)",
+                                fontSize: "12px",
+                                cursor: "pointer",
+                              }}
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
                     <div className="form-row">
                       <label className="form-label">Priority (0 = Auto-assign, 1 = top priority)</label>

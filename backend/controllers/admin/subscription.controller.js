@@ -342,8 +342,34 @@ exports.getAllSubscriptions =
       // auto cleanup
       await expireOldSubscriptions();
 
+      const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+      const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 10, 1), 100);
+      const search = req.query.search?.trim();
+      const status = req.query.status;
+      const filter = {};
+
+      if (["active", "cancelled", "expired"].includes(status)) {
+        filter.status = status;
+      }
+
+      if (search) {
+        const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const matchingUsers = await User.find({
+          $or: [
+            { name: { $regex: escapedSearch, $options: "i" } },
+            { email: { $regex: escapedSearch, $options: "i" } },
+          ],
+        }).select("_id");
+
+        filter.user = { $in: matchingUsers.map((user) => user._id) };
+      }
+
+      const totalSubscriptions = await Subscription.countDocuments(filter);
+      const totalPages = Math.max(Math.ceil(totalSubscriptions / limit), 1);
+      const currentPage = Math.min(page, totalPages);
+
       const subscriptions =
-        await Subscription.find()
+        await Subscription.find(filter)
           .populate(
             "user",
             "name email"
@@ -351,11 +377,19 @@ exports.getAllSubscriptions =
           .populate("plan")
           .sort({
             createdAt: -1,
-          });
+          })
+          .skip((currentPage - 1) * limit)
+          .limit(limit);
 
       res.status(200).json({
         success: true,
         subscriptions,
+        pagination: {
+          currentPage,
+          totalPages,
+          totalSubscriptions,
+          limit,
+        },
       });
 
     } catch (error) {
@@ -371,3 +405,42 @@ exports.getAllSubscriptions =
       });
     }
   };
+
+
+// =====================================================
+// CANCEL SUBSCRIPTION (ADMIN)
+// =====================================================
+exports.cancelSubscription = async (req, res) => {
+  try {
+    const subscription = await Subscription.findById(req.params.id);
+
+    if (!subscription) {
+      return res.status(404).json({
+        success: false,
+        message: "Subscription not found",
+      });
+    }
+
+    if (subscription.status !== "active") {
+      return res.status(400).json({
+        success: false,
+        message: `This subscription is already ${subscription.status}`,
+      });
+    }
+
+    subscription.status = "cancelled";
+    await subscription.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Subscription cancelled successfully",
+      subscription,
+    });
+  } catch (error) {
+    console.error("Admin Cancel Subscription Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};

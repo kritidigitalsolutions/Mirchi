@@ -8,6 +8,7 @@ const {
 
 const {
     isAdmin,
+    hasPermission,
 } = require("../../middlewares/admin.middleware");
 
 const upload = require(
@@ -65,6 +66,7 @@ router.patch(
 router.get(
     "/",
     isAdmin,
+    hasPermission("users"),
     getAllUsers
 );
 
@@ -72,6 +74,7 @@ router.get(
 router.get(
     "/registration-stats",
     isAdmin,
+    hasPermission("users"),
     getRegistrationStats
 );
 
@@ -79,6 +82,7 @@ router.get(
 router.get(
     "/growth",
     isAdmin,
+    hasPermission("users"),
     getUserGrowth
 );
 
@@ -86,6 +90,7 @@ router.get(
 router.get(
     "/:id",
     isAdmin,
+    hasPermission("users"),
     getSingleUser
 );
 
@@ -93,6 +98,7 @@ router.get(
 router.delete(
     "/:id",
     isAdmin,
+    hasPermission("users"),
     deleteUser
 );
 

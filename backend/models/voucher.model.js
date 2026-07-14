@@ -16,8 +16,6 @@ const voucherSchema =
 
         uppercase: true,
         trim: true,
-
-        index: true,
       },
 
       // ========================================
@@ -32,8 +30,6 @@ const voucherSchema =
         ref: "Plan",
 
         required: true,
-
-        index: true,
       },
 
       // ========================================
@@ -56,8 +52,6 @@ const voucherSchema =
         type: Boolean,
 
         default: false,
-
-        index: true,
       },
 
       // ========================================
@@ -80,8 +74,6 @@ const voucherSchema =
 
       expiryDate: {
         type: Date,
-
-        index: true,
       },
 
       // ========================================
@@ -107,22 +99,9 @@ const voucherSchema =
 // INDEXES
 // ========================================
 
-voucherSchema.index({
-  code: 1,
-});
-
-voucherSchema.index({
-  isUsed: 1,
-});
-
-voucherSchema.index({
-  expiryDate: 1,
-});
-
-voucherSchema.index({
-  plan: 1,
-});
-
+voucherSchema.index({ plan: 1 });
+voucherSchema.index({ isUsed: 1 });
+voucherSchema.index({ expiryDate: 1 });
 
 // ========================================
 // EXPORT

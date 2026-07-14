@@ -113,11 +113,15 @@ const movieSchema = new mongoose.Schema(
       default: false
     },
 
-    is18: {
+    is18plus: {
       type: Boolean,
       default: false
     },
-    "is18+": {
+    allAges: {
+      type: Boolean,
+      default: false
+    },
+    isHide: {
       type: Boolean,
       default: false
     },
@@ -134,11 +138,7 @@ const movieSchema = new mongoose.Schema(
     category: [
       {
         type: String,
-        enum: [
-          "trending",
-          "top10",
-          "recommended"
-        ]
+        trim: true
       }
     ],
 

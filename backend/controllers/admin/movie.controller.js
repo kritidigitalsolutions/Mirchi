@@ -1,4 +1,7 @@
 const Movie = require("../../models/movie.model");
+const Notification = require("../../models/notification.model");
+const User = require("../../models/user.model");
+const { sendPushNotification } = require("../../utils/fcm.service");
 const { getMediaUrl, deleteMedia, deleteMediaFiles } = require("../../utils/mediaUrl");
 
 // ========================================
@@ -149,10 +152,12 @@ console.log({
       isPremium:
         req.body.isPremium === "true",
 
-      is18:
-        req.body.is18 === "true" || req.body["is18+"] === "true" || req.body.is18 === true || req.body["is18+"] === true,
-      "is18+":
-        req.body.is18 === "true" || req.body["is18+"] === "true" || req.body.is18 === true || req.body["is18+"] === true,
+      is18plus:
+        req.body.is18plus === "true" || req.body.is18plus === true,
+      allAges:
+        req.body.allAges === "true" || req.body.allAges === true,
+      isHide:
+        req.body.isHide === "true" || req.body.isHide === true,
 
       rating: req.body.rating || 0,
 
@@ -163,10 +168,65 @@ console.log({
       priority,
     });
 
+    // Create local Notification document
+    const notificationTitle = "New Movie Added!";
+    const notificationMessage = `Watch "${movie.title}" now on Mirchi!`;
+    const actionUrl = `mirchiapp://movies/id/${movie._id}`;
+
+    const notificationPayload = {
+      title: notificationTitle,
+      message: notificationMessage,
+      type: "GENERAL",
+      targetUser: null,
+      targetUserType: "ALL",
+      metadata: {
+        movieId: movie._id,
+        actionUrl,
+        imageUrl: movie.poster || ""
+      },
+      createdBy: req.user ? req.user.id : null,
+      sentAt: new Date(),
+      isActive: true
+    };
+
+    const notification = await Notification.create(notificationPayload);
+
+    // Send push notification asynchronously to avoid blocking the API response
+    User.find({ fcmToken: { $type: "string", $ne: "" } })
+      .then(async (users) => {
+        for (const user of users) {
+          try {
+            await sendPushNotification({
+              token: user.fcmToken,
+              title: notificationTitle,
+              body: notificationMessage,
+              imageUrl: movie.poster || "",
+              data: {
+                notificationId: notification._id.toString(),
+                type: "GENERAL",
+                actionUrl,
+                movieId: movie._id.toString()
+              }
+            });
+          } catch (pushErr) {
+            console.error(`Failed to send FCM to user ${user._id}:`, pushErr.message);
+          }
+        }
+      })
+      .catch((err) => {
+        console.error("FCM dispatch error in addMovie:", err.message);
+      });
+
     return res.status(201).json({
       success: true,
       message: "Movie added successfully",
       movie,
+      notification: {
+        title: notificationTitle,
+        message: notificationMessage,
+        imageUrl: movie.poster || "",
+        actionUrl
+      }
     });
 
   } catch (error) {
@@ -385,12 +445,14 @@ const updateMovie = async (req, res) => {
     movie.isPremium =
       req.body.isPremium === "true";
 
-    if (req.body.is18 !== undefined || req.body["is18+"] !== undefined) {
-      const val = req.body.is18 !== undefined ? req.body.is18 : req.body["is18+"];
-      const is18Val = val === "true" || val === true;
-      movie.is18 = is18Val;
-      movie["is18+"] = is18Val;
-      movie.markModified("is18+");
+    if (req.body.is18plus !== undefined) {
+      movie.is18plus = req.body.is18plus === "true" || req.body.is18plus === true;
+    }
+    if (req.body.allAges !== undefined) {
+      movie.allAges = req.body.allAges === "true" || req.body.allAges === true;
+    }
+    if (req.body.isHide !== undefined) {
+      movie.isHide = req.body.isHide === "true" || req.body.isHide === true;
     }
 
     movie.category = category;

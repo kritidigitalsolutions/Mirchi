@@ -91,7 +91,12 @@ export default function Dashboard() {
         API.get("/admin/user/registration-stats"),
       ]);
 
-      setContentStats(sRes.data.data || []);
+      const fetchedStats = sRes.data?.data || (sRes.data?.stats ? [
+        { name: "Movies", value: sRes.data.stats.movies || 0 },
+        { name: "Series", value: sRes.data.stats.series || 0 },
+        { name: "Short Dramas", value: sRes.data.stats.shortDramas || 0 },
+      ] : []);
+      setContentStats(fetchedStats);
 
 
 
@@ -128,10 +133,9 @@ export default function Dashboard() {
   const formatCurrency = (value) =>
     `₹${Number(value || 0).toLocaleString("en-IN")}`;
 
-  const moviesCount = contentStats.find(c => c.name === "Movies")?.value || 0;
-  const seriesCount = contentStats.find(c => c.name === "Series")?.value || 0;
-
-  const totalContent = moviesCount + seriesCount;
+  const totalContent = Array.isArray(contentStats)
+    ? contentStats.reduce((sum, item) => sum + (Number(item.value) || 0), 0)
+    : 0;
 
 
   // const PIE = [

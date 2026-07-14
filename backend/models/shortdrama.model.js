@@ -48,11 +48,15 @@ const shortDramaSchema =
         default: false,
       },
 
-      is18: {
+      is18plus: {
         type: Boolean,
         default: false,
       },
-      "is18+": {
+      allAges: {
+        type: Boolean,
+        default: false,
+      },
+      isHide: {
         type: Boolean,
         default: false,
       },
@@ -76,11 +80,7 @@ const shortDramaSchema =
       category: [
         {
           type: String,
-          enum: [
-            "trending",
-            "recommended",
-            "top10",
-          ],
+          trim: true,
         },
       ],
     },

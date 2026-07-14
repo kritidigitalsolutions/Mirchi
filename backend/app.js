@@ -85,10 +85,6 @@ app.use(
   })
 );
 
-
-
-
-
 // ========================================
 // HEALTH CHECK
 // ========================================
@@ -275,7 +271,6 @@ app.use("/api/voucher", userVoucherRoutes);
 //subscription routes
 const adminSubscriptionRoutes = require("./routes/admin/subscription.routes");
 const userSubscriptionRoutes = require("./routes/user/subscription.routes");
-
 app.use("/api/admin/subscription", adminSubscriptionRoutes);
 app.use("/api/subscription", userSubscriptionRoutes);
 
@@ -289,6 +284,12 @@ const userNotificationRoutes = require("./routes/user/notification.routes");
 app.use("/api/admin/notifications", adminNotificationRoutes);
 app.use("/api/notifications", userNotificationRoutes);
 
+//category routes
+const adminCategoryRoutes = require("./routes/admin/category.routes");
+const userCategoryRoutes = require("./routes/user/category.routes");
+app.use("/api/admin/categories", adminCategoryRoutes);
+app.use("/api/categories", userCategoryRoutes);
+
 //interactions routes
 const interactionRoutes = require("./routes/user/interation.routes");
 app.use("/api/interaction", interactionRoutes);
@@ -298,23 +299,15 @@ const paymentRoutes = require("./routes/user/payment.routes");
 app.use("/api/payment", paymentRoutes);
 
 // SUPPORT ROUTES
-const userSupportRoutes = require(
-  "./routes/user/support.routes"
-);
+const userSupportRoutes = require("./routes/user/support.routes");
+const adminSupportRoutes = require("./routes/admin/support.routes");
+app.use("/api/support", userSupportRoutes);
+app.use("/api/admin/support", adminSupportRoutes);
 
-const adminSupportRoutes = require(
-  "./routes/admin/support.routes"
-);
+// SUB-ADMIN / STAFF ROUTES
+const adminSubAdminRoutes = require("./routes/admin/subadmin.routes");
+app.use("/api/admin/subadmins", adminSubAdminRoutes);
 
-app.use(
-  "/api/support",
-  userSupportRoutes
-);
-
-app.use(
-  "/api/admin/support",
-  adminSupportRoutes
-);
 // ========================================
 // EXPORT
 // ========================================

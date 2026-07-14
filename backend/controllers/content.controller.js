@@ -8,18 +8,18 @@ const Series = require("../models/series.model");
 const getHomeContent = async (req, res) => {
   try {
     // Fetch active movies and series
-    const movies = await Movie.find().sort({ priority: -1, createdAt: -1 }).limit(20).lean();
-    const series = await Series.find().sort({ priority: -1, createdAt: -1 }).limit(20).lean();
+    const movies = await Movie.find({}).sort({ priority: -1, createdAt: -1 }).limit(20).lean();
+    const series = await Series.find({}).sort({ priority: -1, createdAt: -1 }).limit(20).lean();
 
     const [
-  moviesCount,
-  seriesCount,
-  seriesData
-] = await Promise.all([
-  Movie.countDocuments(),
-  Series.countDocuments(),
-  Series.find({}, "totalEpisodes").lean()
-]);
+      moviesCount,
+      seriesCount,
+      seriesData
+    ] = await Promise.all([
+      Movie.countDocuments({}),
+      Series.countDocuments({}),
+      Series.find({}, "totalEpisodes").lean()
+    ]);
     const episodesCount = seriesData.reduce((acc, s) => acc + (s.totalEpisodes || 0), 0);
 
     // Format and add flags
@@ -71,11 +71,11 @@ const searchContent = async (req, res) => {
     if (!query) return res.status(400).json({ success: false, message: "Search query is required" });
 
     const movies = await Movie.find(
-  {
-    $text: {
-      $search: query
-    }
-  },
+      {
+        $text: {
+          $search: query
+        }
+      },
   {
     score: {
       $meta: "textScore"
@@ -95,12 +95,12 @@ const searchContent = async (req, res) => {
 .lean();
 
 
-const series = await Series.find(
-  {
-    $text: {
-      $search: query
-    }
-  },
+    const series = await Series.find(
+      {
+        $text: {
+          $search: query
+        }
+      },
   {
     score: {
       $meta: "textScore"

@@ -10,7 +10,7 @@ export default function PlansPage() {
     duration: "",
     features: "",
     planType: "monthly",
-    sortOrder: 0,
+    sortOrder: "",
     isRecommended: false,
     isActive: true
   });
@@ -80,7 +80,7 @@ export default function PlansPage() {
         duration: "",
         features: "",
         planType: "monthly",
-        sortOrder: 0,
+        sortOrder: "",
         isRecommended: false,
         isActive: true
       });
@@ -120,7 +120,7 @@ export default function PlansPage() {
       duration: plan.duration,
       features: plan.features.join(", "),
       planType: plan.planType || "monthly",
-      sortOrder: plan.sortOrder || 0,
+      sortOrder: plan.sortOrder ?? "",
       isRecommended: plan.isRecommended || false,
       isActive: plan.isActive !== false
     });
@@ -141,65 +141,44 @@ export default function PlansPage() {
           <h3>{editId ? "Edit Plan" : "Create New Plan"}</h3>
 
           <div className="form-2col">
-            <input
-              className="form-input-styled"
-              name="name"
-              placeholder="Plan Name (Basic, Premium)"
-              value={form.name}
-              onChange={ch}
-              required
-            />
+            <div className="plan-form-field">
+              <label htmlFor="plan-name">Plan Name</label>
+              <input id="plan-name" className="form-input-styled" name="name" placeholder="e.g. Basic or Premium" value={form.name} onChange={ch} required />
+            </div>
 
-            <input
-              className="form-input-styled"
-              name="price"
-              type="number"
-              placeholder="Price (₹)"
-              value={form.price}
-              onChange={ch}
-              required
-            />
+            <div className="plan-form-field">
+              <label htmlFor="plan-price">Price (₹)</label>
+              <input id="plan-price" className="form-input-styled" name="price" type="number" min="0" placeholder="e.g. 99" value={form.price} onChange={ch} required />
+            </div>
 
-            <input
-              className="form-input-styled"
-              name="duration"
-              type="number"
-              placeholder="Duration (days)"
-              value={form.duration}
-              onChange={ch}
-              required
-            />
+            <div className="plan-form-field">
+              <label htmlFor="plan-duration">Duration (days)</label>
+              <input id="plan-duration" className="form-input-styled" name="duration" type="number" min="1" placeholder="e.g. 30" value={form.duration} onChange={ch} required />
+            </div>
 
-            <input
-              className="form-input-styled form-full"
-              name="features"
-              placeholder="Features (comma separated)"
-              value={form.features}
-              onChange={ch}
-            />
+            <div className="plan-form-field">
+              <label htmlFor="plan-type">Billing Cycle</label>
+              <select id="plan-type" className="form-input-styled" name="planType" value={form.planType} onChange={ch}>
+                <option value="monthly">Monthly</option>
+                <option value="quarterly">Quarterly</option>
+                <option value="yearly">Yearly</option>
+                <option value="lifetime">Lifetime</option>
+              </select>
+            </div>
 
-            <select
-              className="form-input-styled"
-              name="planType"
-              value={form.planType}
-              onChange={ch}
-            >
-              <option value="monthly">Monthly</option>
-              <option value="quarterly">Quarterly</option>
-              <option value="yearly">Yearly</option>
-              <option value="lifetime">Lifetime</option>
-            </select>
+            <div className="plan-form-field plan-form-full">
+              <label htmlFor="plan-features">Plan Features</label>
+              <input id="plan-features" className="form-input-styled" name="features" placeholder="e.g. Ad-free streaming, HD quality, Offline downloads" value={form.features} onChange={ch} />
+              <small>Separate each feature with a comma.</small>
+            </div>
 
-            <input
-              className="form-input-styled"
-              name="sortOrder"
-              type="number"
-              placeholder="Sort Order (e.g. 1)"
-              value={form.sortOrder}
-              onChange={ch}
-            />
+            <div className="plan-form-field">
+              <label htmlFor="plan-sort-order">Display Order</label>
+              <input id="plan-sort-order" className="form-input-styled" name="sortOrder" type="number" placeholder="e.g. 1" value={form.sortOrder} onChange={ch} />
+              <small>Lower numbers appear first.</small>
+            </div>
 
-            <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
+            <label className="plan-toggle-field">
               <input
                 type="checkbox"
                 name="isRecommended"
@@ -209,7 +188,7 @@ export default function PlansPage() {
               Recommended Plan
             </label>
 
-            <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
+            <label className="plan-toggle-field">
               <input
                 type="checkbox"
                 name="isActive"

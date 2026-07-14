@@ -69,7 +69,7 @@ exports.sendPasswordOtp = async (req, res) => {
 
     res.json({
       success: true,
-      message: "OTP sent to your email"
+      message: `Password change OTP sent 📩 to ${admin.email}`
     });
 
   } catch (error) {

@@ -7,7 +7,8 @@ const upload = require(
 );
 const validateFileSizes = require("../../middlewares/validateFileSizes");
 const {
-  isAdmin
+  isAdmin,
+  hasPermission
 } = require("../../middlewares/admin.middleware");
 
 const {
@@ -21,6 +22,8 @@ const {
 } = require(
   "../../controllers/admin/series.controller"
 );
+
+router.use(isAdmin, hasPermission("content", "series"));
 
 
 // ========================================

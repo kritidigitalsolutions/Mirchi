@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 
 
-const {isAdmin }= require("../../middlewares/admin.middleware");
+const { isAdmin, hasPermission } = require("../../middlewares/admin.middleware");
 
 const {
   addHelp,
@@ -12,7 +12,7 @@ const {
   toggleHelp
 } = require("../../controllers/admin/help.controller");
 
-router.use(isAdmin);
+router.use(isAdmin, hasPermission("help"));
 
 router.post("/", addHelp);
 router.get("/", getAllHelp);

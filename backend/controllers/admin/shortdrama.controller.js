@@ -105,10 +105,12 @@ const addShortDrama = async (
           req.body.isPremium ===
           "true",
 
-        is18:
-          req.body.is18 === "true" || req.body["is18+"] === "true" || req.body.is18 === true || req.body["is18+"] === true,
-        "is18+":
-          req.body.is18 === "true" || req.body["is18+"] === "true" || req.body.is18 === true || req.body["is18+"] === true,
+        is18plus:
+          req.body.is18plus === "true" || req.body.is18plus === true,
+        allAges:
+          req.body.allAges === "true" || req.body.allAges === true,
+        isHide:
+          req.body.isHide === "true" || req.body.isHide === true,
 
         status:
           req.body.status ||
@@ -254,12 +256,14 @@ const updateShortDrama =
         req.body.isPremium ===
         "true";
 
-      if (req.body.is18 !== undefined || req.body["is18+"] !== undefined) {
-        const val = req.body.is18 !== undefined ? req.body.is18 : req.body["is18+"];
-        const is18Val = val === "true" || val === true;
-        drama.is18 = is18Val;
-        drama["is18+"] = is18Val;
-        drama.markModified("is18+");
+      if (req.body.is18plus !== undefined) {
+        drama.is18plus = req.body.is18plus === "true" || req.body.is18plus === true;
+      }
+      if (req.body.allAges !== undefined) {
+        drama.allAges = req.body.allAges === "true" || req.body.allAges === true;
+      }
+      if (req.body.isHide !== undefined) {
+        drama.isHide = req.body.isHide === "true" || req.body.isHide === true;
       }
 
       drama.status =

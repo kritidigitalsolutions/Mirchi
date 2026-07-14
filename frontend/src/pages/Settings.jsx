@@ -147,13 +147,13 @@ const Settings = () => {
 
     try {
       setLoading(true);
-      await API.post("/admin/auth/change-password/send-otp", {
+      const response = await API.post("/admin/auth/change-password/send-otp", {
         oldPassword: form.oldPassword,
         newPassword: form.newPassword,
       });
 
       setPwdOtpSent(true);
-      setMessage("Password change OTP sent 📩");
+      setMessage(response.data.message);
       setPwdTimer(30);
 
     } catch (err) {

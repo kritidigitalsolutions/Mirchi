@@ -236,7 +236,14 @@ exports.getAdminProfile = async (req, res) => {
     }
     res.json({
       success: true,
-      admin
+      admin: {
+        _id: admin._id,
+        name: admin.name,
+        email: admin.email,
+        role: admin.role,
+        permissions: admin.permissions || [],
+        isActive: admin.isActive !== false,
+      }
     });
   } catch (error) {
     res.status(500).json({

@@ -8,6 +8,7 @@ const upload = require(
 
 const {
   isAdmin,
+  hasPermission,
 } = require(
   "../../middlewares/admin.middleware"
 );
@@ -21,6 +22,8 @@ const {
 } = require(
   "../../controllers/admin/dramaEpisode.controller"
 );
+
+router.use(isAdmin, hasPermission("content"));
 
 
 // ========================================

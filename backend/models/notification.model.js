@@ -82,7 +82,16 @@ const notificationSchema = new mongoose.Schema(
                 type: mongoose.Schema.Types.ObjectId,
                 ref: "Plan"
             },
-            actionUrl: String
+            movieId: {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: "Movie"
+            },
+            seriesId: {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: "Series"
+            },
+            actionUrl: String,
+            imageUrl: String
         },
 
         // Who created this notification

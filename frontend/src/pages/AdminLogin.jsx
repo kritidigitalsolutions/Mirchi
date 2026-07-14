@@ -24,7 +24,12 @@ const AdminLogin = () => {
       const res = await API.post("/admin/auth/login", form);
       if (res.data.token) {
         localStorage.setItem("token", res.data.token);
-        if (res.data.admin?.name) localStorage.setItem("adminName", res.data.admin.name);
+        if (res.data.admin) {
+          localStorage.setItem("adminData", JSON.stringify(res.data.admin));
+          localStorage.setItem("adminRole", res.data.admin.role || "ADMIN");
+          localStorage.setItem("adminPermissions", JSON.stringify(res.data.admin.permissions || []));
+          if (res.data.admin.name) localStorage.setItem("adminName", res.data.admin.name);
+        }
         navigate("/dashboard");
       } else {
         setError("No token received. Please try again.");

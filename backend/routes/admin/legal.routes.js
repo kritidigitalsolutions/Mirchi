@@ -3,7 +3,8 @@ const express = require("express");
 const router = express.Router();
 
 const {
-  isAdmin
+  isAdmin,
+  hasPermission
 } = require("../../middlewares/admin.middleware");
 
 const {
@@ -12,6 +13,8 @@ const {
   addOrUpdateLegalDocument,
   togglePublish
 } = require("../../controllers/admin/legal.controller");
+
+router.use(isAdmin, hasPermission("legal"));
 
 
 // ========================================

@@ -151,7 +151,7 @@ export default function Drama() {
 
   const clearSearch = () => { setSearchQuery(""); setSearchResults(null); };
   const displayData = searchResults !== null ? searchResults : data;
-  const filteredDisplayData = displayData.filter(item => show18Plus || !(item.is18 || item["is18+"]));
+  const filteredDisplayData = displayData.filter(item => show18Plus || !item.is18plus);
 
   /* ── DRAMA CLICK ── */
   const handleDramaClick = (drama) => {
@@ -225,7 +225,7 @@ export default function Drama() {
       }
 
       const formData = new FormData();
-      ["title", "description", "language", "isPremium", "status", "priority", "is18", "is18+"].forEach(k => {
+      ["title", "description", "language", "isPremium", "status", "priority", "is18plus", "allAges"].forEach(k => {
         if (editData[k] !== undefined) formData.append(k, editData[k]);
       });
       if (editData.genre) formData.append("genre", JSON.stringify(Array.isArray(editData.genre) ? editData.genre : editData.genre.split(",").map(s => s.trim()).filter(Boolean)));
@@ -445,7 +445,7 @@ export default function Drama() {
                             <div>
                               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                                 <div style={{ fontWeight: 600 }}>{drama.title}</div>
-                                {(drama.is18 || drama["is18+"]) && <span style={{ background: "orange", color: "white", padding: "1px 4px", borderRadius: 4, fontSize: "0.7rem", fontWeight: "bold" }}>18+</span>}
+                                {drama.is18plus && <span style={{ background: "orange", color: "white", padding: "1px 4px", borderRadius: 4, fontSize: "0.7rem", fontWeight: "bold" }}>18+</span>}
                               </div>
                               <div style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>{drama.language}</div>
                             </div>
@@ -735,8 +735,12 @@ export default function Drama() {
                     <Lock size={14} /> Premium
                   </label>
                   <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
-                    <input type="checkbox" checked={!!(editData.is18 || editData["is18+"])} onChange={e => setEditData(p => ({ ...p, is18: e.target.checked, "is18+": e.target.checked }))} />
+                    <input type="checkbox" checked={!!editData.is18plus} onChange={e => setEditData(p => ({ ...p, is18plus: e.target.checked, allAges: !e.target.checked }))} />
                     <Layers size={14} /> 18+ Content
+                  </label>
+                  <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
+                    <input type="checkbox" checked={!!editData.allAges} onChange={e => setEditData(p => ({ ...p, allAges: e.target.checked, is18plus: !e.target.checked }))} />
+                    <Layers size={14} /> All Ages Content
                   </label>
                 </div>
 

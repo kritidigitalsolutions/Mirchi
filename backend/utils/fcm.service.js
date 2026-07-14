@@ -11,21 +11,10 @@ const {
  * @param {string} params.body - Notification body content
  * @param {Object} [params.data] - Optional metadata (converted to key-value strings)
  */
-const sendPushNotification = async ({ token, title, body, data }) => {
+const sendPushNotification = async ({ token, title, body, imageUrl, data }) => {
   try {
     if (!token) {
       return { success: false, error: "No token provided" };
-    }
-
-    if (!firebaseInitialized) {
-      console.log("-----------------------------------------");
-      console.log("PUSH NOTIFICATION SENT (MOCK/STUB MODE)");
-      console.log("To:", token);
-      console.log("Title:", title);
-      console.log("Body:", body);
-      console.log("Data:", data);
-      console.log("-----------------------------------------");
-      return { success: true, messageId: `mock-id-${Date.now()}` };
     }
 
     // Convert data fields to strings, as FCM data payload requires string values
@@ -36,6 +25,22 @@ const sendPushNotification = async ({ token, title, body, data }) => {
       });
     }
 
+    if (imageUrl) {
+      stringifiedData.imageUrl = String(imageUrl);
+    }
+
+    if (!firebaseInitialized) {
+      console.log("-----------------------------------------");
+      console.log("PUSH NOTIFICATION SENT (MOCK/STUB MODE)");
+      console.log("To:", token);
+      console.log("Title:", title);
+      console.log("Body:", body);
+      console.log("ImageUrl:", imageUrl);
+      console.log("Data:", data);
+      console.log("-----------------------------------------");
+      return { success: true, messageId: `mock-id-${Date.now()}` };
+    }
+
     const message = {
       token,
       notification: {
@@ -44,6 +49,10 @@ const sendPushNotification = async ({ token, title, body, data }) => {
       },
       data: stringifiedData,
     };
+
+    if (imageUrl) {
+      message.notification.imageUrl = imageUrl;
+    }
 
     const response = await admin.messaging().send(message);
     console.log("Successfully sent FCM notification:", response);

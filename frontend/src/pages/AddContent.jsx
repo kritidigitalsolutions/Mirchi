@@ -338,6 +338,7 @@ const handleSubmit = async (e) => {
         <BasicInfoSection
           form={form}
           ch={ch}
+          setForm={setForm}
         />
 
         <MediaAssetsStep

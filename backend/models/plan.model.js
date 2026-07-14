@@ -61,8 +61,6 @@ const planSchema =
         type: Boolean,
 
         default: true,
-
-        index: true,
       },
 
       // ========================================

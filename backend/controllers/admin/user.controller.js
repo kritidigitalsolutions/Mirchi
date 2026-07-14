@@ -1,4 +1,5 @@
 const User = require("../../models/user.model");
+const Subscription = require("../../models/subscription.model");
 
 
 // ========================================
@@ -9,14 +10,47 @@ exports.getAllUsers = async (
     res
 ) => {
     try {
-        const users = await User.find()
-            .select("-__v")
-            .sort({ createdAt: -1 });
+        const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+        const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 10, 1), 100);
+        const search = req.query.search?.trim();
+        const filter = {};
+
+        if (search) {
+            const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+            filter.$or = [
+                { name: { $regex: escapedSearch, $options: "i" } },
+                { email: { $regex: escapedSearch, $options: "i" } },
+            ];
+        }
+
+        const totalUsers = await User.countDocuments(filter);
+        const totalPages = Math.max(Math.ceil(totalUsers / limit), 1);
+        const currentPage = Math.min(page, totalPages);
+
+        const [users, activeUsers, blockedUsers] = await Promise.all([
+            User.find(filter)
+                .select("-__v")
+                .sort({ createdAt: -1 })
+                .skip((currentPage - 1) * limit)
+                .limit(limit),
+            User.countDocuments({ ...filter, isBlocked: { $ne: true } }),
+            User.countDocuments({ ...filter, isBlocked: true }),
+        ]);
 
         res.status(200).json({
             success: true,
-            count: users.length,
+            count: totalUsers,
             users,
+            pagination: {
+                currentPage,
+                totalPages,
+                totalUsers,
+                limit,
+            },
+            stats: {
+                activeUsers,
+                blockedUsers,
+            },
         });
 
     } catch (error) {
@@ -90,9 +124,10 @@ exports.deleteUser = async (
             });
         }
 
-        await User.findByIdAndDelete(
-            req.params.id
-        );
+        await Promise.all([
+            Subscription.deleteMany({ user: user._id }),
+            User.findByIdAndDelete(req.params.id),
+        ]);
 
         res.status(200).json({
             success: true,

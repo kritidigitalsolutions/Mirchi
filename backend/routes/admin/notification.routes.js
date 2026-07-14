@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 
-const { isAdmin } = require("../../middlewares/admin.middleware");
+const { isAdmin, hasPermission } = require("../../middlewares/admin.middleware");
 
 const {
   sendNotification,
@@ -11,7 +11,7 @@ const {
   getUnreadCount
 } = require("../../controllers/admin/notification.controller");
 
-router.use(isAdmin);
+router.use(isAdmin, hasPermission("notifications"));
 
 router.post("/send", sendNotification);
 router.get("/unread-count", getUnreadCount);

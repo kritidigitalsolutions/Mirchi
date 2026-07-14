@@ -4,6 +4,7 @@ const router = express.Router();
 
 const {
   isAdmin,
+  hasPermission,
 } = require("../../middlewares/admin.middleware");
 
 const upload = require("../../middlewares/upload.middleware");
@@ -15,6 +16,8 @@ const {
   updateTicketStatus,
   getAdminTicketConversation,
 } = require("../../controllers/admin/support.controller");
+
+router.use(isAdmin, hasPermission("support"));
 
 
 // ========================================

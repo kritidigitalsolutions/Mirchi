@@ -8,7 +8,9 @@ const {
   deleteVoucher
 } = require("../../controllers/admin/voucher.controller");
 
-const { isAdmin } = require("../../middlewares/admin.middleware");
+const { isAdmin, hasPermission } = require("../../middlewares/admin.middleware");
+
+router.use(isAdmin, hasPermission("promo"));
 
 router.post("/", isAdmin, createVoucher);
 router.get("/", isAdmin, getVouchers);

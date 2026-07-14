@@ -868,6 +868,36 @@ body.light .form-input-styled {
   box-shadow: 0 0 0 3px var(--primary-dim);
 }
 
+.plan-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.plan-form-full {
+  grid-column: 1 / -1;
+}
+
+.plan-form-field label {
+  color: var(--text-soft);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.plan-form-field small {
+  color: var(--text-muted);
+  font-size: 0.73rem;
+}
+
+.plan-toggle-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 26px;
+  color: var(--text);
+  font-weight: 600;
+}
+
 textarea.form-input-styled {
   min-height: 100px;
   resize: vertical;

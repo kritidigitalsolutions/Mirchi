@@ -17,7 +17,7 @@ const getAllShortDramas =
     try {
 
       const dramas =
-        await ShortDrama.find()
+        await ShortDrama.find({})
           .sort({
             priority: -1,
             createdAt: -1,
@@ -45,9 +45,9 @@ const getShortDramaById =
     try {
 
       const shortDrama =
-        await ShortDrama.findById(
-          req.params.id
-        );
+        await ShortDrama.findOne({
+          _id: req.params.id
+        });
 
       if (!shortDrama) {
         return res.status(404).json({
@@ -84,7 +84,7 @@ const searchShortDrama =
           title: {
             $regex: q,
             $options: "i",
-          },
+          }
         }).sort({
           priority: -1,
           createdAt: -1,

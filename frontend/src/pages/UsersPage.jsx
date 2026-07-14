@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import API, { API_BASE_URL } from "../api/axios";
-import { Users, RefreshCw, User, CheckCircle, AlertCircle, Search, Loader, Eye, Trash2, X } from "lucide-react";
+import { Users, RefreshCw, User, CheckCircle, AlertCircle, Search, Loader, Eye, Trash2, X, ChevronLeft, ChevronRight } from "lucide-react";
 import "./Dashboard.css";
 
 export default function UsersPage() {
@@ -8,6 +8,9 @@ export default function UsersPage() {
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState({ currentPage: 1, totalPages: 1, totalUsers: 0, limit: 10 });
+  const [stats, setStats] = useState({ activeUsers: 0, blockedUsers: 0 });
 
   const getImageUrl = (path) => {
     if (!path) return null;
@@ -17,22 +20,36 @@ export default function UsersPage() {
     return `${serverUrl}/${cleanPath}`;
   };
 
-  useEffect(() => { fetchUsers(); }, []);
-
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      const res = await API.get("/admin/users");
+      const res = await API.get("/admin/users", {
+        params: { page, limit: 10, search: search.trim() },
+      });
       setUsers(res.data.users || []);
-    } catch { setUsers([]); }
-    setLoading(false);
+      setPagination(res.data.pagination || { currentPage: 1, totalPages: 1, totalUsers: 0, limit: 10 });
+      setStats(res.data.stats || { activeUsers: 0, blockedUsers: 0 });
+    } catch {
+      setUsers([]);
+      setPagination({ currentPage: 1, totalPages: 1, totalUsers: 0, limit: 10 });
+      setStats({ activeUsers: 0, blockedUsers: 0 });
+    } finally {
+      setLoading(false);
+    }
   };
+
+  useEffect(() => { fetchUsers(); }, [page, search]);
 
   const handleDelete = async (id) => {
     if (!window.confirm("Delete this user permanently?")) return;
     try {
       await API.delete(`/admin/users/${id}`);
-      setUsers(p => p.filter(u => u._id !== id));
+      setSelected(null);
+      if (users.length === 1 && page > 1) {
+        setPage((currentPage) => currentPage - 1);
+      } else {
+        fetchUsers();
+      }
     } catch { alert("Failed to delete"); }
   };
 
@@ -43,11 +60,6 @@ export default function UsersPage() {
   //     if (selected?._id === id) setSelected(res.data.user);
   //   } catch { alert("Failed to update status"); }
   // };
-
-  const filtered = users.filter(u =>
-    (u.name?.toLowerCase() || "").includes(search.toLowerCase()) ||
-    u.email.toLowerCase().includes(search.toLowerCase())
-  );
 
   return (
     <div className="page-section">
@@ -65,17 +77,17 @@ export default function UsersPage() {
         <div className="stat-card s-green">
           <div className="stat-icon"><User size={24} /></div>
           <div className="stat-label">Total Users</div>
-          <div className="stat-value">{users.length}</div>
+          <div className="stat-value">{pagination.totalUsers}</div>
         </div>
         <div className="stat-card s-blue">
           <div className="stat-icon"><CheckCircle size={24} /></div>
           <div className="stat-label">Active</div>
-          <div className="stat-value">{users.filter(u => !u.isBlocked).length}</div>
+          <div className="stat-value">{stats.activeUsers}</div>
         </div>
         <div className="stat-card s-red">
           <div className="stat-icon"><AlertCircle size={24} /></div>
           <div className="stat-label">Blocked</div>
-          <div className="stat-value">{users.filter(u => u.isBlocked).length}</div>
+          <div className="stat-value">{stats.blockedUsers}</div>
         </div>
       </div>
 
@@ -85,7 +97,7 @@ export default function UsersPage() {
           <div className="search-field">
             <Search size={18} />
             <input placeholder="Search by name or email..." value={search}
-              onChange={e => setSearch(e.target.value)} />
+              onChange={e => { setSearch(e.target.value); setPage(1); }} />
           </div>
         </div>
 
@@ -105,13 +117,13 @@ export default function UsersPage() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.length === 0 ? (
+                {users.length === 0 ? (
                   <tr><td colSpan={6}>
                     <div className="empty-state"><p>No users found 😕</p></div>
                   </td></tr>
-                ) : filtered.map((u, i) => (
+                ) : users.map((u, i) => (
                   <tr key={u._id || i}>
-                    <td style={{ color: "var(--text-muted)", fontWeight: 600 }}>{i + 1}</td>
+                    <td style={{ color: "var(--text-muted)", fontWeight: 600 }}>{(pagination.currentPage - 1) * pagination.limit + i + 1}</td>
                     <td>
                       <div className="user-cell">
                         <div className="u-avatar">
@@ -141,6 +153,22 @@ export default function UsersPage() {
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {!loading && pagination.totalUsers > 0 && (
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginTop: 20, flexWrap: "wrap" }}>
+            <span style={{ color: "var(--text-muted)", fontSize: "0.9rem" }}>
+              Page {pagination.currentPage} of {pagination.totalPages} · {pagination.totalUsers} users
+            </span>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button className="btn btn-ghost" onClick={() => setPage((currentPage) => currentPage - 1)} disabled={pagination.currentPage === 1}>
+                <ChevronLeft size={16} /> Previous
+              </button>
+              <button className="btn btn-ghost" onClick={() => setPage((currentPage) => currentPage + 1)} disabled={pagination.currentPage === pagination.totalPages}>
+                Next <ChevronRight size={16} />
+              </button>
+            </div>
           </div>
         )}
       </div>

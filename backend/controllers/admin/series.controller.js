@@ -1,4 +1,7 @@
 const Series = require("../../models/series.model");
+const Notification = require("../../models/notification.model");
+const User = require("../../models/user.model");
+const { sendPushNotification } = require("../../utils/fcm.service");
 const Episode = require("../../models/episode.model");
 const { getMediaUrl, deleteMedia, deleteMediaFiles } = require("../../utils/mediaUrl");
 
@@ -107,18 +110,74 @@ const addSeries = async (req, res) => {
       isComingSoon: req.body.isComingSoon === "true",
       releaseDate: normalizeDateInput(req.body.releaseDate),
       isPremium: req.body.isPremium === "true",
-      is18: req.body.is18 === "true" || req.body["is18+"] === "true" || req.body.is18 === true || req.body["is18+"] === true,
-      "is18+": req.body.is18 === "true" || req.body["is18+"] === "true" || req.body.is18 === true || req.body["is18+"] === true,
+      is18plus: req.body.is18plus === "true" || req.body.is18plus === true,
+      allAges: req.body.allAges === "true" || req.body.allAges === true,
+      isHide: req.body.isHide === "true" || req.body.isHide === true,
       rating: req.body.rating || 0,
       cast: sanitizeCast(cast),
       category,
       priority,
     });
 
+    // Create local Notification document
+    const notificationTitle = "New Series Added!";
+    const notificationMessage = `Watch "${series.title}" now on Mirchi!`;
+    const actionUrl = `mirchiapp://series/id/${series._id}`;
+
+    const notificationPayload = {
+      title: notificationTitle,
+      message: notificationMessage,
+      type: "GENERAL",
+      targetUser: null,
+      targetUserType: "ALL",
+      metadata: {
+        seriesId: series._id,
+        actionUrl,
+        imageUrl: series.poster || ""
+      },
+      createdBy: req.user ? req.user.id : null,
+      sentAt: new Date(),
+      isActive: true
+    };
+
+    const notification = await Notification.create(notificationPayload);
+
+    // Send push notification asynchronously to avoid blocking the API response
+    User.find({ fcmToken: { $type: "string", $ne: "" } })
+      .then(async (users) => {
+        for (const user of users) {
+          try {
+            await sendPushNotification({
+              token: user.fcmToken,
+              title: notificationTitle,
+              body: notificationMessage,
+              imageUrl: series.poster || "",
+              data: {
+                notificationId: notification._id.toString(),
+                type: "GENERAL",
+                actionUrl,
+                seriesId: series._id.toString()
+              }
+            });
+          } catch (pushErr) {
+            console.error(`Failed to send FCM to user ${user._id}:`, pushErr.message);
+          }
+        }
+      })
+      .catch((err) => {
+        console.error("FCM dispatch error in addSeries:", err.message);
+      });
+
     return res.status(201).json({
       success: true,
       message: "Series added successfully",
       series,
+      notification: {
+        title: notificationTitle,
+        message: notificationMessage,
+        imageUrl: series.poster || "",
+        actionUrl
+      }
     });
   } catch (error) {
     console.error("ADD SERIES ERROR:", error);
@@ -225,12 +284,14 @@ const updateSeries = async (req, res) => {
       series.releaseDate = null;
     }
     series.isPremium = req.body.isPremium === "true";
-    if (req.body.is18 !== undefined || req.body["is18+"] !== undefined) {
-      const val = req.body.is18 !== undefined ? req.body.is18 : req.body["is18+"];
-      const is18Val = val === "true" || val === true;
-      series.is18 = is18Val;
-      series["is18+"] = is18Val;
-      series.markModified("is18+");
+    if (req.body.is18plus !== undefined) {
+      series.is18plus = req.body.is18plus === "true" || req.body.is18plus === true;
+    }
+    if (req.body.allAges !== undefined) {
+      series.allAges = req.body.allAges === "true" || req.body.allAges === true;
+    }
+    if (req.body.isHide !== undefined) {
+      series.isHide = req.body.isHide === "true" || req.body.isHide === true;
     }
     series.category = category;
 

@@ -9,9 +9,10 @@ const {
 } = require("../../controllers/admin/plan.controller");
 
 
-const { isAdmin } = require("../../middlewares/admin.middleware");
+const { isAdmin, hasPermission } = require("../../middlewares/admin.middleware");
 
 // ================= ADMIN PLAN ROUTES =================
+router.use(isAdmin, hasPermission("plans"));
 
 router.post("/", isAdmin, createPlan);
 router.get("/", isAdmin, getAllPlans);

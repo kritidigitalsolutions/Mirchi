@@ -46,7 +46,7 @@ const getMovieBySlug = async (req, res) => {
   try {
 
     const movie = await Movie.findOne({
-      slug: req.params.slug,
+      slug: req.params.slug
     }).lean();
 
     if (!movie) {
@@ -78,7 +78,7 @@ const getMovieById = async (req, res) => {
   try {
 
     const movie = await Movie.findOne({
-      _id: req.params.id,
+      _id: req.params.id
     }).lean();
 
     if (!movie) {

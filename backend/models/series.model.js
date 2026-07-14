@@ -50,8 +50,9 @@ const seriesSchema = new mongoose.Schema(
 
     isPremium: { type: Boolean, default: false },
 
-    is18: { type: Boolean, default: false },
-    "is18+": { type: Boolean, default: false },
+    is18plus: { type: Boolean, default: false },
+    allAges: { type: Boolean, default: false },
+    isHide: { type: Boolean, default: false },
 
     // Priority: higher = shown first (0 = default)
     priority: { type: Number, default: 0 },
@@ -68,8 +69,7 @@ const seriesSchema = new mongoose.Schema(
     category: [
       {
         type: String,
-        enum: ["trending", "top10", "recommended"]
-        // enum: ["trending", "top10", "recommended", "new releases", "bollywood", "hollywood", "action", "comedy"]
+        trim: true
       }
     ],
     likes: [

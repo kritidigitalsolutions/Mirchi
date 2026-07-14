@@ -6,7 +6,7 @@ const Episode = require("../models/episode.model");
 // ========================================
 const getAllSeries = async (req, res) => {
   try {
-    const series = await Series.find().sort({ priority: 1, createdAt: -1 }).lean();
+    const series = await Series.find({}).sort({ priority: 1, createdAt: -1 }).lean();
 
     // Fetch all episodes for these series
     const seriesIds = series.map(s => s._id);
@@ -91,7 +91,7 @@ const getSeriesBySlug = async (req, res) => {
 // ========================================
 const getSeriesById = async (req, res) => {
   try {
-    const series = await Series.findById(req.params.id);
+    const series = await Series.findOne({ _id: req.params.id });
 
     if (!series) {
       return res.status(404).json({

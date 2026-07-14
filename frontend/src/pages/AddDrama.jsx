@@ -26,8 +26,8 @@ const EMPTY_FORM = {
   genre: "",
   category: "",
   isPremium: false,
-  is18: false,
-  "is18+": false,
+  is18plus: false,
+  allAges: true,
   status: "ongoing",
   priority: 0,
 };
@@ -147,8 +147,8 @@ export default function AddDrama() {
       ));
       formData.append("category", JSON.stringify(form.category ? [form.category] : []));
       formData.append("isPremium", String(form.isPremium));
-      formData.append("is18+", String(form["is18+"]));
-      formData.append("is18", String(form.is18 || form["is18+"]));
+      formData.append("is18plus", String(form.is18plus));
+      formData.append("allAges", String(form.allAges));
       formData.append("status", form.status);
       formData.append("priority", String(Number(form.priority) || 0));
 
@@ -322,10 +322,44 @@ export default function AddDrama() {
               <input type="checkbox" name="isPremium" onChange={ch} checked={form.isPremium} />
               <span style={{ color: "var(--primary)" }}><Lock size={16} style={{ marginRight: 8 }} />Premium Content</span>
             </label>
-            <label className="checkbox-row" style={{ flex: 1, minWidth: "200px", background: "rgba(255,165,0,0.1)", borderColor: "rgba(255,165,0,0.2)" }}>
-              <input type="checkbox" name="is18+" onChange={ch} checked={form["is18+"]} />
-              <span style={{ color: "orange" }}><Layers size={16} style={{ marginRight: 8 }} />18+ Content</span>
-            </label>
+            <div
+              className="content-type-toggle"
+              style={{
+                flex: 2,
+                minWidth: "300px",
+                marginBottom: 0,
+                padding: "4px",
+                display: "inline-flex",
+                alignItems: "center"
+              }}
+            >
+              <button
+                type="button"
+                className={`toggle-btn ${form.allAges ? "active" : ""}`}
+                style={{ flex: 1, justifyContent: "center" }}
+                onClick={() => {
+                  setForm(prev => ({ ...prev, allAges: true, is18plus: false }));
+                }}
+              >
+                All ages Content (Non-Adult)
+              </button>
+
+              <button
+                type="button"
+                className={`toggle-btn ${form.is18plus ? "active" : ""}`}
+                style={{
+                  flex: 1,
+                  justifyContent: "center",
+                  background: form.is18plus ? "orange" : "",
+                  boxShadow: form.is18plus ? "0 4px 12px rgba(255, 165, 0, 0.3)" : ""
+                }}
+                onClick={() => {
+                  setForm(prev => ({ ...prev, allAges: false, is18plus: true }));
+                }}
+              >
+                18+ Content (Adult)
+              </button>
+            </div>
           </div>
         </div>
 
