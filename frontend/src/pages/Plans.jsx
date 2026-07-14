@@ -156,7 +156,7 @@ export default function PlansPage() {
               <input id="plan-duration" className="form-input-styled" name="duration" type="number" min="1" placeholder="e.g. 30" value={form.duration} onChange={ch} required />
             </div>
 
-            <div className="plan-form-field">
+            {/* <div className="plan-form-field">
               <label htmlFor="plan-type">Billing Cycle</label>
               <select id="plan-type" className="form-input-styled" name="planType" value={form.planType} onChange={ch}>
                 <option value="monthly">Monthly</option>
@@ -164,7 +164,7 @@ export default function PlansPage() {
                 <option value="yearly">Yearly</option>
                 <option value="lifetime">Lifetime</option>
               </select>
-            </div>
+            </div> */}
 
             <div className="plan-form-field plan-form-full">
               <label htmlFor="plan-features">Plan Features</label>
