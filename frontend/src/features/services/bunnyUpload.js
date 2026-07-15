@@ -22,11 +22,24 @@ const safePathSegment = (value) => {
 
 const getExtension = (file) => {
   const name = file?.name || "";
-  const ext = name.includes(".")
+  let ext = name.includes(".")
     ? name.split(".").pop().toLowerCase()
     : "";
 
+  if (ext === "jfif") {
+    ext = "jpg";
+  }
+
   return ext ? `.${ext}` : "";
+};
+
+const getContentType = (file) => {
+  const type = (file?.type || "").toLowerCase();
+  const name = (file?.name || "").toLowerCase();
+  if (type === "image/jfif" || type === "image/pjpeg" || name.endsWith(".jfif")) {
+    return "image/jpeg";
+  }
+  return file?.type || "application/octet-stream";
 };
 
 const uploadThroughBackend = async (
@@ -96,8 +109,7 @@ const uploadDirectToBunny = async (
       const response = await axios.put(uploadUrl, file, {
         headers: {
           AccessKey: accessKey,
-          "Content-Type":
-            file.type || "application/octet-stream",
+          "Content-Type": getContentType(file),
         },
         onUploadProgress: (progressEvent) => {
           if (onProgress && progressEvent.total) {

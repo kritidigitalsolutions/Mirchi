@@ -49,7 +49,8 @@ const allowedMimeTypes = new Set([
 ]);
 
 const safeExtension = (file) => {
-  const ext = path.extname(file.originalname || "").toLowerCase();
+  let ext = path.extname(file.originalname || "").toLowerCase();
+  if (ext === ".jfif") ext = ".jpg";
   return ext && /^[a-z0-9.]+$/.test(ext) ? ext : "";
 };
 
@@ -70,7 +71,9 @@ const validateUploadTarget = (type, subfolder) => {
 const bunnyStorage = {
   _handleFile: async (req, file, cb) => {
     try {
-      if (!allowedMimeTypes.has(file.mimetype) && safeExtension(file) !== ".jfif") {
+      const ext = safeExtension(file);
+      const isJfif = path.extname(file.originalname || "").toLowerCase() === ".jfif" || file.mimetype === "image/jfif" || file.mimetype === "image/pjpeg";
+      if (!allowedMimeTypes.has(file.mimetype) && !isJfif) {
         return cb(new Error("Invalid file type"));
       }
 
@@ -79,7 +82,8 @@ const bunnyStorage = {
         return cb(new Error("Invalid Bunny upload target"));
       }
 
-      const filename = `${Date.now()}-${Math.round(Math.random() * 1e9)}${safeExtension(file)}`;
+      const filename = `${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
+      const contentType = isJfif ? "image/jpeg" : file.mimetype;
       
       const isVideo = target.subfolder === "videos" || target.subfolder === "trailers";
 
@@ -88,13 +92,13 @@ const bunnyStorage = {
         result = await uploadStreamToBunnyStream({
           stream: file.stream,
           fileName: filename,
-          contentType: file.mimetype,
+          contentType,
         });
       } else {
         result = await uploadStreamToBunny({
           stream: file.stream,
           remotePath: `${target.type}/${target.subfolder}/${filename}`,
-          contentType: file.mimetype,
+          contentType,
         });
       }
 

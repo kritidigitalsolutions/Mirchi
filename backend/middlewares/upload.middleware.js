@@ -43,15 +43,17 @@ const storage = {
     try {
       const uploadInfo = getUploadInfo(req, file);
       const uniqueName = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-      const ext = path.extname(file.originalname).toLowerCase();
+      let ext = path.extname(file.originalname || "").toLowerCase();
+      if (ext === ".jfif") ext = ".jpg";
 
       const filename = `${uniqueName}${ext}`;
+      const contentType = file.mimetype === "image/jfif" || file.mimetype === "image/pjpeg" || ext === ".jpg" && path.extname(file.originalname || "").toLowerCase() === ".jfif" ? "image/jpeg" : file.mimetype;
 
      console.log("================================");
 console.log("UPLOAD START");
 console.log("FIELD:", file.fieldname);
 console.log("NAME:", file.originalname);
-console.log("TYPE:", file.mimetype);
+console.log("TYPE:", contentType);
 console.log("REMOTE PATH:", `${uploadInfo.remoteFolder}/${filename}`);
 
 const isVideo = uploadInfo.subfolder === "videos" || uploadInfo.subfolder === "trailers";
@@ -61,13 +63,13 @@ if (isVideo) {
   result = await uploadStreamToBunnyStream({
     stream: file.stream,
     fileName: filename,
-    contentType: file.mimetype,
+    contentType,
   });
 } else {
   result = await uploadStreamToBunny({
     stream: file.stream,
     remotePath: `${uploadInfo.remoteFolder}/${filename}`,
-    contentType: file.mimetype,
+    contentType,
   });
 }
 
