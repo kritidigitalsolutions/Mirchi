@@ -40,6 +40,8 @@ const allowedMimeTypes = new Set([
   "image/jpg",
   "image/png",
   "image/webp",
+  "image/jfif",
+  "image/pjpeg",
   "video/mp4",
   "video/mkv",
   "video/webm",
@@ -68,7 +70,7 @@ const validateUploadTarget = (type, subfolder) => {
 const bunnyStorage = {
   _handleFile: async (req, file, cb) => {
     try {
-      if (!allowedMimeTypes.has(file.mimetype)) {
+      if (!allowedMimeTypes.has(file.mimetype) && safeExtension(file) !== ".jfif") {
         return cb(new Error("Invalid file type"));
       }
 

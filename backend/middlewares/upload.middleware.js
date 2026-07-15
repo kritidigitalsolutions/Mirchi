@@ -101,11 +101,16 @@ const fileFilter = (req, file, cb) => {
     "image/jpg",
     "image/png",
     "image/webp",
+    "image/jfif",
+    "image/pjpeg",
     "video/mp4",
     "video/mkv",
     "video/webm",
     "video/quicktime",
   ];
+
+  const ext = path.extname(file.originalname || "").toLowerCase();
+  const isJfifExt = ext === ".jfif";
 
   if (req.originalUrl && req.originalUrl.includes("/support")) {
     const allowedSupportTypes = [
@@ -122,12 +127,13 @@ const fileFilter = (req, file, cb) => {
 
     if (
       allowedMimeTypes.includes(file.mimetype) ||
-      allowedSupportTypes.includes(file.mimetype)
+      allowedSupportTypes.includes(file.mimetype) ||
+      isJfifExt
     ) {
       return cb(null, true);
     }
   } else {
-    if (allowedMimeTypes.includes(file.mimetype)) {
+    if (allowedMimeTypes.includes(file.mimetype) || isJfifExt) {
       return cb(null, true);
     }
   }
