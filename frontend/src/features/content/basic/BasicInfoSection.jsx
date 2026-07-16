@@ -678,6 +678,7 @@ export default function BasicInfoSection({
           />
         </div>
       )}
+
     </div>
   );
 }

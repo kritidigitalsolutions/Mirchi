@@ -35,9 +35,9 @@ const movieSchema = new mongoose.Schema(
     },
 
     genre: [{
-  type: String,
-  trim: true
-}],
+      type: String,
+      trim: true
+    }],
 
     releaseYear: Number,
 
