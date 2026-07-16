@@ -1,4 +1,6 @@
 const jwt = require("jsonwebtoken");
+//added this below
+const User = require("../models/user.model");
 
 const isAuth = async (
   req,
@@ -36,7 +38,18 @@ const isAuth = async (
       });
     }
 
-    req.user = decoded;
+    // req.user = decoded;
+    //new change
+    const user = await User.findById(decoded.id);
+
+if (!user) {
+  return res.status(401).json({
+    success: false,
+    message: "User not found",
+  });
+}
+
+req.user = user;
 
     next();
 
