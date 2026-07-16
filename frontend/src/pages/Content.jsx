@@ -969,7 +969,7 @@ export default function Content() {
                               {isLocked(movie) && (
                                 <div style={{ fontSize: "0.75rem", color: "var(--orange)" }}>
                                   <Calendar size={11} style={{ marginRight: 3, verticalAlign: "middle" }} />
-                                  {new Date(movie.releaseDate).toLocaleDateString()}
+                                  {new Date(movie.releaseDate).toLocaleString([], { dateStyle: "short", timeStyle: "short" })}
                                 </div>
                               )}
                             </div>
@@ -1059,7 +1059,7 @@ export default function Content() {
                               {isLocked(series) && (
                                 <div style={{ fontSize: "0.75rem", color: "var(--orange)" }}>
                                   <Calendar size={11} style={{ marginRight: 3, verticalAlign: "middle" }} />
-                                  {new Date(series.releaseDate).toLocaleDateString()}
+                                  {new Date(series.releaseDate).toLocaleString([], { dateStyle: "short", timeStyle: "short" })}
                                 </div>
                               )}
                             </div>
@@ -1489,7 +1489,7 @@ export default function Content() {
                       <Calendar size={18} />
                       <div>
                         <strong>Scheduled Release</strong>
-                        <p>Available from {new Date(selectedItem.releaseDate).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}</p>
+                        <p>Available from {new Date(selectedItem.releaseDate).toLocaleString("en-IN", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" })}</p>
                       </div>
                     </div>
                   )}
@@ -1583,8 +1583,8 @@ export default function Content() {
                       </div>
                       {selectedItem.releaseDate && (
                         <div className="vp-detail-card">
-                          <span className="vp-detail-label">Release Date</span>
-                          <span className="vp-detail-value">{new Date(selectedItem.releaseDate).toLocaleDateString()}</span>
+                          <span className="vp-detail-label">Release Date & Time</span>
+                          <span className="vp-detail-value">{new Date(selectedItem.releaseDate).toLocaleString([], { dateStyle: "short", timeStyle: "short" })}</span>
                         </div>
                       )}
                     </div>
@@ -1990,13 +1990,13 @@ export default function Content() {
                     </div>
                     {editData.isComingSoon && (
                       <div className="form-row">
-                        <label className="form-label">Release Date</label>
+                        <label className="form-label">Release Date & Time</label>
                         <input
                           className="form-input"
-                          type="date"
+                          type="datetime-local"
                           value={
                             editData.releaseDate && !isNaN(Date.parse(editData.releaseDate))
-                              ? new Date(editData.releaseDate).toISOString().split("T")[0]
+                              ? new Date(editData.releaseDate).toISOString().slice(0, 16)
                               : ""
                           }
                           onChange={e => setEditData(s => ({ ...s, releaseDate: e.target.value }))}

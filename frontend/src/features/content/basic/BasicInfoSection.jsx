@@ -665,12 +665,12 @@ export default function BasicInfoSection({
           }}
         >
           <label className="form-label">
-            Scheduled Release Date
+            Scheduled Release Date & Time
           </label>
 
           <input
             className="form-input-styled"
-            type="date"
+            type="datetime-local"
             name="releaseDate"
             onChange={ch}
             value={form.releaseDate}
