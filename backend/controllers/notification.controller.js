@@ -12,9 +12,10 @@ const getMyNotifications = async (req, res) => {
         // req.user.id comes from JWT (not _id)
         const userId = new mongoose.Types.ObjectId(req.user.id);
 
-        // Fetch userType from DB since JWT doesn't include it
-        const user = await User.findById(userId).select('userType');
+        // Fetch userType and timestamps from DB since JWT doesn't include them
+        const user = await User.findById(userId).select('userType lastLoginAt createdAt');
         const userType = user?.userType || 'INDIVIDUAL';
+        const notificationCutoff = user?.lastLoginAt || user?.createdAt || new Date(0);
         const activeSubscription = await Subscription.exists({
             user: userId,
             status: "active",
@@ -40,11 +41,12 @@ const getMyNotifications = async (req, res) => {
         // 1. Specifically for this user, OR
         // 2. For all users (targetUser is null AND targetUserType is ALL), OR
         // 3. For this user's type
-        // Also exclude notifications deleted by this user
+        // Also exclude notifications deleted by this user and those created before login/signup
         const query = {
             isActive: true,
             $or: targetConditions,
-            "deletedBy.user": { $ne: userId }
+            "deletedBy.user": { $ne: userId },
+            createdAt: { $gte: notificationCutoff }
         };
 
         const notifications = await Notification.find(query)
@@ -128,8 +130,9 @@ const getMyNotifications = async (req, res) => {
 const getUnreadCount = async (req, res) => {
     try {
         const userId = new mongoose.Types.ObjectId(req.user.id);
-        const user = await User.findById(userId).select('userType');
+        const user = await User.findById(userId).select('userType lastLoginAt createdAt');
         const userType = user?.userType || 'INDIVIDUAL';
+        const notificationCutoff = user?.lastLoginAt || user?.createdAt || new Date(0);
         const activeSubscription = await Subscription.exists({
             user: userId,
             status: "active",
@@ -153,7 +156,8 @@ const getUnreadCount = async (req, res) => {
         const query = {
             isActive: true,
             $or: targetConditions,
-            "deletedBy.user": { $ne: userId }
+            "deletedBy.user": { $ne: userId },
+            createdAt: { $gte: notificationCutoff }
         };
 
         const notifications = await Notification.find(query).select("_id targetUser isRead readBy");
@@ -256,8 +260,9 @@ const markAsRead = async (req, res) => {
 const markAllAsRead = async (req, res) => {
     try {
         const userId = new mongoose.Types.ObjectId(req.user.id);
-        const user = await User.findById(userId).select('userType');
+        const user = await User.findById(userId).select('userType lastLoginAt createdAt');
         const userType = user?.userType || 'INDIVIDUAL';
+        const notificationCutoff = user?.lastLoginAt || user?.createdAt || new Date(0);
         const activeSubscription = await Subscription.exists({
             user: userId,
             status: "active",
@@ -277,10 +282,11 @@ const markAllAsRead = async (req, res) => {
 
         // Update single user notifications (exclude already deleted)
         await Notification.updateMany(
-            { 
-                targetUser: userId, 
+            {
+                targetUser: userId,
                 isRead: false,
-                isActive: true
+                isActive: true,
+                createdAt: { $gte: notificationCutoff }
             },
             { isRead: true, readAt: new Date() }
         );
@@ -291,7 +297,8 @@ const markAllAsRead = async (req, res) => {
             targetUser: null,
             $or: broadcastTargetConditions,
             "readBy.user": { $ne: userId },
-            "deletedBy.user": { $ne: userId }
+            "deletedBy.user": { $ne: userId },
+            createdAt: { $gte: notificationCutoff }
         });
 
         for (const notification of broadcastNotifications) {
@@ -342,7 +349,7 @@ const deleteNotification = async (req, res) => {
                     message: "Not authorized to delete this notification"
                 });
             }
-            
+
             // Soft delete by marking as inactive
             notification.isActive = false;
             await notification.save();

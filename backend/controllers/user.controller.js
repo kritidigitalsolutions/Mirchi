@@ -84,7 +84,7 @@ exports.completeProfile = async (
       if (
         existingEmail &&
         existingEmail._id.toString() !==
-          user._id.toString()
+        user._id.toString()
       ) {
         return res.status(400).json({
           success: false,
@@ -150,10 +150,10 @@ exports.updateProfile = async (
     // } = req.body;
 
     const {
-  name,
-  email,
-  phone,
-} = req.body;
+      name,
+      email,
+      phone,
+    } = req.body;
 
     const user = await User.findById(
       req.user.id
@@ -176,7 +176,7 @@ exports.updateProfile = async (
       if (
         existingEmail &&
         existingEmail._id.toString() !==
-          user._id.toString()
+        user._id.toString()
       ) {
         return res.status(400).json({
           success: false,
@@ -188,40 +188,40 @@ exports.updateProfile = async (
 
     //added this below till update fields
     // phone validation + duplicate check
-if (phone) {
-  const cleaned = String(phone)
-    .replace(/\D/g, "")
-    .replace(/^91/, "");
+    if (phone) {
+      const cleaned = String(phone)
+        .replace(/\D/g, "")
+        .replace(/^91/, "");
 
-  const phoneRegex = /^[6-9]\d{9}$/;
+      const phoneRegex = /^[6-9]\d{9}$/;
 
-  if (!phoneRegex.test(cleaned)) {
-    return res.status(400).json({
-      success: false,
-      message:
-        "Enter a valid 10-digit Indian mobile number",
-    });
-  }
+      if (!phoneRegex.test(cleaned)) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Enter a valid 10-digit Indian mobile number",
+        });
+      }
 
-  const existingPhone =
-    await User.findOne({
-      phone: cleaned,
-    });
+      const existingPhone =
+        await User.findOne({
+          phone: cleaned,
+        });
 
-  if (
-    existingPhone &&
-    existingPhone._id.toString() !==
-      user._id.toString()
-  ) {
-    return res.status(400).json({
-      success: false,
-      message:
-        "Phone number already in use",
-    });
-  }
+      if (
+        existingPhone &&
+        existingPhone._id.toString() !==
+        user._id.toString()
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Phone number already in use",
+        });
+      }
 
-  user.phone = cleaned;
-}
+      user.phone = cleaned;
+    }
 
     // update fields
     if (name) {

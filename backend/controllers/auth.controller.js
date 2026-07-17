@@ -80,31 +80,31 @@ exports.sendOTP = async (req, res) => {
     const normalizedPhone =
       formatIndianPhone(phone);
 
-      // ========================================
-// DUMMY USER
-// ========================================
-if (isDummyUser(normalizedPhone)) {
-  let user = await User.findOne({
-    phone: DUMMY_PHONE,
-  });
+    // ========================================
+    // DUMMY USER
+    // ========================================
+    if (isDummyUser(normalizedPhone)) {
+      let user = await User.findOne({
+        phone: DUMMY_PHONE,
+      });
 
-  if (!user) {
-    user = await User.create({
-      phone: DUMMY_PHONE,
-      name: "Dummy User",
-      username: "@dummyuser",
-      role: "USER",
-      profileComplete: true,
-      profileImage: "",
-    });
-  }
+      if (!user) {
+        user = await User.create({
+          phone: DUMMY_PHONE,
+          name: "Dummy User",
+          username: "@dummyuser",
+          role: "USER",
+          profileComplete: true,
+          profileImage: "",
+        });
+      }
 
-  return res.status(200).json({
-    success: true,
-    message: "Dummy OTP generated",
-    isNewUser: false,
-  });
-}
+      return res.status(200).json({
+        success: true,
+        message: "Dummy OTP generated",
+        isNewUser: false,
+      });
+    }
 
     // indian mobile validation
     const phoneRegex =
@@ -158,7 +158,7 @@ if (isDummyUser(normalizedPhone)) {
       otp
     );
     console.log("\n========== SMS RESULT ==========");
-console.log(JSON.stringify(smsResult, null, 2));
+    console.log(JSON.stringify(smsResult, null, 2));
 
     if (!smsResult.success) {
       console.error(
@@ -210,7 +210,7 @@ console.log(JSON.stringify(smsResult, null, 2));
       isNewUser,
       // ⚠️ Do NOT return the otp in the API response in production.
       // otp,
-    }); 
+    });
 
   } catch (error) {
     console.error(
@@ -249,49 +249,53 @@ exports.verifyOtp = async (req, res) => {
     ).trim();
 
     // ========================================
-// DUMMY USER LOGIN
-// ========================================
-if (isDummyUser(normalizedPhone)) {
-  if (normalizedOtp !== DUMMY_OTP) {
-    return res.status(400).json({
-      success: false,
-      message: "Invalid OTP",
-    });
-  }
+    // DUMMY USER LOGIN
+    // ========================================
+    if (isDummyUser(normalizedPhone)) {
+      if (normalizedOtp !== DUMMY_OTP) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid OTP",
+        });
+      }
 
-  let user = await User.findOne({
-    phone: DUMMY_PHONE,
-  });
+      let user = await User.findOne({
+        phone: DUMMY_PHONE,
+      });
 
-  if (!user) {
-    user = await User.create({
-      phone: DUMMY_PHONE,
-      name: "Dummy User",
-      username: "@dummyuser",
-      role: "USER",
-      profileComplete: true,
-      profileImage: "",
-    });
-  }
+      if (!user) {
+        user = await User.create({
+          phone: DUMMY_PHONE,
+          name: "Dummy User",
+          username: "@dummyuser",
+          role: "USER",
+          profileComplete: true,
+          profileImage: "",
+          lastLoginAt: new Date(),
+        });
+      } else {
+        user.lastLoginAt = new Date();
+        await user.save();
+      }
 
-  const token = generateUserToken(user);
+      const token = generateUserToken(user);
 
-  return res.status(200).json({
-    success: true,
-    message: "OTP verified successfully",
-    token,
-    isNewUser: false,
-    user: {
-      id: user._id,
-      name: user.name,
-      email: user.email,
-      phone: user.phone,
-      profileImage: user.profileImage,
-      profileComplete: user.profileComplete,
-      role: user.role,
-    },
-  });
-}
+      return res.status(200).json({
+        success: true,
+        message: "OTP verified successfully",
+        token,
+        isNewUser: false,
+        user: {
+          id: user._id,
+          name: user.name,
+          email: user.email,
+          phone: user.phone,
+          profileImage: user.profileImage,
+          profileComplete: user.profileComplete,
+          role: user.role,
+        },
+      });
+    }
 
     const otpRecord =
       await OTP.findOne({
@@ -355,7 +359,10 @@ if (isDummyUser(normalizedPhone)) {
       user = await User.create({
         phone: normalizedPhone,
         role: "USER",
+        lastLoginAt: new Date(),
       });
+    } else {
+      user.lastLoginAt = new Date();
     }
 
     const rawFcmToken =
@@ -382,9 +389,9 @@ if (isDummyUser(normalizedPhone)) {
 
       user.fcmToken = normalizedFcmToken;
       user.fcmTokenUpdatedAt = new Date();
-
-      await user.save();
     }
+
+    await user.save();
 
     // generate token
     const token =
@@ -511,6 +518,7 @@ exports.googleLogin = async (req, res) => {
         authProvider: "GOOGLE",
         profileComplete: true,
         phone: tempPhone,
+        lastLoginAt: new Date(),
       });
     } else {
       // If the user exists but hasn't linked Google credentials yet, link them!
@@ -523,10 +531,10 @@ exports.googleLogin = async (req, res) => {
         user.authProvider = "GOOGLE";
         updated = true;
       }
-      if (updated) {
-        await user.save();
-      }
+      user.lastLoginAt = new Date();
     }
+
+    user.lastLoginAt = new Date();
 
     // Save FCM Token & disassociate it from any other users to prevent duplicate alerts
     if (fcmToken && typeof fcmToken === "string") {
@@ -547,9 +555,9 @@ exports.googleLogin = async (req, res) => {
 
         user.fcmToken = normalizedFcmToken;
         user.fcmTokenUpdatedAt = new Date();
-        await user.save();
       }
     }
+    await user.save();
 
     // Generate JWT
     const appToken = generateUserToken(user);
@@ -616,6 +624,9 @@ exports.websiteSSOLogin = async (req, res) => {
         message: "User not found",
       });
     }
+
+    user.lastLoginAt = new Date();
+    await user.save();
 
     // Generate fresh website token
     const websiteToken = generateUserToken(user);
