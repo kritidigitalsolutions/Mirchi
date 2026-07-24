@@ -5,7 +5,7 @@ import { uploadToBunny, fetchBunnyConfig } from "../features/services/bunnyUploa
 import "./Content.css";
 import {
   Eye, Edit2, Trash2, X, Play, Film, Tv,
-  Search, Plus, ChevronRight, ChevronLeft, ChevronDown, User, Calendar, Video,
+  Search, Plus, ChevronRight, ChevronLeft, ChevronDown, ChevronUp, User, Calendar, Video,
   Activity, Upload, Layers, Check
 } from "lucide-react";
 
@@ -155,19 +155,35 @@ export default function Content() {
   const [allCategories, setAllCategories] = useState([]);
   const [showAddCatInput, setShowAddCatInput] = useState(false);
   const [newCatName, setNewCatName] = useState("");
+  const [newCatPriority, setNewCatPriority] = useState("");
   const [addingCat, setAddingCat] = useState(false);
   const [editingCatId, setEditingCatId] = useState(null);
   const [editingCatName, setEditingCatName] = useState("");
+  const [editingCatPriority, setEditingCatPriority] = useState("");
   const [updatingCat, setUpdatingCat] = useState(false);
+
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   useEffect(() => {
     API.get("/admin/categories")
       .then((res) => {
         if (res.data?.data) {
-          setAllCategories(res.data.data.map((c) => ({ label: c.name, value: c.slug, id: c._id })));
+          const activeCategories = res.data.data.filter(c => c.isActive !== false);
+          setAllCategories(activeCategories.map((c) => ({ label: c.name, value: c.slug, id: c._id, priority: c.priority })));
         }
       })
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   const toggleEditCategory = (value) => {
@@ -185,11 +201,11 @@ export default function Content() {
     if (!trimmed) return;
     setAddingCat(true);
     try {
-      const res = await API.post("/admin/categories", { name: trimmed });
+      const res = await API.post("/admin/categories", { name: trimmed, priority: newCatPriority });
       if (res.data?.data) {
         const created = res.data.data;
-        const newEntry = { label: created.name, value: created.slug, id: created._id };
-        setAllCategories((prev) => [...prev, newEntry]);
+        const newEntry = { label: created.name, value: created.slug, id: created._id, priority: created.priority };
+        setAllCategories((prev) => [...prev, newEntry].sort((a, b) => a.priority - b.priority));
         setEditData((s) => {
           if (!s) return s;
           const current = Array.isArray(s.category) ? s.category : (s.category ? [s.category] : []);
@@ -201,6 +217,7 @@ export default function Content() {
     } finally {
       setAddingCat(false);
       setNewCatName("");
+      setNewCatPriority("");
       setShowAddCatInput(false);
     }
   };
@@ -224,13 +241,13 @@ export default function Content() {
     if (!trimmed) return;
     setUpdatingCat(true);
     try {
-      const res = await API.put(`/admin/categories/${id}`, { name: trimmed });
+      const res = await API.put(`/admin/categories/${id}`, { name: trimmed, priority: editingCatPriority });
       if (res.data?.data) {
         const updated = res.data.data;
         setAllCategories((prev) =>
           prev.map((c) =>
-            c.id === id ? { ...c, label: updated.name, value: updated.slug } : c
-          )
+            c.id === id ? { ...c, label: updated.name, value: updated.slug, priority: updated.priority } : c
+          ).sort((a, b) => a.priority - b.priority)
         );
         setEditData((s) => {
           if (!s) return s;
@@ -247,6 +264,7 @@ export default function Content() {
       setUpdatingCat(false);
       setEditingCatId(null);
       setEditingCatName("");
+      setEditingCatPriority("");
     }
   };
 
@@ -403,6 +421,28 @@ export default function Content() {
     } catch (err) {
       console.error(err);
       alert("Failed to toggle visibility status: " + (err.response?.data?.message || err.message));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleTogglePublish = async (item, isSeries = false) => {
+    const currentStatus = item.isPublished !== false;
+    const confirmMsg = `Are you sure you want to change the status to ${currentStatus ? "Draft" : "Published"}?`;
+    
+    if (!window.confirm(confirmMsg)) return;
+
+    try {
+      setLoading(true);
+      const endpoint = isSeries ? `/admin/series/${item._id}/toggle-publish` : `/admin/movies/${item._id}/toggle-publish`;
+      const res = await API.put(endpoint, {});
+      if (res.data.success) {
+        const controller = new AbortController();
+        await fetchData(controller.signal);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Failed to toggle publish status: " + (err.response?.data?.message || err.message));
     } finally {
       setLoading(false);
     }
@@ -615,13 +655,13 @@ export default function Content() {
       // 4. Direct upload trailer
       let trailerUrl = uploadData.trailerUrl || "";
       if (uploadData.trailer) {
-  trailerUrl = await uploadToBunny(
-    uploadData.trailer,
-    typeFolder,
-    "trailers",
-    (percent) => setUploadProgress(percent)   // ✅ add this
-  );
-}
+        trailerUrl = await uploadToBunny(
+          uploadData.trailer,
+          typeFolder,
+          "trailers",
+          (percent) => setUploadProgress(percent)   // ✅ add this
+        );
+      }
 
       // 5. Direct upload video (movies only)
       let videoUrl = uploadData.videoUrl || "";
@@ -633,7 +673,7 @@ export default function Content() {
 
       const formData = new FormData();
       // Basic text fields
-      const textFields = ["title", "description", "language", "duration", "rating", "releaseYear", "isPremium", "isComingSoon", "releaseDate", "priority", "is18plus", "allAges", "isHide"];
+      const textFields = ["title", "description", "language", "duration", "rating", "releaseYear", "isPremium", "isComingSoon", "releaseDate", "priority", "is18plus", "allAges", "isHide", "isPublished"];
 
       textFields.forEach(k => {
         const value = editData[k];
@@ -994,9 +1034,19 @@ export default function Content() {
                         <td><strong>{movie.priority || 0}</strong></td>
                         <td><span className={`badge ${movie.isPremium ? "badge-active" : "badge-draft"}`}>{movie.isPremium ? "Premium" : "Free"}</span></td>
                         <td>
-                          <span className={`badge ${isLocked(movie) ? "badge-coming" : (movie.isHide ? "badge-draft" : "badge-pub")}`}>
-                            {isLocked(movie) ? "Coming Soon" : (movie.isHide ? "Hidden" : "Published")}
-                          </span>
+                          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                            <span className={`badge ${isLocked(movie) ? "badge-coming" : (movie.isPublished !== false ? "badge-pub" : "badge-draft")}`}>
+                              {isLocked(movie) ? "Coming Soon" : (movie.isPublished !== false ? "Published" : "Draft")}
+                            </span>
+                            <label className="switch" style={{ margin: 0 }}>
+                              <input 
+                                type="checkbox" 
+                                checked={movie.isPublished !== false}
+                                onChange={() => handleTogglePublish(movie, false)}
+                              />
+                              <span className="slider round"></span>
+                            </label>
+                          </div>
                         </td>
                         <td>
                           <div className="tbl-actions">
@@ -1084,9 +1134,19 @@ export default function Content() {
                         <td><strong>{series.priority || 0}</strong></td>
                         <td>{series.totalSeasons}</td>
                         <td>
-                          <span className={`badge ${isLocked(series) ? "badge-coming" : (series.isHide ? "badge-draft" : "badge-pub")}`}>
-                            {isLocked(series) ? "Coming Soon" : (series.isHide ? "Hidden" : "Published")}
-                          </span>
+                          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                            <span className={`badge ${isLocked(series) ? "badge-coming" : (series.isPublished !== false ? "badge-pub" : "badge-draft")}`}>
+                              {isLocked(series) ? "Coming Soon" : (series.isPublished !== false ? "Published" : "Draft")}
+                            </span>
+                            <label className="switch" style={{ margin: 0 }}>
+                              <input 
+                                type="checkbox" 
+                                checked={series.isPublished !== false}
+                                onChange={() => handleTogglePublish(series, true)}
+                              />
+                              <span className="slider round"></span>
+                            </label>
+                          </div>
                         </td>
                         <td>
                           <div className="tbl-actions">
@@ -1419,26 +1479,26 @@ export default function Content() {
 
                   {selectedEpisode?.videoUrl ? (
                     <div className="view-video-section">
-                       {isEmbedUrl(selectedEpisode.videoUrl) ? (
-                         <iframe
-                           src={getEmbedUrl(selectedEpisode.videoUrl)}
-                           title="Episode Video"
-                           frameBorder="0"
-                           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                           allowFullScreen
-                           className="view-video-player"
-                           style={{ aspectRatio: "16/9", height: "auto" }}
-                         ></iframe>
-                       ) : (
-                         <>
-                           <video ref={videoRef} controls className="view-video-player" src={getFullUrl(selectedEpisode.videoUrl)}>
-                             Your browser does not support the video tag.
-                           </video>
-                           <button className="btn btn-primary pip-btn" onClick={() => videoRef.current?.requestPictureInPicture?.()}>
-                             <Tv size={18} style={{ marginRight: 6 }} /> PiP
-                           </button>
-                         </>
-                       )}
+                      {isEmbedUrl(selectedEpisode.videoUrl) ? (
+                        <iframe
+                          src={getEmbedUrl(selectedEpisode.videoUrl)}
+                          title="Episode Video"
+                          frameBorder="0"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                          allowFullScreen
+                          className="view-video-player"
+                          style={{ aspectRatio: "16/9", height: "auto" }}
+                        ></iframe>
+                      ) : (
+                        <>
+                          <video ref={videoRef} controls className="view-video-player" src={getFullUrl(selectedEpisode.videoUrl)}>
+                            Your browser does not support the video tag.
+                          </video>
+                          <button className="btn btn-primary pip-btn" onClick={() => videoRef.current?.requestPictureInPicture?.()}>
+                            <Tv size={18} style={{ marginRight: 6 }} /> PiP
+                          </button>
+                        </>
+                      )}
                     </div>
                   ) : (
                     <div style={{ padding: "20px", background: "var(--bg3)", borderRadius: "var(--radius-sm)", textAlign: "center", color: "var(--text-muted)" }}>
@@ -1743,241 +1803,128 @@ export default function Content() {
                         <option value="yes">Yes</option>
                       </select>
                     </div>
+
                     <div className="form-row" style={{ gridColumn: "1 / -1" }}>
-                      <label className="form-label" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                        <span>Categories</span>
-                        {!showAddCatInput && (
-                          <button
-                            type="button"
-                            onClick={() => setShowAddCatInput(true)}
-                            style={{
-                              background: "rgba(108,99,255,0.2)",
-                              border: "1px solid rgba(108,99,255,0.4)",
-                              color: "#fff",
-                              borderRadius: "12px",
-                              padding: "2px 10px",
-                              fontSize: "11px",
-                              cursor: "pointer",
-                              display: "inline-flex",
-                              alignItems: "center",
-                              gap: "3px"
-                            }}
-                          >
-                            <Plus size={11} /> Add Category
-                          </button>
-                        )}
+                      <label className="form-label">
+                        <Layers size={14} style={{ marginRight: 4, display: "inline-block" }} />
+                        Categories
                       </label>
 
-                      <div style={{
-                        display: "flex",
-                        flexWrap: "wrap",
-                        gap: "8px",
-                        padding: "10px 12px",
-                        background: "rgba(255,255,255,0.04)",
-                        border: "1px solid rgba(255,255,255,0.12)",
-                        borderRadius: "8px",
-                        minHeight: "46px",
-                        alignItems: "center",
-                      }}>
-                        {allCategories.map(({ label, value, id }) => {
-                          if (id && editingCatId === id) {
-                            return (
-                              <div key={value} style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
-                                <input
-                                  autoFocus
-                                  type="text"
-                                  value={editingCatName}
-                                  onChange={(e) => setEditingCatName(e.target.value)}
-                                  onKeyDown={(e) => {
-                                    if (e.key === "Enter") handleUpdateCategory(id, value);
-                                    if (e.key === "Escape") { setEditingCatId(null); setEditingCatName(""); }
-                                  }}
+                      <div
+                        ref={dropdownRef}
+                        style={{ position: "relative", width: "100%" }}
+                      >
+                        {/* The Select Box */}
+                        <div
+                          onClick={() => setDropdownOpen(!dropdownOpen)}
+                          style={{
+                            display: "flex",
+                            flexWrap: "wrap",
+                            gap: "8px",
+                            padding: "10px 40px 10px 12px",
+                            background: "var(--input-bg, rgba(255,255,255,0.02))",
+                            border: dropdownOpen ? "1px solid var(--primary)" : "1px solid var(--border, rgba(255,255,255,0.1))",
+                            borderRadius: "8px",
+                            minHeight: "46px",
+                            alignItems: "center",
+                            cursor: "pointer",
+                            transition: "all 0.2s ease"
+                          }}
+                        >
+                          {(!editData.category || (Array.isArray(editData.category) && editData.category.length === 0)) ? (
+                            <span style={{ color: "rgba(255,255,255,0.4)", fontSize: "14px" }}>
+                              Select categories...
+                            </span>
+                          ) : (
+                            (Array.isArray(editData.category) ? editData.category : [editData.category]).map((val) => {
+                              const cat = allCategories.find((c) => c.value === val);
+                              if (!cat) return null;
+                              return (
+                                <span
+                                  key={val}
                                   style={{
-                                    padding: "3px 8px",
-                                    borderRadius: "15px",
-                                    border: "1px solid #6c63ff",
-                                    background: "rgba(108,99,255,0.15)",
-                                    color: "#fff",
-                                    fontSize: "12px",
-                                    outline: "none",
-                                    width: "110px",
-                                  }}
-                                />
-                                <button
-                                  type="button"
-                                  onClick={() => handleUpdateCategory(id, value)}
-                                  disabled={updatingCat || !editingCatName.trim()}
-                                  style={{
-                                    padding: "3px 8px",
-                                    borderRadius: "15px",
-                                    border: "none",
-                                    background: "linear-gradient(135deg, #6c63ff, #4f46e5)",
-                                    color: "#fff",
-                                    fontSize: "11px",
-                                    fontWeight: "600",
-                                    cursor: updatingCat ? "not-allowed" : "pointer",
-                                  }}
-                                  title="Save"
-                                >
-                                  {updatingCat ? "..." : <Check size={11} />}
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => { setEditingCatId(null); setEditingCatName(""); }}
-                                  style={{
-                                    padding: "3px 6px",
-                                    borderRadius: "15px",
-                                    border: "1px solid rgba(255,255,255,0.2)",
-                                    background: "transparent",
-                                    color: "rgba(255,255,255,0.6)",
-                                    fontSize: "11px",
-                                    cursor: "pointer",
                                     display: "inline-flex",
                                     alignItems: "center",
+                                    gap: "6px",
+                                    padding: "4px 10px",
+                                    borderRadius: "20px",
+                                    border: "1px solid var(--primary)",
+                                    background: "transparent",
+                                    color: "var(--primary)",
+                                    fontSize: "13px",
                                   }}
-                                  title="Cancel"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    toggleEditCategory(val);
+                                  }}
                                 >
-                                  <X size={11} />
-                                </button>
-                              </div>
-                            );
-                          }
-
-                          const currentCats = Array.isArray(editData?.category)
-                            ? editData.category
-                            : (editData?.category ? [editData.category] : []);
-                          const selected = currentCats.includes(value);
-
-                          return (
-                            <button
-                              key={value}
-                              type="button"
-                              onClick={() => toggleEditCategory(value)}
-                              style={{
-                                display: "inline-flex",
-                                alignItems: "center",
-                                gap: "5px",
-                                padding: "4px 12px",
-                                borderRadius: "20px",
-                                border: selected
-                                  ? "1px solid #6c63ff"
-                                  : "1px solid rgba(255,255,255,0.18)",
-                                background: selected
-                                  ? "linear-gradient(135deg, #6c63ff, #4f46e5)"
-                                  : "transparent",
-                                color: selected ? "#fff" : "rgba(255,255,255,0.6)",
-                                fontSize: "13px",
-                                fontWeight: selected ? "600" : "400",
-                                cursor: "pointer",
-                                transition: "all 0.2s ease",
-                              }}
-                            >
-                              {selected && <Check size={11} />}
-                              {label}
-                              {id && (
-                                <span style={{ display: "inline-flex", alignItems: "center", gap: "3px", marginLeft: "2px" }}>
-                                  <span
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setEditingCatId(id);
-                                      setEditingCatName(label);
-                                    }}
-                                    style={{
-                                      display: "inline-flex",
-                                      alignItems: "center",
-                                      justifyContent: "center",
-                                      padding: "1px",
-                                      borderRadius: "50%",
-                                      opacity: 0.75,
-                                      cursor: "pointer",
-                                    }}
-                                    title="Rename category"
-                                  >
-                                    <Edit2 size={11} />
-                                  </span>
-                                  <span
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleDeleteCategory(id, value);
-                                    }}
-                                    style={{
-                                      display: "inline-flex",
-                                      alignItems: "center",
-                                      justifyContent: "center",
-                                      padding: "1px",
-                                      borderRadius: "50%",
-                                      opacity: 0.75,
-                                      cursor: "pointer",
-                                    }}
-                                    title="Delete category"
-                                  >
-                                    <X size={12} />
-                                  </span>
+                                  {cat.label}
+                                  <X size={12} style={{ cursor: "pointer", opacity: 0.7 }} />
                                 </span>
-                              )}
-                            </button>
-                          );
-                        })}
+                              );
+                            })
+                          )}
 
-                        {showAddCatInput && (
-                          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                            <input
-                              autoFocus
-                              type="text"
-                              value={newCatName}
-                              onChange={(e) => setNewCatName(e.target.value)}
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter") handleAddCategory();
-                                if (e.key === "Escape") { setShowAddCatInput(false); setNewCatName(""); }
-                              }}
-                              placeholder="Category name..."
-                              style={{
-                                padding: "4px 10px",
-                                borderRadius: "20px",
-                                border: "1px solid #6c63ff",
-                                background: "rgba(108,99,255,0.15)",
-                                color: "#fff",
-                                fontSize: "12px",
-                                outline: "none",
-                                width: "130px",
-                              }}
-                            />
-                            <button
-                              type="button"
-                              onClick={handleAddCategory}
-                              disabled={addingCat || !newCatName.trim()}
-                              style={{
-                                padding: "4px 10px",
-                                borderRadius: "20px",
-                                border: "none",
-                                background: "linear-gradient(135deg, #6c63ff, #4f46e5)",
-                                color: "#fff",
-                                fontSize: "12px",
-                                fontWeight: "600",
-                                cursor: addingCat ? "not-allowed" : "pointer",
-                              }}
-                            >
-                              {addingCat ? "..." : "Add"}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => { setShowAddCatInput(false); setNewCatName(""); }}
-                              style={{
-                                padding: "4px 8px",
-                                borderRadius: "20px",
-                                border: "1px solid rgba(255,255,255,0.2)",
-                                background: "transparent",
-                                color: "rgba(255,255,255,0.6)",
-                                fontSize: "12px",
-                                cursor: "pointer",
-                              }}
-                            >
-                              Cancel
-                            </button>
+                          <div style={{ position: "absolute", right: "14px", top: "50%", transform: "translateY(-50%)", color: "rgba(255,255,255,0.5)" }}>
+                            {dropdownOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                          </div>
+                        </div>
+
+                        {/* The Dropdown Menu */}
+                        {dropdownOpen && (
+                          <div style={{
+                            position: "absolute",
+                            top: "calc(100% + 4px)",
+                            left: 0,
+                            right: 0,
+                            background: "#121422",
+                            border: "1px solid var(--primary)",
+                            borderRadius: "8px",
+                            zIndex: 9999,
+                            maxHeight: "220px",
+                            overflowY: "auto",
+                            boxShadow: "0 10px 30px rgba(0,0,0,0.8)"
+                          }}>
+                            {allCategories.length === 0 ? (
+                              <div style={{ padding: "12px", color: "rgba(255,255,255,0.5)", fontSize: "14px", textAlign: "center" }}>
+                                No categories found.
+                              </div>
+                            ) : (
+                              allCategories.map(({ label, value }) => {
+                                const selected = (Array.isArray(editData.category) ? editData.category : [editData.category]).includes(value);
+                                return (
+                                  <div
+                                    key={value}
+                                    onClick={() => toggleEditCategory(value)}
+                                    style={{
+                                      display: "flex",
+                                      alignItems: "center",
+                                      justifyContent: "space-between",
+                                      padding: "12px 16px",
+                                      cursor: "pointer",
+                                      borderBottom: "1px solid rgba(255,255,255,0.05)",
+                                      color: selected ? "var(--primary)" : "#fff",
+                                      background: selected ? "rgba(229, 9, 20, 0.1)" : "transparent",
+                                      transition: "background 0.2s"
+                                    }}
+                                    onMouseEnter={(e) => {
+                                      if (!selected) e.currentTarget.style.background = "var(--surface-hover, rgba(255,255,255,0.05))";
+                                    }}
+                                    onMouseLeave={(e) => {
+                                      e.currentTarget.style.background = selected ? "rgba(229, 9, 20, 0.1)" : "transparent";
+                                    }}
+                                  >
+                                    <span style={{ fontSize: "14px", fontWeight: selected ? "500" : "400" }}>{label}</span>
+                                    {selected && <Check size={16} color="var(--primary)" />}
+                                  </div>
+                                );
+                              })
+                            )}
                           </div>
                         )}
                       </div>
                     </div>
+
                     <div className="form-row">
                       <label className="form-label">Priority (0 = Auto-assign, 1 = top priority)</label>
                       <input

@@ -18,7 +18,7 @@ const {
   updateSeries,
   deleteSeries,
   searchSeries,
-
+  togglePublishSeries,
 } = require(
   "../../controllers/admin/series.controller"
 );
@@ -88,6 +88,12 @@ router.get(
   "/:id",
   isAdmin,
   getSeriesById
+);
+
+router.put(
+  "/:id/toggle-publish",
+  isAdmin,
+  togglePublishSeries
 );
 
 // router.patch(

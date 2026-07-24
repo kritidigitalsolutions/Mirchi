@@ -20,6 +20,7 @@ const {
   updateMovie,
   deleteMovie,
   searchMovies,
+  togglePublishMovie,
 } = require(
   "../../controllers/admin/movie.controller"
 );
@@ -101,6 +102,12 @@ router.get(
   "/:id",
   isAdmin,
   getMovieById
+);
+
+router.put(
+  "/:id/toggle-publish",
+  isAdmin,
+  togglePublishMovie
 );
 
 // router.patch(

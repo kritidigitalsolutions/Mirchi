@@ -84,6 +84,7 @@ export const createContent = async ({
   formData.append("is18plus", String(form.is18plus));
   formData.append("allAges", String(form.allAges));
   formData.append("isComingSoon", String(form.isComingSoon));
+  formData.append("isPublished", String(form.isPublished !== false));
   formData.append("releaseDate", form.releaseDate || "");
   formData.append("priority", Number(form.priority) || 0);
   formData.append("rating", form.rating ? Number(form.rating) : 0);

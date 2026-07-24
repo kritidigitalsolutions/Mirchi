@@ -113,6 +113,7 @@ const addSeries = async (req, res) => {
       is18plus: req.body.is18plus === "true" || req.body.is18plus === true,
       allAges: req.body.allAges === "true" || req.body.allAges === true,
       isHide: req.body.isHide === "true" || req.body.isHide === true,
+      isPublished: req.body.isPublished === undefined ? true : (req.body.isPublished === "true" || req.body.isPublished === true),
       rating: req.body.rating || 0,
       cast: sanitizeCast(cast),
       category,
@@ -293,6 +294,9 @@ const updateSeries = async (req, res) => {
     if (req.body.isHide !== undefined) {
       series.isHide = req.body.isHide === "true" || req.body.isHide === true;
     }
+    if (req.body.isPublished !== undefined) {
+      series.isPublished = req.body.isPublished === "true" || req.body.isPublished === true;
+    }
     series.category = category;
 
     if (req.files?.poster?.[0]) {
@@ -424,7 +428,22 @@ const deleteSeries = async (req, res) => {
   }
 };
 
+// ========================================
+// TOGGLE PUBLISH SERIES
+// ========================================
+const togglePublishSeries = async (req, res) => {
+  try {
+    const series = await Series.findById(req.params.id);
+    if (!series) return res.status(404).json({ success: false, message: "Series not found" });
 
+    series.isPublished = !series.isPublished;
+    await series.save();
+
+    return res.json({ success: true, message: "Series publish status updated", isPublished: series.isPublished });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: "Failed to toggle publish status" });
+  }
+};
 
 module.exports = {
   addSeries,
@@ -433,5 +452,6 @@ module.exports = {
   updateSeries,
   deleteSeries,
   searchSeries,
+  togglePublishSeries,
 };
 

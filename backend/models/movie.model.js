@@ -53,6 +53,11 @@ const movieSchema = new mongoose.Schema(
       type: Boolean,
       default: false
     },
+    
+    isPublished: {
+      type: Boolean,
+      default: true
+    },
 
     releaseDate: {
       type: Date

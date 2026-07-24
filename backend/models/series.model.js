@@ -53,6 +53,7 @@ const seriesSchema = new mongoose.Schema(
     is18plus: { type: Boolean, default: false },
     allAges: { type: Boolean, default: false },
     isHide: { type: Boolean, default: false },
+    isPublished: { type: Boolean, default: true },
 
     // Priority: higher = shown first (0 = default)
     priority: { type: Number, default: 0 },

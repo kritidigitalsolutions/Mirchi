@@ -27,6 +27,7 @@ const {
     deleteUser,
     getRegistrationStats,
     getUserGrowth,
+    toggleBlockUser,
 } = require("../../controllers/admin/user.controller");
 
 
@@ -100,6 +101,14 @@ router.delete(
     isAdmin,
     hasPermission("users"),
     deleteUser
+);
+
+// Toggle block user
+router.patch(
+    "/:id/block",
+    isAdmin,
+    hasPermission("users"),
+    toggleBlockUser
 );
 
 

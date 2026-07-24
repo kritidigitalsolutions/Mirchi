@@ -41,6 +41,7 @@ const Settings = lazyLoad(() => import("./pages/Settings"));
 const DramaPage = lazyLoad(() => import("./pages/Drama"));
 const AddDramaPage = lazyLoad(() => import("./pages/AddDrama"));
 const SubAdminsPage = lazyLoad(() => import("./pages/SubAdmins"));
+const CategoryPage = lazyLoad(() => import("./pages/Category"));
 
 // ── Toast Context ──
 const ToastContext = createContext();
@@ -128,6 +129,7 @@ function App() {
             <Route path="dramas" element={<DramaPage />} />
             <Route path="add-drama" element={<AddDramaPage />} />
             <Route path="subadmins" element={<SubAdminsPage />} />
+            <Route path="categories" element={<CategoryPage />} />
           </Route>
         </Routes>
       </Suspense>

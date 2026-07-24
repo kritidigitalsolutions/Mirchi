@@ -108,18 +108,18 @@ const addMovie = async (req, res) => {
     // ========================================
     // CREATE MOVIE
     // ========================================
-console.log("MOVIE CREATE PAYLOAD");
-console.log({
-  title: req.body.title,
-  poster: req.body.poster,
-  banner: req.body.banner,
-  trailerUrl: req.body.trailerUrl,
-  videoUrl: req.body.videoUrl,
-  cast,
-  genre,
-  category,
-  language: req.body.language,
-});
+    console.log("MOVIE CREATE PAYLOAD");
+    console.log({
+      title: req.body.title,
+      poster: req.body.poster,
+      banner: req.body.banner,
+      trailerUrl: req.body.trailerUrl,
+      videoUrl: req.body.videoUrl,
+      cast,
+      genre,
+      category,
+      language: req.body.language,
+    });
     const movie = await Movie.create({
 
       title: req.body.title,
@@ -158,6 +158,8 @@ console.log({
         req.body.allAges === "true" || req.body.allAges === true,
       isHide:
         req.body.isHide === "true" || req.body.isHide === true,
+      isPublished:
+        req.body.isPublished === undefined ? true : (req.body.isPublished === "true" || req.body.isPublished === true),
 
       rating: req.body.rating || 0,
 
@@ -230,31 +232,31 @@ console.log({
     });
 
   } catch (error) {
-  console.error("================================");
-  console.error("ADD MOVIE ERROR");
-  console.error(error);
-  console.error(error.message);
+    console.error("================================");
+    console.error("ADD MOVIE ERROR");
+    console.error(error);
+    console.error(error.message);
 
-  if (error.errors) {
-    Object.keys(error.errors).forEach((key) => {
-      console.error(
-        "VALIDATION:",
-        key,
-        error.errors[key]?.message
-      );
+    if (error.errors) {
+      Object.keys(error.errors).forEach((key) => {
+        console.error(
+          "VALIDATION:",
+          key,
+          error.errors[key]?.message
+        );
+      });
+    }
+
+    console.error("REQUEST BODY:");
+    console.log(req.body);
+
+    console.error("================================");
+
+    return res.status(500).json({
+      success: false,
+      message: error.message,
     });
   }
-
-  console.error("REQUEST BODY:");
-  console.log(req.body);
-
-  console.error("================================");
-
-  return res.status(500).json({
-    success: false,
-    message: error.message,
-  });
-}
 };
 
 // ========================================
@@ -454,6 +456,9 @@ const updateMovie = async (req, res) => {
     if (req.body.isHide !== undefined) {
       movie.isHide = req.body.isHide === "true" || req.body.isHide === true;
     }
+    if (req.body.isPublished !== undefined) {
+      movie.isPublished = req.body.isPublished === "true" || req.body.isPublished === true;
+    }
 
     movie.category = category;
 
@@ -607,6 +612,23 @@ const deleteMovie = async (req, res) => {
   }
 };
 
+// ========================================
+// TOGGLE PUBLISH MOVIE
+// ========================================
+
+const togglePublishMovie = async (req, res) => {
+  try {
+    const movie = await Movie.findById(req.params.id);
+    if (!movie) return res.status(404).json({ success: false, message: "Movie not found" });
+
+    movie.isPublished = !movie.isPublished;
+    await movie.save();
+
+    return res.json({ success: true, message: "Movie publish status updated", isPublished: movie.isPublished });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: "Failed to toggle publish status" });
+  }
+};
 
 module.exports = {
   addMovie,
@@ -615,4 +637,5 @@ module.exports = {
   getMovieById,
   updateMovie,
   deleteMovie,
+  togglePublishMovie,
 };

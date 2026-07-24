@@ -18,6 +18,7 @@ const EMPTY_FORM = {
   is18plus: false,
   allAges: true,
   isComingSoon: false,
+  isPublished: true,
   releaseDate: "",
   priority: 0,
   cast: [

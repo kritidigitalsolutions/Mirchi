@@ -5,7 +5,7 @@ const Category = require("../../models/category.model");
 // ========================================
 exports.createCategory = async (req, res) => {
   try {
-    const { name } = req.body;
+    const { name, priority, isActive } = req.body;
 
     if (!name) {
       return res.status(400).json({ success: false, message: "Category name is required" });
@@ -16,7 +16,25 @@ exports.createCategory = async (req, res) => {
       return res.status(409).json({ success: false, message: "Category with this name already exists" });
     }
 
-    const category = await Category.create({ name });
+    let newPriority = parseInt(priority, 10);
+    const maxCat = await Category.findOne().sort({ priority: -1 });
+    const maxPriority = maxCat && maxCat.priority ? maxCat.priority : 0;
+
+    if (isNaN(newPriority) || newPriority < 1) {
+      newPriority = maxPriority + 1;
+    } else if (newPriority <= maxPriority) {
+      await Category.updateMany(
+        { priority: { $gte: newPriority } },
+        { $inc: { priority: 1 } }
+      );
+    } else if (newPriority > maxPriority + 1) {
+      newPriority = maxPriority + 1;
+    }
+
+    const categoryData = { name, priority: newPriority };
+    if (isActive !== undefined) categoryData.isActive = isActive === true || isActive === "true";
+    
+    const category = await Category.create(categoryData);
 
     return res.status(201).json({
       success: true,
@@ -24,7 +42,10 @@ exports.createCategory = async (req, res) => {
       data: {
         _id: category._id,
         name: category.name,
-        slug: category.slug
+        slug: category.slug,
+        priority: category.priority,
+        isActive: category.isActive,
+        createdAt: category.createdAt
       }
     });
   } catch (error) {
@@ -38,7 +59,7 @@ exports.createCategory = async (req, res) => {
 // ========================================
 exports.getAllCategories = async (req, res) => {
   try {
-    const categories = await Category.find().select("_id name slug").sort({ name: 1 });
+    const categories = await Category.find().select("_id name slug priority isActive createdAt").sort({ priority: 1, name: 1 });
 
     return res.status(200).json({
       success: true,
@@ -56,7 +77,7 @@ exports.getAllCategories = async (req, res) => {
 // ========================================
 exports.updateCategory = async (req, res) => {
   try {
-    const { name, isActive } = req.body;
+    const { name, isActive, priority } = req.body;
 
     const category = await Category.findById(req.params.id);
     if (!category) {
@@ -64,6 +85,30 @@ exports.updateCategory = async (req, res) => {
     }
 
     if (name) category.name = name;
+    if (isActive !== undefined) category.isActive = isActive === true || isActive === "true";
+
+    if (priority !== undefined) {
+      let newPriority = parseInt(priority, 10);
+      let oldPriority = category.priority;
+      if (!isNaN(newPriority) && newPriority !== oldPriority && newPriority > 0) {
+        const maxCat = await Category.findOne().sort({ priority: -1 });
+        const maxPriority = maxCat && maxCat.priority ? maxCat.priority : 0;
+        if (newPriority > maxPriority) newPriority = maxPriority;
+
+        if (newPriority < oldPriority) {
+          await Category.updateMany(
+            { priority: { $gte: newPriority, $lt: oldPriority } },
+            { $inc: { priority: 1 } }
+          );
+        } else if (newPriority > oldPriority) {
+          await Category.updateMany(
+            { priority: { $gt: oldPriority, $lte: newPriority } },
+            { $inc: { priority: -1 } }
+          );
+        }
+        category.priority = newPriority;
+      }
+    }
     if (isActive !== undefined) category.isActive = isActive === true || isActive === "true";
 
     await category.save();
@@ -74,7 +119,10 @@ exports.updateCategory = async (req, res) => {
       data: {
         _id: category._id,
         name: category.name,
-        slug: category.slug
+        slug: category.slug,
+        priority: category.priority,
+        isActive: category.isActive,
+        createdAt: category.createdAt
       }
     });
   } catch (error) {
@@ -88,10 +136,19 @@ exports.updateCategory = async (req, res) => {
 // ========================================
 exports.deleteCategory = async (req, res) => {
   try {
-    const category = await Category.findByIdAndDelete(req.params.id);
-
+    const category = await Category.findById(req.params.id);
     if (!category) {
       return res.status(404).json({ success: false, message: "Category not found" });
+    }
+
+    const deletedPriority = category.priority;
+    await Category.findByIdAndDelete(req.params.id);
+
+    if (deletedPriority) {
+      await Category.updateMany(
+        { priority: { $gt: deletedPriority } },
+        { $inc: { priority: -1 } }
+      );
     }
 
     return res.status(200).json({

@@ -64,6 +64,11 @@ authProvider: {
             default: Date.now,
         },
 
+        isBlocked: {
+            type: Boolean,
+            default: false,
+        },
+
         // subscriptions: [
         //   {
         //     type: mongoose.Schema.Types.ObjectId,

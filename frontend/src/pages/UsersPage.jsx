@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import API, { API_BASE_URL } from "../api/axios";
-import { Users, RefreshCw, User, CheckCircle, AlertCircle, Search, Loader, Eye, Trash2, X, ChevronLeft, ChevronRight } from "lucide-react";
+import { Users, RefreshCw, User, CheckCircle, AlertCircle, Search, Loader, Eye, Trash2, X, ChevronLeft, ChevronRight, Lock, Unlock } from "lucide-react";
 import "./Dashboard.css";
 
 export default function UsersPage() {
@@ -53,13 +53,13 @@ export default function UsersPage() {
     } catch { alert("Failed to delete"); }
   };
 
-  // const handleToggleBlock = async (id) => {
-  //   try {
-  //     const res = await API.patch(`/admin/users/${id}/block`);
-  //     setUsers(p => p.map(u => u._id === id ? res.data.user : u));
-  //     if (selected?._id === id) setSelected(res.data.user);
-  //   } catch { alert("Failed to update status"); }
-  // };
+  const handleToggleBlock = async (id) => {
+    try {
+      const res = await API.patch(`/admin/users/${id}/block`);
+      setUsers(p => p.map(u => u._id === id ? res.data.user : u));
+      if (selected?._id === id) setSelected(res.data.user);
+    } catch { alert("Failed to update status"); }
+  };
 
   return (
     <div className="page-section">
@@ -146,6 +146,9 @@ export default function UsersPage() {
                     <td>
                       <div className="tbl-actions">
                         <button className="icon-btn view" onClick={() => setSelected(u)} title="View"><Eye size={16} /></button>
+                        <button className="icon-btn" onClick={() => handleToggleBlock(u._id)} title={u.isBlocked ? "Unblock" : "Block"} style={{ color: u.isBlocked ? "var(--success)" : "var(--danger)" }}>
+                          {u.isBlocked ? <Unlock size={16} /> : <Lock size={16} />}
+                        </button>
                         <button className="icon-btn del" onClick={() => handleDelete(u._id)} title="Delete"><Trash2 size={16} /></button>
                       </div>
                     </td>
