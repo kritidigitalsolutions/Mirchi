@@ -162,18 +162,7 @@ export default function Content() {
   const [editingCatPriority, setEditingCatPriority] = useState("");
   const [updatingCat, setUpdatingCat] = useState(false);
 
-  const [dropdownOpen, setDropdownOpen] = useState(false);
-  const dropdownRef = useRef(null);
-
-  useEffect(() => {
-    function handleClickOutside(event) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setDropdownOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  // Chips-based categories select logic
 
   useEffect(() => {
     API.get("/admin/categories")
@@ -1805,124 +1794,75 @@ export default function Content() {
                     </div>
 
                     <div className="form-row" style={{ gridColumn: "1 / -1" }}>
-                      <label className="form-label">
-                        <Layers size={14} style={{ marginRight: 4, display: "inline-block" }} />
-                        Categories
+                      <label className="form-label" style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                        <Layers size={14} />
+                        Selected Categories (Select Multiple)
                       </label>
 
-                      <div
-                        ref={dropdownRef}
-                        style={{ position: "relative", width: "100%" }}
-                      >
-                        {/* The Select Box */}
-                        <div
-                          onClick={() => setDropdownOpen(!dropdownOpen)}
-                          style={{
-                            display: "flex",
-                            flexWrap: "wrap",
-                            gap: "8px",
-                            padding: "10px 40px 10px 12px",
-                            background: "var(--input-bg, rgba(255,255,255,0.02))",
-                            border: dropdownOpen ? "1px solid var(--primary)" : "1px solid var(--border, rgba(255,255,255,0.1))",
-                            borderRadius: "8px",
-                            minHeight: "46px",
-                            alignItems: "center",
-                            cursor: "pointer",
-                            transition: "all 0.2s ease"
-                          }}
-                        >
-                          {(!editData.category || (Array.isArray(editData.category) && editData.category.length === 0)) ? (
-                            <span style={{ color: "rgba(255,255,255,0.4)", fontSize: "14px" }}>
-                              Select categories...
-                            </span>
-                          ) : (
-                            (Array.isArray(editData.category) ? editData.category : [editData.category]).map((val) => {
-                              const cat = allCategories.find((c) => c.value === val);
-                              if (!cat) return null;
-                              return (
-                                <span
-                                  key={val}
-                                  style={{
-                                    display: "inline-flex",
-                                    alignItems: "center",
-                                    gap: "6px",
-                                    padding: "4px 10px",
-                                    borderRadius: "20px",
-                                    border: "1px solid var(--primary)",
-                                    background: "transparent",
-                                    color: "var(--primary)",
-                                    fontSize: "13px",
-                                  }}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    toggleEditCategory(val);
-                                  }}
-                                >
-                                  {cat.label}
-                                  <X size={12} style={{ cursor: "pointer", opacity: 0.7 }} />
-                                </span>
-                              );
-                            })
-                          )}
-
-                          <div style={{ position: "absolute", right: "14px", top: "50%", transform: "translateY(-50%)", color: "rgba(255,255,255,0.5)" }}>
-                            {dropdownOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                      <div style={{ width: "100%" }}>
+                        {allCategories.length === 0 ? (
+                          <div style={{ padding: "12px 0", color: "rgba(255,255,255,0.4)", fontSize: "14px" }}>
+                            Loading categories...
                           </div>
-                        </div>
-
-                        {/* The Dropdown Menu */}
-                        {dropdownOpen && (
-                          <div style={{
-                            position: "absolute",
-                            top: "calc(100% + 4px)",
-                            left: 0,
-                            right: 0,
-                            background: "#121422",
-                            border: "1px solid var(--primary)",
-                            borderRadius: "8px",
-                            zIndex: 9999,
-                            maxHeight: "220px",
-                            overflowY: "auto",
-                            boxShadow: "0 10px 30px rgba(0,0,0,0.8)"
-                          }}>
-                            {allCategories.length === 0 ? (
-                              <div style={{ padding: "12px", color: "rgba(255,255,255,0.5)", fontSize: "14px", textAlign: "center" }}>
-                                No categories found.
-                              </div>
-                            ) : (
-                              allCategories.map(({ label, value }) => {
-                                const selected = (Array.isArray(editData.category) ? editData.category : [editData.category]).includes(value);
-                                return (
-                                  <div
-                                    key={value}
-                                    onClick={() => toggleEditCategory(value)}
-                                    style={{
-                                      display: "flex",
-                                      alignItems: "center",
-                                      justifyContent: "space-between",
-                                      padding: "12px 16px",
-                                      cursor: "pointer",
-                                      borderBottom: "1px solid rgba(255,255,255,0.05)",
-                                      color: selected ? "var(--primary)" : "#fff",
-                                      background: selected ? "rgba(229, 9, 20, 0.1)" : "transparent",
-                                      transition: "background 0.2s"
-                                    }}
-                                    onMouseEnter={(e) => {
-                                      if (!selected) e.currentTarget.style.background = "var(--surface-hover, rgba(255,255,255,0.05))";
-                                    }}
-                                    onMouseLeave={(e) => {
-                                      e.currentTarget.style.background = selected ? "rgba(229, 9, 20, 0.1)" : "transparent";
-                                    }}
-                                  >
-                                    <span style={{ fontSize: "14px", fontWeight: selected ? "500" : "400" }}>{label}</span>
-                                    {selected && <Check size={16} color="var(--primary)" />}
-                                  </div>
-                                );
-                              })
-                            )}
+                        ) : (
+                          <div className="category-chips-container">
+                            {allCategories.map(({ label, value }) => {
+                              const isSelected = (Array.isArray(editData.category) ? editData.category : [editData.category]).includes(value);
+                              return (
+                                <button
+                                  key={value}
+                                  type="button"
+                                  onClick={() => toggleEditCategory(value)}
+                                  className={`category-chip ${isSelected ? "active" : ""}`}
+                                >
+                                  {label}
+                                </button>
+                              );
+                            })}
                           </div>
                         )}
                       </div>
+
+                      <style>{`
+                        .category-chips-container {
+                          display: flex;
+                          flex-wrap: wrap;
+                          gap: 12px;
+                          margin-top: 10px;
+                        }
+                        .category-chip {
+                          display: inline-flex;
+                          align-items: center;
+                          padding: 10px 24px;
+                          border-radius: 100px;
+                          font-size: 12px;
+                          font-weight: 700;
+                          text-transform: uppercase;
+                          letter-spacing: 0.8px;
+                          cursor: pointer;
+                          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+                          background: rgba(255, 255, 255, 0.02);
+                          border: 1px solid rgba(255, 255, 255, 0.08);
+                          color: rgba(255, 255, 255, 0.5);
+                          user-select: none;
+                        }
+                        .category-chip:hover {
+                          background: rgba(255, 255, 255, 0.06);
+                          border-color: rgba(255, 255, 255, 0.2);
+                          color: #fff;
+                          transform: translateY(-1px);
+                        }
+                        .category-chip.active {
+                          background: rgba(227, 9, 20, 0.12);
+                          border-color: var(--primary, #e30914);
+                          color: #fff;
+                          box-shadow: 0 0 14px rgba(227, 9, 20, 0.25);
+                        }
+                        .category-chip.active:hover {
+                          background: rgba(227, 9, 20, 0.2);
+                          box-shadow: 0 0 18px rgba(227, 9, 20, 0.35);
+                        }
+                      `}</style>
                     </div>
 
                     <div className="form-row">
