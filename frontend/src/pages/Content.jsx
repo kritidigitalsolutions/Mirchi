@@ -120,6 +120,9 @@ export default function Content() {
   const [newEpisode, setNewEpisode] = useState({ title: "", episodeNumber: "", duration: "", description: "", seasonNumber: "" });
   const [newEpisodeVideo, setNewEpisodeVideo] = useState(null);
   const [newEpisodeThumbnail, setNewEpisodeThumbnail] = useState(null);
+  // Bunny CDN direct URL inputs (used when no file is chosen)
+  const [newEpisodeVideoUrl, setNewEpisodeVideoUrl] = useState("");
+  const [newEpisodeThumbnailUrl, setNewEpisodeThumbnailUrl] = useState("");
   const [showAddSeasonForm, setShowAddSeasonForm] = useState(false);
   const [newSeasonNumber, setNewSeasonNumber] = useState("");
   const [addingEpisode, setAddingEpisode] = useState(false);
@@ -418,7 +421,7 @@ export default function Content() {
   const handleTogglePublish = async (item, isSeries = false) => {
     const currentStatus = item.isPublished !== false;
     const confirmMsg = `Are you sure you want to change the status to ${currentStatus ? "Draft" : "Published"}?`;
-    
+
     if (!window.confirm(confirmMsg)) return;
 
     try {
@@ -487,8 +490,9 @@ export default function Content() {
     }
     setAddingEpisode(true);
     try {
-      let videoUrl = "";
-      let thumbnailUrl = "";
+      // File takes priority; URL field is used as fallback (Bunny CDN direct URL)
+      let videoUrl = newEpisodeVideoUrl.trim() || "";
+      let thumbnailUrl = newEpisodeThumbnailUrl.trim() || "";
 
       if (newEpisodeVideo) {
         videoUrl = await uploadToBunny(newEpisodeVideo, "episodes", "videos");
@@ -516,6 +520,8 @@ export default function Content() {
       setNewSeasonNumber("");
       setNewEpisodeVideo(null);
       setNewEpisodeThumbnail(null);
+      setNewEpisodeVideoUrl("");
+      setNewEpisodeThumbnailUrl("");
       fetchEpisodes(selectedSeries._id);
 
     } catch (err) {
@@ -1028,8 +1034,8 @@ export default function Content() {
                               {isLocked(movie) ? "Coming Soon" : (movie.isPublished !== false ? "Published" : "Draft")}
                             </span>
                             <label className="switch" style={{ margin: 0 }}>
-                              <input 
-                                type="checkbox" 
+                              <input
+                                type="checkbox"
                                 checked={movie.isPublished !== false}
                                 onChange={() => handleTogglePublish(movie, false)}
                               />
@@ -1128,8 +1134,8 @@ export default function Content() {
                               {isLocked(series) ? "Coming Soon" : (series.isPublished !== false ? "Published" : "Draft")}
                             </span>
                             <label className="switch" style={{ margin: 0 }}>
-                              <input 
-                                type="checkbox" 
+                              <input
+                                type="checkbox"
                                 checked={series.isPublished !== false}
                                 onChange={() => handleTogglePublish(series, true)}
                               />
@@ -1258,17 +1264,51 @@ export default function Content() {
                       </label>
                     </div>
                   </div>
-                  <div className="form-row">
-                    <label className="form-label">Episode Thumbnail (optional)</label>
-                    <div className="file-input-wrapper">
-                      <input type="file" accept="image/*" id="new-ep-thumb-new" className="file-input" onChange={e => setNewEpisodeThumbnail(e.target.files[0])} />
-                      <label htmlFor="new-ep-thumb-new" className="file-label">
-                        {newEpisodeThumbnail ? `✓ ${newEpisodeThumbnail.name}` : "Choose Thumbnail"}
-                      </label>
+                </div>
+
+                {/* Bunny CDN URL fields */}
+                <div style={{ background: "rgba(108,99,255,0.07)", border: "1px solid rgba(108,99,255,0.2)", borderRadius: 10, padding: "14px 16px", marginBottom: 2 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                    <Video size={15} style={{ color: "var(--primary)" }} />
+                    <span style={{ fontSize: "0.82rem", fontWeight: 700, color: "var(--primary)", letterSpacing: "0.03em", textTransform: "uppercase" }}>Bunny CDN URLs</span>
+                    <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontWeight: 400 }}>(paste URL directly — used if no file chosen above)</span>
+                  </div>
+                  <div className="form-grid-2">
+                    <div className="form-row">
+                      <label className="form-label">Video CDN URL</label>
+                      <input
+                        className="form-input"
+                        type="url"
+                        value={newEpisodeVideoUrl}
+                        onChange={e => setNewEpisodeVideoUrl(e.target.value)}
+                        placeholder="https://vz-xxx.b-cdn.net/video-id/playlist.m3u8"
+                        style={{ fontFamily: "monospace", fontSize: "0.82rem" }}
+                      />
+                    </div>
+                    <div className="form-row">
+                      <label className="form-label">Thumbnail CDN URL</label>
+                      <input
+                        className="form-input"
+                        type="url"
+                        value={newEpisodeThumbnailUrl}
+                        onChange={e => setNewEpisodeThumbnailUrl(e.target.value)}
+                        placeholder="https://xxx.b-cdn.net/episodes/posters/thumb.jpg"
+                        style={{ fontFamily: "monospace", fontSize: "0.82rem" }}
+                      />
                     </div>
                   </div>
-
                 </div>
+
+                <div className="form-row" style={{ marginTop: 8 }}>
+                  <label className="form-label">Episode Thumbnail (optional)</label>
+                  <div className="file-input-wrapper">
+                    <input type="file" accept="image/*" id="new-ep-thumb-new" className="file-input" onChange={e => setNewEpisodeThumbnail(e.target.files[0])} />
+                    <label htmlFor="new-ep-thumb-new" className="file-label">
+                      {newEpisodeThumbnail ? `✓ ${newEpisodeThumbnail.name}` : "Choose Thumbnail"}
+                    </label>
+                  </div>
+                </div>
+
                 <div className="form-row">
                   <label className="form-label">Description</label>
                   <textarea className="form-input" rows="2" value={newEpisode.description} onChange={e => setNewEpisode(p => ({ ...p, description: e.target.value }))} placeholder="Brief description…" />
@@ -1277,7 +1317,7 @@ export default function Content() {
                   <button className="btn btn-primary" onClick={() => handleAddEpisode("new-season")} disabled={addingEpisode}>
                     {addingEpisode ? "Adding…" : <><Plus size={14} /> Add Season &amp; Episode</>}
                   </button>
-                  <button className="btn btn-ghost" onClick={() => { setShowAddSeasonForm(false); setShowAddEpisodeForm(null); setNewEpisode({ title: "", episodeNumber: "", duration: "", description: "", seasonNumber: "" }); setNewSeasonNumber(""); setNewEpisodeVideo(null); setNewEpisodeThumbnail(null); }}>
+                  <button className="btn btn-ghost" onClick={() => { setShowAddSeasonForm(false); setShowAddEpisodeForm(null); setNewEpisode({ title: "", episodeNumber: "", duration: "", description: "", seasonNumber: "" }); setNewSeasonNumber(""); setNewEpisodeVideo(null); setNewEpisodeThumbnail(null); setNewEpisodeVideoUrl(""); setNewEpisodeThumbnailUrl(""); }}>
                     Cancel
                   </button>
                 </div>
@@ -1363,6 +1403,40 @@ export default function Content() {
                         </div>
                       </div>
                     </div>
+
+                    {/* Bunny CDN URL fields */}
+                    <div style={{ background: "rgba(108,99,255,0.07)", border: "1px solid rgba(108,99,255,0.2)", borderRadius: 10, padding: "14px 16px", margin: "10px 0" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                        <Video size={15} style={{ color: "var(--primary)" }} />
+                        <span style={{ fontSize: "0.82rem", fontWeight: 700, color: "var(--primary)", letterSpacing: "0.03em", textTransform: "uppercase" }}>Bunny CDN URLs</span>
+                        <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontWeight: 400 }}>(paste URL directly — used if no file chosen above)</span>
+                      </div>
+                      <div className="form-grid-2">
+                        <div className="form-row">
+                          <label className="form-label">Video CDN URL</label>
+                          <input
+                            className="form-input"
+                            type="url"
+                            value={newEpisodeVideoUrl}
+                            onChange={e => setNewEpisodeVideoUrl(e.target.value)}
+                            placeholder="https://vz-xxx.b-cdn.net/video-id/playlist.m3u8"
+                            style={{ fontFamily: "monospace", fontSize: "0.82rem" }}
+                          />
+                        </div>
+                        <div className="form-row">
+                          <label className="form-label">Thumbnail CDN URL</label>
+                          <input
+                            className="form-input"
+                            type="url"
+                            value={newEpisodeThumbnailUrl}
+                            onChange={e => setNewEpisodeThumbnailUrl(e.target.value)}
+                            placeholder="https://xxx.b-cdn.net/episodes/posters/thumb.jpg"
+                            style={{ fontFamily: "monospace", fontSize: "0.82rem" }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
                     <div className="form-row">
                       <label className="form-label">Description</label>
                       <textarea className="form-input" rows="2" value={newEpisode.description} onChange={e => setNewEpisode(p => ({ ...p, description: e.target.value }))} />
@@ -1371,7 +1445,7 @@ export default function Content() {
                       <button className="btn btn-primary" onClick={() => handleAddEpisode(seasonNum)} disabled={addingEpisode}>
                         {addingEpisode ? "Adding…" : <><Plus size={14} /> Add Episode</>}
                       </button>
-                      <button className="btn btn-ghost" onClick={() => { setShowAddEpisodeForm(null); setNewEpisode({ title: "", episodeNumber: "", duration: "", description: "", seasonNumber: "" }); setNewEpisodeVideo(null); setNewEpisodeThumbnail(null); }}>
+                      <button className="btn btn-ghost" onClick={() => { setShowAddEpisodeForm(null); setNewEpisode({ title: "", episodeNumber: "", duration: "", description: "", seasonNumber: "" }); setNewEpisodeVideo(null); setNewEpisodeThumbnail(null); setNewEpisodeVideoUrl(""); setNewEpisodeThumbnailUrl(""); }}>
                         Cancel
                       </button>
                     </div>
