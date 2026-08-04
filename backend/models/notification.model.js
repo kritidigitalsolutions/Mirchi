@@ -82,13 +82,13 @@ const notificationSchema = new mongoose.Schema(
                 type: mongoose.Schema.Types.ObjectId,
                 ref: "Plan"
             },
-            movieId: {
+            contentId: {
                 type: mongoose.Schema.Types.ObjectId,
-                ref: "Movie"
+                // ref path can be dynamic or just left as ObjectId without strict ref since it could be Movie or Series
             },
-            seriesId: {
-                type: mongoose.Schema.Types.ObjectId,
-                ref: "Series"
+            contentType: {
+                type: String,
+                enum: ["movie", "series", "plan"]
             },
             actionUrl: String,
             imageUrl: String

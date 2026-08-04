@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Bell, Send, X, Trash2, Eye, RefreshCw } from "lucide-react";
 import API from "../api/axios";
 import "./Dashboard.css";
@@ -18,7 +18,9 @@ const EMPTY_FORM = {
   type:       "GENERAL",
   sendTo:     "All Users",
   userSearch: "",
-  actionUrl:  "",
+  linkCategory: "None", // None, Content, Plan
+  linkType:   "Movie", // Movie, Series
+  contentSearch: "",
 };
 
 // ── sendTo value → backend targetUserType mapping ─────────────────────────
@@ -40,11 +42,38 @@ export default function NotificationsPage() {
   const [loading, setLoading]         = useState(false);
   const [fetching, setFetching]       = useState(true);
   const [notifications, setNotifications] = useState([]);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const limit = 10;
   const [users, setUsers]             = useState([]);
   const [userDropOpen, setUserDropOpen]   = useState(false);
   const [selectedUser, setSelectedUser]   = useState(null);
   const [toast, setToast]             = useState(null);
   const [viewNotif, setViewNotif]     = useState(null); // the notification being viewed
+
+  // Content for linking
+  const [movies, setMovies] = useState([]);
+  const [seriesList, setSeriesList] = useState([]);
+  const [plans, setPlans] = useState([]);
+  const [contentDropOpen, setContentDropOpen] = useState(false);
+  const [selectedContent, setSelectedContent] = useState(null);
+
+  const userSearchRef = useRef(null);
+  const contentSearchRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (userSearchRef.current && !userSearchRef.current.contains(event.target)) {
+        setUserDropOpen(false);
+      }
+      if (contentSearchRef.current && !contentSearchRef.current.contains(event.target)) {
+        setContentDropOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   // ── Toast helper ──────────────────────────────────────────────────────
   const showToast = (msg, type = "success") => {
@@ -53,11 +82,13 @@ export default function NotificationsPage() {
   };
 
   // ── Fetch notifications from backend ──────────────────────────────────
-  const fetchNotifications = useCallback(async () => {
+  const fetchNotifications = useCallback(async (currentPage = 1) => {
     setFetching(true);
     try {
-      const res = await API.get("/admin/notifications/");
+      const res = await API.get(`/admin/notifications/?page=${currentPage}&limit=${limit}`);
       setNotifications(res.data.data || []);
+      setTotalPages(res.data.pages || 1);
+      setPage(res.data.page || 1);
     } catch (err) {
       showToast(err.response?.data?.message || "Failed to load notifications.", "error");
     } finally {
@@ -75,10 +106,24 @@ export default function NotificationsPage() {
     }
   }, []);
 
+  const fetchContentData = useCallback(async () => {
+    try {
+      const mRes = await API.get("/admin/movies?limit=1000");
+      setMovies(mRes.data.movies || []);
+      const sRes = await API.get("/admin/series?limit=1000");
+      setSeriesList(sRes.data.series || []);
+      const pRes = await API.get("/admin/plan");
+      setPlans(pRes.data.plans || pRes.data.data || []);
+    } catch {
+      // Ignore
+    }
+  }, []);
+
   useEffect(() => {
-    fetchNotifications();
+    fetchNotifications(1);
     fetchUsers();
-  }, [fetchNotifications, fetchUsers]);
+    fetchContentData();
+  }, [fetchNotifications, fetchUsers, fetchContentData]);
 
   // ── Form input change ─────────────────────────────────────────────────
   const ch = (e) => setForm({ ...form, [e.target.name]: e.target.value });
@@ -90,6 +135,28 @@ export default function NotificationsPage() {
       (u.email || "").toLowerCase().includes(form.userSearch.toLowerCase()) ||
       (u.phone || "").includes(form.userSearch)
   );
+
+  const getFilteredContent = () => {
+    const activeLinkType = form.linkCategory === "Plan" ? "Plan" : (form.linkCategory === "Content" ? form.linkType : "None");
+    let list = [];
+    if (activeLinkType === "Movie") list = movies;
+    else if (activeLinkType === "Series") list = seriesList;
+    else if (activeLinkType === "Plan") list = plans;
+
+    return list.filter(c => (c.title || c.name || "").toLowerCase().includes(form.contentSearch.toLowerCase()));
+  };
+  const filteredContent = getFilteredContent();
+
+  const handleCategoryChange = (e) => {
+    const category = e.target.value;
+    setForm({
+      ...form,
+      linkCategory: category,
+      contentSearch: ""
+    });
+    setSelectedContent(null);
+    setContentDropOpen(false);
+  };
 
   // ── Send notification ─────────────────────────────────────────────────
   const handleSend = async (e) => {
@@ -104,6 +171,13 @@ export default function NotificationsPage() {
       return;
     }
 
+    const activeLinkType = form.linkCategory === "Plan" ? "Plan" : (form.linkCategory === "Content" ? form.linkType : "None");
+
+    if (activeLinkType !== "None" && !selectedContent) {
+      showToast(`Please select a ${activeLinkType}.`, "error");
+      return;
+    }
+
     setLoading(true);
     try {
       const payload = {
@@ -111,7 +185,8 @@ export default function NotificationsPage() {
         message:    form.message.trim(),
         type:       form.type,
         sendTo:     SEND_TO_MAP[form.sendTo] || "ALL",
-        actionUrl:  form.actionUrl.trim() || undefined,
+        contentType: activeLinkType !== "None" ? activeLinkType.toLowerCase() : undefined,
+        contentId:   activeLinkType !== "None" && selectedContent ? selectedContent._id : undefined,
         ...(form.sendTo === "Specific User" && selectedUser
           ? { targetUser: selectedUser._id || selectedUser.id }
           : {}),
@@ -122,7 +197,8 @@ export default function NotificationsPage() {
       showToast("Notification sent successfully! 🎉");
       setForm(EMPTY_FORM);
       setSelectedUser(null);
-      fetchNotifications(); // refresh table
+      setSelectedContent(null);
+      fetchNotifications(1); // refresh table from page 1
     } catch (err) {
       showToast(err.response?.data?.message || "Failed to send notification.", "error");
     } finally {
@@ -134,6 +210,7 @@ export default function NotificationsPage() {
   const handleClear = () => {
     setForm(EMPTY_FORM);
     setSelectedUser(null);
+    setSelectedContent(null);
   };
 
   // ── Delete notification ───────────────────────────────────────────────
@@ -145,6 +222,20 @@ export default function NotificationsPage() {
       showToast("Notification deleted.");
     } catch (err) {
       showToast(err.response?.data?.message || "Delete failed.", "error");
+    }
+  };
+
+  // ── Delete all notifications ──────────────────────────────────────────
+  const handleDeleteAll = async () => {
+    if (!window.confirm("Are you sure you want to delete ALL notifications? This action cannot be undone.")) return;
+    try {
+      await API.delete("/admin/notifications/all");
+      setNotifications([]);
+      setTotalPages(1);
+      setPage(1);
+      showToast("All notifications deleted.");
+    } catch (err) {
+      showToast(err.response?.data?.message || "Delete all failed.", "error");
     }
   };
 
@@ -271,7 +362,7 @@ export default function NotificationsPage() {
           {form.sendTo === "Specific User" && (
             <div className="notif-field-group notif-fade-in">
               <label className="notif-label">Search User</label>
-              <div className="notif-user-search-wrap">
+              <div className="notif-user-search-wrap" ref={userSearchRef}>
                 <input
                   className="form-input-styled notif-input"
                   name="userSearch"
@@ -328,19 +419,119 @@ export default function NotificationsPage() {
             </div>
           )}
 
-          {/* Action URL */}
+          {/* Link Category Toggle */}
           <div className="notif-field-group">
-            <label className="notif-label">
-              Action URL <span className="notif-optional">(optional)</span>
-            </label>
-            <input
-              className="form-input-styled notif-input"
-              name="actionUrl"
-              placeholder="/plans"
-              value={form.actionUrl}
-              onChange={ch}
-            />
+            <label className="notif-label">Attachment Type</label>
+            <div style={{ display: 'flex', gap: '20px', marginTop: '8px', color: 'var(--text)' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                <input 
+                  type="radio" 
+                  name="linkCategory" 
+                  value="None" 
+                  checked={form.linkCategory === 'None'} 
+                  onChange={handleCategoryChange} 
+                /> None
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                <input 
+                  type="radio" 
+                  name="linkCategory" 
+                  value="Content" 
+                  checked={form.linkCategory === 'Content'} 
+                  onChange={handleCategoryChange} 
+                /> Content
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                <input 
+                  type="radio" 
+                  name="linkCategory" 
+                  value="Plan" 
+                  checked={form.linkCategory === 'Plan'} 
+                  onChange={handleCategoryChange} 
+                /> Subscription Plan
+              </label>
+            </div>
           </div>
+
+          {/* Link Type (Only for Content) */}
+          {form.linkCategory === "Content" && (
+            <div className="notif-field-group notif-fade-in">
+              <label className="notif-label">Link to Content</label>
+              <select
+                className="form-input-styled notif-input notif-select"
+                name="linkType"
+                value={form.linkType}
+                onChange={(e) => {
+                  setForm({ ...form, linkType: e.target.value, contentSearch: "" });
+                  setSelectedContent(null);
+                  setContentDropOpen(false);
+                }}
+              >
+                <option value="Movie">Movie</option>
+                <option value="Series">Series</option>
+              </select>
+            </div>
+          )}
+
+          {/* Content Search */}
+          {(form.linkCategory === "Content" || form.linkCategory === "Plan") && (
+            <div className="notif-field-group notif-fade-in">
+              <label className="notif-label">
+                Search {form.linkCategory === "Plan" ? "Plan" : form.linkType}
+              </label>
+              <div className="notif-user-search-wrap" ref={contentSearchRef}>
+                <input
+                  className="form-input-styled notif-input"
+                  name="contentSearch"
+                  placeholder={`Search ${form.linkCategory === "Plan" ? "plan" : form.linkType.toLowerCase()} name`}
+                  value={selectedContent ? (selectedContent.title || selectedContent.name) : form.contentSearch}
+                  onChange={(e) => {
+                    if (selectedContent) setSelectedContent(null);
+                    setForm({ ...form, contentSearch: e.target.value });
+                    setContentDropOpen(true);
+                  }}
+                  onFocus={() => setContentDropOpen(true)}
+                  autoComplete="off"
+                />
+                {selectedContent && (
+                  <button
+                    type="button"
+                    className="notif-user-clear"
+                    onClick={() => { setSelectedContent(null); setForm({ ...form, contentSearch: "" }); }}
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+
+                {contentDropOpen && !selectedContent && (
+                  <div className="notif-user-dropdown">
+                    {filteredContent.length === 0 ? (
+                      <div className="notif-user-empty">No {form.linkType.toLowerCase()} found</div>
+                    ) : (
+                      filteredContent.map((c) => (
+                        <div
+                          key={c._id || c.id}
+                          className="notif-user-option"
+                          onMouseDown={() => {
+                            setSelectedContent(c);
+                            setContentDropOpen(false);
+                            setForm({ ...form, contentSearch: (c.title || c.name) });
+                          }}
+                        >
+                          <div className="notif-user-avatar">
+                            {((c.title || c.name) || "?").charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <div className="notif-user-name">{(c.title || c.name) || "—"}</div>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Buttons */}
           <div className="notif-btn-row">
@@ -374,12 +565,25 @@ export default function NotificationsPage() {
           Recent Notifications
           <span className="notif-count-badge">{notifications.length}</span>
 
+          {/* Delete All button */}
+          {notifications.length > 0 && (
+            <button
+              className="icon-btn del"
+              title="Delete All"
+              onClick={handleDeleteAll}
+              style={{ marginLeft: "auto" }}
+              type="button"
+            >
+              <Trash2 size={14} />
+            </button>
+          )}
+
           {/* Refresh button */}
           <button
             className="icon-btn view"
             title="Refresh"
-            onClick={fetchNotifications}
-            style={{ marginLeft: "auto" }}
+            onClick={() => fetchNotifications(page)}
+            style={{ marginLeft: notifications.length > 0 ? "8px" : "auto" }}
             type="button"
           >
             <RefreshCw size={14} className={fetching ? "notif-spin-icon" : ""} />
@@ -480,34 +684,65 @@ export default function NotificationsPage() {
               </tbody>
             </table>
           )}
+          
+          {/* Pagination Controls */}
+          {!fetching && totalPages > 1 && (
+            <div className="pagination" style={{ display: "flex", justifyContent: "center", gap: "10px", marginTop: "20px" }}>
+              <button
+                className="btn"
+                disabled={page <= 1}
+                onClick={() => fetchNotifications(page - 1)}
+              >
+                Prev
+              </button>
+              <span style={{ display: "flex", alignItems: "center", fontSize: "0.9rem" }}>
+                Page {page} of {totalPages}
+              </span>
+              <button
+                className="btn"
+                disabled={page >= totalPages}
+                onClick={() => fetchNotifications(page + 1)}
+              >
+                Next
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
       {/* ── View Detail Modal ── */}
       {viewNotif && (
-        <div className="profile-overlay" onClick={() => setViewNotif(null)}>
-          <div className="profile-card notif-view-modal" onClick={e => e.stopPropagation()} style={{ width: "420px", padding: 0 }}>
-            <div className="profile-header" style={{ padding: "16px 20px", borderBottom: "1px solid var(--border)" }}>
-              <h2 style={{ fontSize: "1.1rem", display: "flex", alignItems: "center", gap: "8px" }}>
-                🔔 Notification Details
-              </h2>
-              <button className="close-btn" onClick={() => setViewNotif(null)}>
-                <X size={18} />
+        <div className="nd-overlay" onClick={() => setViewNotif(null)}>
+          <div className="nd-modal" onClick={e => e.stopPropagation()}>
+
+            {/* Header */}
+            <div className="nd-header">
+              <div className="nd-header-icon">🔔</div>
+              <div className="nd-header-text">
+                <span className="nd-header-title">Notification Details</span>
+                <span className="nd-header-sub">Admin Panel</span>
+              </div>
+              <button className="nd-close" onClick={() => setViewNotif(null)}>
+                <X size={16} />
               </button>
             </div>
-            
-            <div className="profile-body" style={{ padding: "20px", textAlign: "left", marginTop: 0 }}>
-              <div style={{ marginBottom: "16px" }}>
-                <span className="badge" style={{
-                  background: TYPE_COLORS[viewNotif.type]?.bg || TYPE_COLORS.GENERAL.bg,
-                  color: TYPE_COLORS[viewNotif.type]?.color || TYPE_COLORS.GENERAL.color,
-                  marginBottom: "8px",
-                  display: "inline-block"
-                }}>
+
+            {/* Scrollable Body */}
+            <div className="nd-body">
+
+              {/* Hero: badge + title + date */}
+              <div className="nd-hero">
+                <span
+                  className="nd-type-badge"
+                  style={{
+                    background: TYPE_COLORS[viewNotif.type]?.bg  || TYPE_COLORS.GENERAL.bg,
+                    color:      TYPE_COLORS[viewNotif.type]?.color || TYPE_COLORS.GENERAL.color,
+                  }}
+                >
                   {viewNotif.type || "GENERAL"}
                 </span>
-                <h3 style={{ fontSize: "1.2rem", margin: "4px 0", lineHeight: 1.3 }}>{viewNotif.title}</h3>
-                <p style={{ color: "var(--text-muted)", fontSize: "0.85rem", marginTop: "4px" }}>
+                <h3 className="nd-title">{viewNotif.title}</h3>
+                <p className="nd-date">
                   Sent on {new Date(viewNotif.createdAt || viewNotif.sentAt).toLocaleString("en-IN", {
                     day: "2-digit", month: "short", year: "numeric",
                     hour: "2-digit", minute: "2-digit"
@@ -515,40 +750,61 @@ export default function NotificationsPage() {
                 </p>
               </div>
 
-              <div style={{ 
-                background: "var(--bg)", 
-                padding: "12px", 
-                borderRadius: "8px", 
-                border: "1px solid var(--border)",
-                color: "var(--text)",
-                fontSize: "0.95rem",
-                lineHeight: 1.5,
-                whiteSpace: "pre-wrap",
-                marginBottom: "20px"
-              }}>
-                {viewNotif.message}
+              {/* Message bubble */}
+              <div className="nd-message">{viewNotif.message}</div>
+
+              {/* Meta grid */}
+              <div className="nd-meta-grid">
+                <div className="nd-meta-item">
+                  <span className="nd-meta-label">👥 Target User(s)</span>
+                  <span className="nd-meta-value">{resolveTarget(viewNotif)}</span>
+                </div>
+
+                <div className="nd-meta-item">
+                  <span className="nd-meta-label">📖 Read Status</span>
+                  <span className={`nd-status-pill ${viewNotif.isRead ? "nd-status-read" : "nd-status-unread"}`}>
+                    {viewNotif.isRead ? "✓ Read" : "● Unread"}
+                  </span>
+                </div>
+
+                {viewNotif.metadata?.actionUrl && (
+                  <div className="nd-meta-item nd-meta-full">
+                    <span className="nd-meta-label">🔗 Action URL</span>
+                    <a
+                      href={viewNotif.metadata.actionUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="nd-action-url"
+                    >
+                      {viewNotif.metadata.actionUrl}
+                    </a>
+                  </div>
+                )}
+
+                {viewNotif.metadata?.contentType && (
+                  <div className="nd-meta-item">
+                    <span className="nd-meta-label">📌 Linked Content</span>
+                    <span className="nd-meta-value nd-capitalize">{viewNotif.metadata.contentType}</span>
+                  </div>
+                )}
               </div>
 
-              <div className="notif-detail-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-                <div>
-                  <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", textTransform: "uppercase" }}>Target User(s)</span>
-                  <div style={{ fontSize: "0.9rem", marginTop: "2px" }}>{resolveTarget(viewNotif)}</div>
+              {/* Attached image */}
+              {viewNotif.metadata?.imageUrl && (
+                <div className="nd-image-wrap">
+                  <span className="nd-meta-label">🖼️ Attached Image</span>
+                  <img
+                    src={viewNotif.metadata.imageUrl}
+                    alt="Notification attachment"
+                    className="nd-preview-img"
+                  />
                 </div>
-                <div>
-                  <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", textTransform: "uppercase" }}>Action URL</span>
-                  <div style={{ fontSize: "0.9rem", marginTop: "2px", overflow: "hidden", textOverflow: "ellipsis" }}>
-                    {viewNotif.metadata?.actionUrl ? (
-                      <a href={viewNotif.metadata.actionUrl} target="_blank" rel="noreferrer" style={{ color: "var(--primary)" }}>
-                        {viewNotif.metadata.actionUrl}
-                      </a>
-                    ) : "—"}
-                  </div>
-                </div>
-              </div>
+              )}
             </div>
-            
-            <div style={{ padding: "16px 20px", borderTop: "1px solid var(--border)", display: "flex", justifyContent: "flex-end" }}>
-              <button className="btn" onClick={() => setViewNotif(null)}>Close</button>
+
+            {/* Footer */}
+            <div className="nd-footer">
+              <button className="nd-close-btn" onClick={() => setViewNotif(null)}>Close</button>
             </div>
           </div>
         </div>

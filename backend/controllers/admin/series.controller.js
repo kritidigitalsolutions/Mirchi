@@ -1,7 +1,4 @@
 const Series = require("../../models/series.model");
-const Notification = require("../../models/notification.model");
-const User = require("../../models/user.model");
-const { sendPushNotification } = require("../../utils/fcm.service");
 const Episode = require("../../models/episode.model");
 const { getMediaUrl, deleteMedia, deleteMediaFiles } = require("../../utils/mediaUrl");
 
@@ -120,65 +117,10 @@ const addSeries = async (req, res) => {
       priority,
     });
 
-    // Create local Notification document
-    const notificationTitle = "New Series Added!";
-    const notificationMessage = `Watch "${series.title}" now on Mirchi!`;
-    const actionUrl = `mirchiapp://series/id/${series._id}`;
-
-    const notificationPayload = {
-      title: notificationTitle,
-      message: notificationMessage,
-      type: "GENERAL",
-      targetUser: null,
-      targetUserType: "ALL",
-      metadata: {
-        seriesId: series._id,
-        actionUrl,
-        imageUrl: series.poster || ""
-      },
-      createdBy: req.user ? req.user.id : null,
-      sentAt: new Date(),
-      isActive: true
-    };
-
-    const notification = await Notification.create(notificationPayload);
-
-    // Send push notification asynchronously to avoid blocking the API response
-    User.find({ fcmToken: { $type: "string", $ne: "" } })
-      .then(async (users) => {
-        for (const user of users) {
-          try {
-            await sendPushNotification({
-              token: user.fcmToken,
-              title: notificationTitle,
-              body: notificationMessage,
-              imageUrl: series.poster || "",
-              data: {
-                notificationId: notification._id.toString(),
-                type: "GENERAL",
-                actionUrl,
-                seriesId: series._id.toString()
-              }
-            });
-          } catch (pushErr) {
-            console.error(`Failed to send FCM to user ${user._id}:`, pushErr.message);
-          }
-        }
-      })
-      .catch((err) => {
-        console.error("FCM dispatch error in addSeries:", err.message);
-      });
-
     return res.status(201).json({
       success: true,
       message: "Series added successfully",
       series,
-      notification: {
-        title: notificationTitle,
-        message: notificationMessage,
-        imageUrl: series.poster || "",
-        actionUrl
-      }
     });
   } catch (error) {
     console.error("ADD SERIES ERROR:", error);

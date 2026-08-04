@@ -13,7 +13,9 @@ exports.sendNotification = async (req, res) => {
       type,
       sendTo,
       targetUser,
-      actionUrl
+      actionUrl,
+      contentType,
+      contentId
     } = req.body;
 
     if (!title || !message) {
@@ -23,11 +25,40 @@ exports.sendNotification = async (req, res) => {
       });
     }
 
+    let finalActionUrl = actionUrl || "";
+    let finalImageUrl = "";
+
+    if (contentType && contentId) {
+      if (contentType === "movie") {
+        const Movie = require("../../models/movie.model");
+        const movie = await Movie.findById(contentId);
+        if (movie) {
+          finalImageUrl = movie.poster || movie.thumbnailUrl || "";
+          finalActionUrl = `mirchiapp://movies/id/${movie._id}`;
+        }
+      } else if (contentType === "series") {
+        const Series = require("../../models/series.model");
+        const series = await Series.findById(contentId);
+        if (series) {
+          finalImageUrl = series.poster || series.thumbnailUrl || "";
+          finalActionUrl = `mirchiapp://series/id/${series._id}`;
+        }
+      } else if (contentType === "plan") {
+        const Plan = require("../../models/plan.model");
+        const plan = await Plan.findById(contentId);
+        if (plan) {
+          // Plans don't have images in the schema, you can set a default or leave empty
+          finalImageUrl = ""; 
+          finalActionUrl = `mirchiapp://plans/id/${plan._id}`;
+        }
+      }
+    }
+
     const payload = {
       title,
       message,
       type: type || "GENERAL",
-      metadata: { actionUrl },
+      metadata: { actionUrl: finalActionUrl, contentType, contentId, imageUrl: finalImageUrl },
       createdBy: req.user.id,
       sentAt: new Date()
     };
@@ -75,10 +106,13 @@ exports.sendNotification = async (req, res) => {
         token: user.fcmToken,
         title,
         body: message,
+        imageUrl: finalImageUrl,
         data: {
           notificationId: notification._id.toString(),
           type: type || "GENERAL",
-          actionUrl: actionUrl || ""
+          actionUrl: finalActionUrl || "",
+          contentType: contentType || "",
+          contentId: contentId || ""
         }
       });
 
@@ -109,12 +143,25 @@ exports.sendNotification = async (req, res) => {
 
 exports.getNotifications = async (req, res) => {
   try {
-    const data = await Notification.find({ isActive: true })
+    const page = parseInt(req.query.page, 10) || 1;
+    const limit = parseInt(req.query.limit, 10) || 10;
+    const skip = (page - 1) * limit;
+
+    const query = { isActive: true };
+
+    const total = await Notification.countDocuments(query);
+
+    const data = await Notification.find(query)
       .populate("targetUser", "name email phone")
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
 
     res.status(200).json({
       success: true,
+      total,
+      page,
+      pages: Math.ceil(total / limit),
       data
     });
 
@@ -144,6 +191,23 @@ exports.deleteNotification = async (req, res) => {
     res.status(200).json({
       success: true,
       message: "Notification archived successfully"
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+exports.deleteAllNotifications = async (req, res) => {
+  try {
+    await Notification.updateMany({ isActive: true }, { isActive: false });
+
+    res.status(200).json({
+      success: true,
+      message: "All notifications archived successfully"
     });
 
   } catch (error) {
