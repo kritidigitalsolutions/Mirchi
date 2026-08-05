@@ -6,8 +6,8 @@ const Category = require("../models/category.model");
 exports.getActiveCategories = async (req, res) => {
   try {
     const categories = await Category.find({ isActive: true })
-      .select("_id name slug")
-      .sort({ name: 1 });
+      .select("_id name slug priority")
+      .sort({ priority: 1, name: 1 });
 
     return res.status(200).json({
       success: true,

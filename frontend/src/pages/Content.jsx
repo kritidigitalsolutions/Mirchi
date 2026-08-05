@@ -156,6 +156,7 @@ export default function Content() {
   }, []);
 
   const [allCategories, setAllCategories] = useState([]);
+  const [categoryNames, setCategoryNames] = useState({});
   const [showAddCatInput, setShowAddCatInput] = useState(false);
   const [newCatName, setNewCatName] = useState("");
   const [newCatPriority, setNewCatPriority] = useState("");
@@ -171,12 +172,17 @@ export default function Content() {
     API.get("/admin/categories")
       .then((res) => {
         if (res.data?.data) {
+          setCategoryNames(
+            Object.fromEntries(res.data.data.map((category) => [category.slug, category.name]))
+          );
           const activeCategories = res.data.data.filter(c => c.isActive !== false);
           setAllCategories(activeCategories.map((c) => ({ label: c.name, value: c.slug, id: c._id, priority: c.priority })));
         }
       })
       .catch(() => { });
   }, []);
+
+  const getCategoryName = (slug) => categoryNames[slug] || slug;
 
   const toggleEditCategory = (value) => {
     setEditData((s) => {
@@ -198,6 +204,7 @@ export default function Content() {
         const created = res.data.data;
         const newEntry = { label: created.name, value: created.slug, id: created._id, priority: created.priority };
         setAllCategories((prev) => [...prev, newEntry].sort((a, b) => a.priority - b.priority));
+        setCategoryNames((prev) => ({ ...prev, [created.slug]: created.name }));
         setEditData((s) => {
           if (!s) return s;
           const current = Array.isArray(s.category) ? s.category : (s.category ? [s.category] : []);
@@ -241,6 +248,7 @@ export default function Content() {
             c.id === id ? { ...c, label: updated.name, value: updated.slug, priority: updated.priority } : c
           ).sort((a, b) => a.priority - b.priority)
         );
+        setCategoryNames((prev) => ({ ...prev, [updated.slug]: updated.name }));
         setEditData((s) => {
           if (!s) return s;
           const current = Array.isArray(s.category) ? s.category : (s.category ? [s.category] : []);
@@ -984,17 +992,20 @@ export default function Content() {
                 <table className="tbl">
                   <thead>
                     <tr>
-                      <th>Title</th><th>Genre</th><th>Category</th><th>Year</th><th>Rating</th><th>Priority</th><th>Premium</th><th>Status</th><th>Actions</th>
+                      <th>Title</th><th>Category</th><th>Year</th><th>Rating</th><th>Priority</th><th>Premium</th><th>Status</th><th>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredDisplayData.length === 0 ? (
-                      <tr><td colSpan={9}>No movies found</td></tr>
+                      <tr><td colSpan={8}>No movies found</td></tr>
                     ) : filteredDisplayData.map(movie => (
                       <tr key={movie._id}>
                         <td>
                           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                            <img src={getFullUrl(movie.poster)} alt="" style={{ width: 40, height: 60, objectFit: "cover", borderRadius: 4 }} />
+                            <div style={{ position: "relative", width: 40, height: 60, flexShrink: 0 }}>
+                              <img src={getFullUrl(movie.poster)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 4 }} />
+                              {movie.isHide && <span style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", background: "rgba(0,0,0,0.72)", color: "#fff", borderRadius: 4, fontSize: "0.55rem", fontWeight: 800, letterSpacing: "0.5px" }}>HIDDEN</span>}
+                            </div>
                             <div>
                               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                                 <div style={{ fontWeight: 600 }}>{movie.title}</div>
@@ -1010,13 +1021,12 @@ export default function Content() {
                             </div>
                           </div>
                         </td>
-                        <td>{Array.isArray(movie.genre) ? movie.genre.join(", ") : movie.genre}</td>
                         <td>
                           {Array.isArray(movie.category) && movie.category.length > 0 ? (
                             <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
                               {movie.category.map((c, idx) => (
                                 <span key={idx} style={{ background: "rgba(108,99,255,0.2)", color: "#9f99ff", padding: "2px 6px", borderRadius: 10, fontSize: "0.75rem", fontWeight: 500 }}>
-                                  {c}
+                                  {getCategoryName(c)}
                                 </span>
                               ))}
                             </div>
@@ -1085,17 +1095,20 @@ export default function Content() {
                 <table className="tbl">
                   <thead>
                     <tr>
-                      <th>Title</th><th>Genre</th><th>Category</th><th>Year</th><th>Rating</th><th>Priority</th><th>Seasons</th><th>Status</th><th>Actions</th>
+                      <th>Title</th><th>Category</th><th>Year</th><th>Rating</th><th>Priority</th><th>Seasons</th><th>Status</th><th>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredDisplayData.length === 0 ? (
-                      <tr><td colSpan={9}>No series found</td></tr>
+                      <tr><td colSpan={8}>No series found</td></tr>
                     ) : filteredDisplayData.map(series => (
                       <tr key={series._id}>
                         <td>
                           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                            <img src={getFullUrl(series.poster)} alt="" style={{ width: 40, height: 60, objectFit: "cover", borderRadius: 4 }} />
+                            <div style={{ position: "relative", width: 40, height: 60, flexShrink: 0 }}>
+                              <img src={getFullUrl(series.poster)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 4 }} />
+                              {series.isHide && <span style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", background: "rgba(0,0,0,0.72)", color: "#fff", borderRadius: 4, fontSize: "0.55rem", fontWeight: 800, letterSpacing: "0.5px" }}>HIDDEN</span>}
+                            </div>
                             <div>
                               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                                 <div style={{ fontWeight: 600 }}>{series.title}</div>
@@ -1110,13 +1123,12 @@ export default function Content() {
                             </div>
                           </div>
                         </td>
-                        <td>{Array.isArray(series.genre) ? series.genre.join(", ") : series.genre}</td>
                         <td>
                           {Array.isArray(series.category) && series.category.length > 0 ? (
                             <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
                               {series.category.map((c, idx) => (
                                 <span key={idx} style={{ background: "rgba(108,99,255,0.2)", color: "#9f99ff", padding: "2px 6px", borderRadius: 10, fontSize: "0.75rem", fontWeight: 500 }}>
-                                  {c}
+                                  {getCategoryName(c)}
                                 </span>
                               ))}
                             </div>
@@ -1624,7 +1636,7 @@ export default function Content() {
                     ))}
                     {selectedItem.isPremium && <span className="vp-pill vp-pill-gold">★ Premium</span>}
                     {(Array.isArray(selectedItem.category) ? selectedItem.category : [selectedItem.category]).filter(Boolean).map((c, i) => (
-                      <span key={`c-${i}`} className="vp-pill vp-pill-blue">{c}</span>
+                      <span key={`c-${i}`} className="vp-pill vp-pill-blue">{getCategoryName(c)}</span>
                     ))}
                   </div>
 
