@@ -154,7 +154,9 @@ const addMovie = async (req, res) => {
       allAges:
         req.body.allAges === "true" || req.body.allAges === true,
       isHide:
-        req.body.isHide === "true" || req.body.isHide === true,
+        (req.body.is18plus === "true" || req.body.is18plus === true) && !(req.body.allAges === "true" || req.body.allAges === true)
+          ? (req.body.isHide === "true" || req.body.isHide === true)
+          : false,
       isPublished:
         req.body.isPublished === undefined ? true : (req.body.isPublished === "true" || req.body.isPublished === true),
 
@@ -397,6 +399,11 @@ const updateMovie = async (req, res) => {
     }
     if (req.body.isHide !== undefined) {
       movie.isHide = req.body.isHide === "true" || req.body.isHide === true;
+    }
+    if (!movie.is18plus || movie.allAges) {
+      movie.isHide = false;
+      movie.allAges = true;
+      movie.is18plus = false;
     }
     if (req.body.isPublished !== undefined) {
       movie.isPublished = req.body.isPublished === "true" || req.body.isPublished === true;

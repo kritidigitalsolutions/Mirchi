@@ -196,6 +196,13 @@ movieSchema.index({
 const { parseBunnyStreamUrl } = require("../cdn/bunnyCDN");
 
 movieSchema.pre("save", function () {
+  // If content is not 18+ (is18plus: false, allAges: true), it must always remain visible (isHide: false)
+  if (!this.is18plus || this.allAges) {
+    this.isHide = false;
+    this.allAges = true;
+    this.is18plus = false;
+  }
+
   if (this.videoUrl) {
     const streamData = parseBunnyStreamUrl(this.videoUrl);
     if (streamData) {

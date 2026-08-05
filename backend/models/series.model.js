@@ -152,4 +152,12 @@ seriesSchema.index({
   description: "text"
 });
 
+seriesSchema.pre("save", function () {
+  if (!this.is18plus || this.allAges) {
+    this.isHide = false;
+    this.allAges = true;
+    this.is18plus = false;
+  }
+});
+
 module.exports = mongoose.model("Series", seriesSchema);

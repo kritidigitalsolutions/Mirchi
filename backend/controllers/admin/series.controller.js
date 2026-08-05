@@ -109,7 +109,9 @@ const addSeries = async (req, res) => {
       isPremium: req.body.isPremium === "true",
       is18plus: req.body.is18plus === "true" || req.body.is18plus === true,
       allAges: req.body.allAges === "true" || req.body.allAges === true,
-      isHide: req.body.isHide === "true" || req.body.isHide === true,
+      isHide: (req.body.is18plus === "true" || req.body.is18plus === true) && !(req.body.allAges === "true" || req.body.allAges === true)
+        ? (req.body.isHide === "true" || req.body.isHide === true)
+        : false,
       isPublished: req.body.isPublished === undefined ? true : (req.body.isPublished === "true" || req.body.isPublished === true),
       rating: req.body.rating || 0,
       cast: sanitizeCast(cast),
@@ -235,6 +237,11 @@ const updateSeries = async (req, res) => {
     }
     if (req.body.isHide !== undefined) {
       series.isHide = req.body.isHide === "true" || req.body.isHide === true;
+    }
+    if (!series.is18plus || series.allAges) {
+      series.isHide = false;
+      series.allAges = true;
+      series.is18plus = false;
     }
     if (req.body.isPublished !== undefined) {
       series.isPublished = req.body.isPublished === "true" || req.body.isPublished === true;

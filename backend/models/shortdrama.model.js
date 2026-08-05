@@ -132,6 +132,14 @@ shortDramaSchema.pre(
 
 shortDramaSchema.index({ createdAt: -1 });
 
+shortDramaSchema.pre("save", function () {
+  if (!this.is18plus || this.allAges) {
+    this.isHide = false;
+    this.allAges = true;
+    this.is18plus = false;
+  }
+});
+
 module.exports = mongoose.model(
   "ShortDrama",
   shortDramaSchema

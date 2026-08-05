@@ -1849,7 +1849,7 @@ export default function Content() {
                         <button
                           type="button"
                           className={`btn ${editData.allAges || (!editData.allAges && !editData.is18plus) ? "btn-primary" : "btn-ghost"}`}
-                          onClick={() => setEditData(s => ({ ...s, allAges: true, is18plus: false }))}
+                          onClick={() => setEditData(s => ({ ...s, allAges: true, is18plus: false, isHide: false }))}
                           style={{ flex: 1, borderRadius: "8px", fontSize: "0.85rem", padding: "8px" }}
                         >
                           All ages Content (Non-Adult)
@@ -1866,7 +1866,7 @@ export default function Content() {
                     </div>
                     <div className="form-row">
                       <label className="form-label">Hide Content</label>
-                      <select className="form-input" value={editData.isHide ? "yes" : "no"} onChange={e => setEditData(s => ({ ...s, isHide: e.target.value === "yes" }))}>
+                      <select className="form-input" value={(!editData.is18plus || editData.allAges) ? "no" : (editData.isHide ? "yes" : "no")} disabled={!editData.is18plus || editData.allAges} onChange={e => setEditData(s => ({ ...s, isHide: e.target.value === "yes" }))}>
                         <option value="no">No (Visible)</option>
                         <option value="yes">Yes (Hidden)</option>
                       </select>

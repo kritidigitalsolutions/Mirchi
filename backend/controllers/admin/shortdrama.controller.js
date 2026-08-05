@@ -110,7 +110,9 @@ const addShortDrama = async (
         allAges:
           req.body.allAges === "true" || req.body.allAges === true,
         isHide:
-          req.body.isHide === "true" || req.body.isHide === true,
+          (req.body.is18plus === "true" || req.body.is18plus === true) && !(req.body.allAges === "true" || req.body.allAges === true)
+            ? (req.body.isHide === "true" || req.body.isHide === true)
+            : false,
 
         status:
           req.body.status ||
@@ -264,6 +266,11 @@ const updateShortDrama =
       }
       if (req.body.isHide !== undefined) {
         drama.isHide = req.body.isHide === "true" || req.body.isHide === true;
+      }
+      if (!drama.is18plus || drama.allAges) {
+        drama.isHide = false;
+        drama.allAges = true;
+        drama.is18plus = false;
       }
 
       drama.status =
