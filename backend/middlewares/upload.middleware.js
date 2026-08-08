@@ -10,8 +10,6 @@ const getUploadInfo = (req, file) => {
 
   if (req.originalUrl.includes("/series")) type = "series";
   if (req.originalUrl.includes("/episodes")) type = "episodes";
-  if (req.originalUrl.includes("/drama-episodes")) type = "dramaepisodes";
-  if (req.originalUrl.includes("/shortdramas")) type = "shortdramas";
   if (req.originalUrl.includes("/user")) type = "profile";
   if (req.originalUrl.includes("/support")) type = "support";
 

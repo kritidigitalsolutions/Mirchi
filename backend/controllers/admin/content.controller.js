@@ -1,30 +1,26 @@
 const Movie = require("../../models/movie.model");
 const Series = require("../../models/series.model");
-const ShortDrama = require("../../models/shortdrama.model");
 
 // ========================================
 // GET CONTENT STATS
 // ========================================
 const getContentStats = async (req, res) => {
   try {
-    const [moviesCount, seriesCount, shortDramasCount] = await Promise.all([
+    const [moviesCount, seriesCount] = await Promise.all([
       Movie.countDocuments(),
-      Series.countDocuments(),
-      ShortDrama.countDocuments()
+      Series.countDocuments()
     ]);
 
     return res.json({
       success: true,
       data: [
         { name: "Movies", value: moviesCount },
-        { name: "Series", value: seriesCount },
-        { name: "Short Dramas", value: shortDramasCount }
+        { name: "Series", value: seriesCount }
       ],
       stats: {
         movies: moviesCount,
         series: seriesCount,
-        shortDramas: shortDramasCount,
-        total: moviesCount + seriesCount + shortDramasCount
+        total: moviesCount + seriesCount
       }
     });
   } catch (error) {
@@ -79,7 +75,6 @@ const toggle18PlusContent = async (req, res) => {
     // Bulk update all models
     await Movie.updateMany({}, { $set: { is18plus: is18plus } });
     await Series.updateMany({}, { $set: { is18plus: is18plus } });
-    await ShortDrama.updateMany({}, { $set: { is18plus: is18plus } });
 
     return res.json({
       success: true,
@@ -110,7 +105,6 @@ const toggleHide18PlusContent = async (req, res) => {
     // Bulk update all models where is18plus is true
     await Movie.updateMany({ is18plus: true }, { $set: { isHide: isHide, is18plus: true, allAges: false } });
     await Series.updateMany({ is18plus: true }, { $set: { isHide: isHide, is18plus: true, allAges: false } });
-    await ShortDrama.updateMany({ is18plus: true }, { $set: { isHide: isHide, is18plus: true, allAges: false } });
 
     return res.json({
       success: true,

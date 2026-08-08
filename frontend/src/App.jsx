@@ -38,8 +38,6 @@ const SupportDetails = lazyLoad(() => import("./pages/SupportDetails"));
 const LegalPage = lazyLoad(() => import("./pages/LegalPage"));
 const HelpPage = lazyLoad(() => import("./pages/HelpPage"));
 const Settings = lazyLoad(() => import("./pages/Settings"));
-const DramaPage = lazyLoad(() => import("./pages/Drama"));
-const AddDramaPage = lazyLoad(() => import("./pages/AddDrama"));
 const SubAdminsPage = lazyLoad(() => import("./pages/SubAdmins"));
 const CategoryPage = lazyLoad(() => import("./pages/Category"));
 
@@ -126,8 +124,6 @@ function App() {
             <Route path="legal" element={<LegalPage />} />
             <Route path="help" element={<HelpPage />} />
             <Route path="settings" element={<Settings />} />
-            <Route path="dramas" element={<DramaPage />} />
-            <Route path="add-drama" element={<AddDramaPage />} />
             <Route path="subadmins" element={<SubAdminsPage />} />
             <Route path="categories" element={<CategoryPage />} />
           </Route>

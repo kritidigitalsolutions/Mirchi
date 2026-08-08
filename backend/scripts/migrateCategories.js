@@ -5,7 +5,6 @@ const connectDB = require("../config/db");
 
 const Movie = require("../models/movie.model");
 const Series = require("../models/series.model");
-const ShortDrama = require("../models/shortdrama.model");
 const Category = require("../models/category.model");
 
 const DEFAULT_CATEGORIES = [
@@ -37,7 +36,6 @@ async function runMigration() {
     let createdCategoriesCount = 0;
     let moviesUpdated = 0;
     let seriesUpdated = 0;
-    let dramasUpdated = 0;
 
     const allDiscoveredSlugs = new Set();
 
@@ -134,18 +132,6 @@ async function runMigration() {
       }
     }
 
-    // 5. Process ShortDramas
-    const dramasList = await ShortDrama.find();
-    console.log(`Inspecting ${dramasList.length} Short Dramas...`);
-    for (const d of dramasList) {
-      const changed = await processItemCategories(d, "ShortDrama");
-      if (changed) {
-        await d.save();
-        dramasUpdated++;
-      } else {
-        (d.category || []).forEach(c => allDiscoveredSlugs.add(c));
-      }
-    }
 
     const allCategoriesFinal = await Category.find();
 

@@ -25,7 +25,6 @@ const MODULE_GROUPS = [
     modules: [
       { id: "movies", title: "Movies", availableActions: ["view", "create", "edit", "delete"] },
       { id: "series", title: "Web Series & Episodes", availableActions: ["view", "create", "edit", "delete"] },
-      { id: "shortdrama", title: "Short Dramas", availableActions: ["view", "create", "edit", "delete"] },
       { id: "categories", title: "Categories", availableActions: ["view", "create", "edit", "delete"] },
       { id: "ratings", title: "Ratings & Reviews", availableActions: ["view", "delete"] },
     ],
@@ -143,7 +142,7 @@ export default function SubAdmins() {
     if (perms.includes(modId)) return true;
     if (perms.includes(`${modId}.${action}`)) return true;
     // Backward compat: if they have full "content" permission and this is a content submodule
-    if (["movies", "series", "shortdrama", "categories"].includes(modId)) {
+    if (["movies", "series", "categories"].includes(modId)) {
       if (perms.includes("content") || perms.includes(`content.${action}`)) return true;
     }
     return false;
@@ -228,7 +227,7 @@ export default function SubAdmins() {
         if (permissions.includes("content")) {
           permissions = permissions.filter((permission) => permission !== "content");
           group.modules
-            .filter((module) => ["movies", "series", "shortdrama", "categories"].includes(module.id))
+            .filter((module) => ["movies", "series", "categories"].includes(module.id))
             .forEach((module) => {
               module.availableActions
                 .filter((moduleAction) => moduleAction !== action)

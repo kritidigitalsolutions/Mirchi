@@ -31,7 +31,7 @@ const categorySchema = new mongoose.Schema(
 
 // Generate the slug only when a category is created. Content records use the
 // slug as their category reference, so changing it on a rename would detach
-// existing movies, series, and dramas from this category.
+// existing movies and series from this category.
 categorySchema.pre("save", async function () {
   if (this.isNew && !this.slug) {
     this.slug = this.name

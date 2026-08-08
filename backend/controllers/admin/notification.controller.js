@@ -101,25 +101,34 @@ exports.sendNotification = async (req, res) => {
     let sent = 0;
     let failed = 0;
 
-    for (const user of users) {
-      const result = await sendPushNotification({
-        token: user.fcmToken,
-        title,
-        body: message,
-        imageUrl: finalImageUrl,
-        data: {
-          notificationId: notification._id.toString(),
-          type: type || "GENERAL",
-          actionUrl: finalActionUrl || "",
-          contentType: contentType || "",
-          contentId: contentId || ""
-        }
-      });
-
-      console.log("Push to:", user._id, result);
-
-      if (result.success) sent++;
-      else failed++;
+    // Send in parallel batches to prevent gateway timeouts
+    const batchSize = 100;
+    for (let i = 0; i < users.length; i += batchSize) {
+      const chunk = users.slice(i, i + batchSize);
+      await Promise.all(
+        chunk.map((user) =>
+          sendPushNotification({
+            token: user.fcmToken,
+            title,
+            body: message,
+            imageUrl: finalImageUrl,
+            data: {
+              notificationId: notification._id.toString(),
+              type: type || "GENERAL",
+              actionUrl: finalActionUrl || "",
+              contentType: contentType || "",
+              contentId: contentId || ""
+            }
+          }).then((res) => {
+            console.log("Push to:", user._id, res);
+            if (res.success) sent++;
+            else failed++;
+          }).catch((err) => {
+            console.log("Push Error to user:", user._id, err.message);
+            failed++;
+          })
+        )
+      );
     }
 
     res.status(201).json({
