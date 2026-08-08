@@ -96,7 +96,7 @@ export default function UsersPage() {
         <div className="search-row" style={{ marginBottom: 20 }}>
           <div className="search-field">
             <Search size={18} />
-            <input placeholder="Search by name or email..." value={search}
+            <input placeholder="Search by name, email, or number..." value={search}
               onChange={e => { setSearch(e.target.value); setPage(1); }} />
           </div>
         </div>

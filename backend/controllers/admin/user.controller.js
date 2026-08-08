@@ -11,7 +11,7 @@ exports.getAllUsers = async (
 ) => {
     try {
         const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
-        const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 10, 1), 100);
+        const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 10, 1), 10000);
         const search = req.query.search?.trim();
         const filter = {};
 
@@ -20,6 +20,7 @@ exports.getAllUsers = async (
             filter.$or = [
                 { name: { $regex: escapedSearch, $options: "i" } },
                 { email: { $regex: escapedSearch, $options: "i" } },
+                { phone: { $regex: escapedSearch, $options: "i" } },
             ];
         }
 

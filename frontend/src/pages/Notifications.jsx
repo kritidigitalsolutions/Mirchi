@@ -99,7 +99,7 @@ export default function NotificationsPage() {
   // ── Fetch users for searchable dropdown ───────────────────────────────
   const fetchUsers = useCallback(async () => {
     try {
-      const res = await API.get("/admin/users");
+      const res = await API.get("/admin/users?limit=1000");
       setUsers(res.data.users || res.data.data || []);
     } catch {
       // Non-critical — fallback to empty list
@@ -131,9 +131,9 @@ export default function NotificationsPage() {
   // ── Filtered user list ────────────────────────────────────────────────
   const filteredUsers = users.filter(
     (u) =>
-      (u.name  || "").toLowerCase().includes(form.userSearch.toLowerCase()) ||
-      (u.email || "").toLowerCase().includes(form.userSearch.toLowerCase()) ||
-      (u.phone || "").includes(form.userSearch)
+      String(u.name  || "").toLowerCase().includes(form.userSearch.toLowerCase()) ||
+      String(u.email || "").toLowerCase().includes(form.userSearch.toLowerCase()) ||
+      String(u.phone || "").includes(form.userSearch)
   );
 
   const getFilteredContent = () => {
