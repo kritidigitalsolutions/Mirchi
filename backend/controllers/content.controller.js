@@ -8,8 +8,8 @@ const Series = require("../models/series.model");
 const getHomeContent = async (req, res) => {
   try {
     // Fetch active movies and series
-    const movies = await Movie.find({}).sort({ priority: -1, createdAt: -1 }).limit(20).lean();
-    const series = await Series.find({}).sort({ priority: -1, createdAt: -1 }).limit(20).lean();
+    const movies = await Movie.find({}).sort({ priority: -1, createdAt: -1 }).lean();
+    const series = await Series.find({}).sort({ priority: -1, createdAt: -1 }).lean();
 
     const [
       moviesCount,

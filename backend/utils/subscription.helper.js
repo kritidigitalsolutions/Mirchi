@@ -39,6 +39,29 @@ const expireSubscriptionIfNeeded = async (
   }
 };
 
+// Bulk expire subscriptions whose endDate has passed
+const autoExpireAllSubscriptions = async () => {
+  try {
+    const now = new Date();
+    const result = await Subscription.updateMany(
+      {
+        status: "active",
+        endDate: { $lt: now },
+      },
+      {
+        $set: { status: "expired" },
+      }
+    );
+    if (result.modifiedCount > 0) {
+      console.log(`[SUBSCRIPTION CRON] Auto-expired ${result.modifiedCount} subscription(s).`);
+    }
+    return result;
+  } catch (error) {
+    console.error("Auto Expire All Subscriptions Error:", error);
+  }
+};
+
 module.exports = {
   expireSubscriptionIfNeeded,
+  autoExpireAllSubscriptions,
 };

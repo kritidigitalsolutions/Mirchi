@@ -11,6 +11,8 @@ const createDefaultAdmin = require("./utils/createDefaultAdmin");
 const PORT = process.env.PORT || 5000;
 
 
+const { autoExpireAllSubscriptions } = require("./utils/subscription.helper");
+
 const startServer = async () => {
   try {
     // Connect Database
@@ -18,6 +20,14 @@ const startServer = async () => {
 
     // Create Default Admin
     await createDefaultAdmin();
+
+    // Run Subscription Auto-Expiration Sync
+    await autoExpireAllSubscriptions();
+
+    // Periodically run auto-expire every hour
+    setInterval(async () => {
+      await autoExpireAllSubscriptions();
+    }, 60 * 60 * 1000);
 
     // Start Server
     const server = app.listen(PORT, "0.0.0.0", () => {

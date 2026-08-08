@@ -8,10 +8,13 @@ require("dotenv").config();
 
 const app = express();
 
+const { autoExpireAllSubscriptions } = require("./utils/subscription.helper");
+
 // Connect Database and Create Admin (for Serverless/Vercel)
 if (process.env.NODE_ENV === "production" || process.env.VERCEL) {
   connectDB().then(() => {
     createDefaultAdmin();
+    autoExpireAllSubscriptions();
   });
 }
 
