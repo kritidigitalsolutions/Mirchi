@@ -216,7 +216,12 @@ const getAllMovies = async (req, res) => {
 
     const skip = (page - 1) * limit;
 
-    const movies = await Movie.find()
+    const query = {};
+    if (req.query.is18plus !== undefined) {
+      query.is18plus = req.query.is18plus === "true";
+    }
+
+    const movies = await Movie.find(query)
       .sort({
         priority: -1,
         createdAt: -1
@@ -225,7 +230,7 @@ const getAllMovies = async (req, res) => {
       .limit(limit)
       .lean();
 
-    const total = await Movie.countDocuments();
+    const total = await Movie.countDocuments(query);
 
     return res.json({
       success: true,
@@ -251,7 +256,7 @@ const getAllMovies = async (req, res) => {
 const searchMovies = async (req, res) => {
   try {
 
-    const { q } = req.query;
+    const { q, is18plus } = req.query;
 
     if (!q) {
       return res.status(400).json({
@@ -260,12 +265,17 @@ const searchMovies = async (req, res) => {
       });
     }
 
-    const movies = await Movie.find({
+    const query = {
       title: {
         $regex: q,
         $options: "i",
       },
-    })
+    };
+    if (is18plus !== undefined) {
+      query.is18plus = is18plus === "true";
+    }
+
+    const movies = await Movie.find(query)
       .sort({ createdAt: -1 })
       .lean();
 

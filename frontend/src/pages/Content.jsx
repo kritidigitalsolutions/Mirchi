@@ -308,7 +308,7 @@ export default function Content() {
     return () => {
       controller.abort();
     };
-  }, [contentType, currentPage]);
+  }, [contentType, currentPage, subType]);
 
 
   /* ===================== LOCK LOGIC ===================== */
@@ -326,7 +326,8 @@ export default function Content() {
     setLoading(true);
     try {
       const endpoint = contentType === "movies" ? "/admin/movies" : "/admin/series";
-      const res = await API.get(`${endpoint}?page=${currentPage}&limit=10`, { signal });
+      const is18plus = subType === "adult";
+      const res = await API.get(`${endpoint}?page=${currentPage}&limit=10&is18plus=${is18plus}`, { signal });
 
       const key = contentType === "movies" ? "movies" : "series";
       const fetchedData = res.data[key] || [];
@@ -384,7 +385,8 @@ export default function Content() {
   const doSearch = async (q) => {
     setIsSearching(true);
     try {
-      const endpoint = contentType === "movies" ? `/admin/movies/search?q=${encodeURIComponent(q)}` : `/admin/series/search?q=${encodeURIComponent(q)}`;
+      const is18plus = subType === "adult";
+      const endpoint = contentType === "movies" ? `/admin/movies/search?q=${encodeURIComponent(q)}&is18plus=${is18plus}` : `/admin/series/search?q=${encodeURIComponent(q)}&is18plus=${is18plus}`;
       const res = await API.get(endpoint);
       setSearchResults(res.data.results || []);
     } catch (err) {
@@ -920,7 +922,7 @@ export default function Content() {
             <div className="tab-group" style={{ display: "flex", background: "var(--bg3)", padding: "4px", borderRadius: "12px", gap: "4px" }}>
               <button
                 type="button"
-                onClick={() => setSubType("non-adult")}
+                onClick={() => { setSubType("non-adult"); setCurrentPage(1); }}
                 style={{
                   borderRadius: "8px",
                   fontSize: "0.85rem",
@@ -938,7 +940,7 @@ export default function Content() {
               </button>
               <button
                 type="button"
-                onClick={() => setSubType("adult")}
+                onClick={() => { setSubType("adult"); setCurrentPage(1); }}
                 style={{
                   borderRadius: "8px",
                   fontSize: "0.85rem",

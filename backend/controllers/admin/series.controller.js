@@ -140,13 +140,18 @@ const getAllSeries = async (req, res) => {
     const limit = Number(req.query.limit) || 10;
     const skip = (page - 1) * limit;
 
-    const series = await Series.find()
+    const query = {};
+    if (req.query.is18plus !== undefined) {
+      query.is18plus = req.query.is18plus === "true";
+    }
+
+    const series = await Series.find(query)
       .sort({ priority: -1, createdAt: -1 })
       .skip(skip)
       .limit(limit)
       .lean();
 
-    const total = await Series.countDocuments();
+    const total = await Series.countDocuments(query);
 
     return res.json({
       success: true,
@@ -166,12 +171,17 @@ const getAllSeries = async (req, res) => {
 // ========================================
 const searchSeries = async (req, res) => {
   try {
-    const { q } = req.query;
+    const { q, is18plus } = req.query;
     if (!q) return res.status(400).json({ success: false, message: "Query is required" });
 
-    const series = await Series.find({
+    const query = {
       title: { $regex: q, $options: "i" }
-    }).sort({ createdAt: -1 });
+    };
+    if (is18plus !== undefined) {
+      query.is18plus = is18plus === "true";
+    }
+
+    const series = await Series.find(query).sort({ createdAt: -1 });
 
     return res.json({
       success: true,
