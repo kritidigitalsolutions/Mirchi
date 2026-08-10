@@ -13,7 +13,7 @@ const NAV = [
   { id: "categories", label: "Categories", icon: Tags, color: "#eab308", permissionId: "content" },
   // { id: "add-drama", label: "Add Short Drama", icon: Plus, color: "#a78bfa", permissionId: "content" },
   // { id: "dramas", label: "Short Dramas", icon: Clapperboard, color: "#8b5cf6", permissionId: "content" },
-  { id: "ratings", label: "Ratings", icon: Star, color: "#facc15", permissionId: "ratings" },
+  // { id: "ratings", label: "Ratings", icon: Star, color: "#facc15", permissionId: "ratings" },
   { id: "plans", label: "Subscription Plans", icon: CreditCard, color: "#ec4899", permissionId: "plans" },
   { id: "promo", label: "Promo&Voucher", icon: CreditCard, color: "#ec4899", permissionId: "promo" },
   { id: "notifications", label: "Notifications", icon: Bell, color: "#f59e0b", permissionId: "notifications" },

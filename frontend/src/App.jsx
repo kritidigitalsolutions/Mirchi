@@ -29,7 +29,7 @@ const DashboardHome = lazyLoad(() => import("./pages/Dashboard"));
 const UsersPage = lazyLoad(() => import("./pages/UsersPage"));
 const AddContent = lazyLoad(() => import("./pages/AddContent"));
 const Content = lazyLoad(() => import("./pages/Content"));
-const RatingsPage = lazyLoad(() => import("./pages/Ratings"));
+// const RatingsPage = lazyLoad(() => import("./pages/Ratings"));
 const PlansPage = lazyLoad(() => import("./pages/Plans"));
 const PromoVoucher = lazyLoad(() => import("./pages/PromoVoucher"));
 const SubscriptionPage = lazyLoad(() => import("./pages/Subscriptions"));
@@ -115,7 +115,7 @@ function App() {
             <Route path="users" element={<UsersPage />} />
             <Route path="add-content" element={<AddContent />} />
             <Route path="content" element={<Content />} />
-            <Route path="ratings" element={<RatingsPage />} />
+            {/* <Route path="ratings" element={<RatingsPage />} /> */}
             <Route path="plans" element={<PlansPage />} />
             <Route path="promo" element={<PromoVoucher />} />
             <Route path="pricing" element={<SubscriptionPage />} />

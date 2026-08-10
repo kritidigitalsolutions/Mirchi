@@ -3,53 +3,79 @@ import { Bell, Send, X, Trash2, Eye, RefreshCw } from "lucide-react";
 import API from "../api/axios";
 import "./Dashboard.css";
 import "./Notifications.css";
+import "./NotificationsLight.css";
 
 // ── Type badge colours ─────────────────────────────────────────────────────
 const TYPE_COLORS = {
-  GENERAL:     { bg: "rgba(100,116,139,0.15)", color: "#94a3b8" },
-  SYSTEM:      { bg: "rgba(59,130,246,0.15)",  color: "#3b82f6" },
-  PLAN:        { bg: "rgba(139,92,246,0.15)",  color: "#8b5cf6" },
-  PROMOTIONAL: { bg: "rgba(245,158,11,0.15)",  color: "#f59e0b" },
+  GENERAL: { bg: "rgba(100,116,139,0.15)", color: "#94a3b8" },
+  SYSTEM: { bg: "rgba(59,130,246,0.15)", color: "#3b82f6" },
+  PLAN: { bg: "rgba(139,92,246,0.15)", color: "#8b5cf6" },
+  PROMOTIONAL: { bg: "rgba(245,158,11,0.15)", color: "#f59e0b" },
 };
 
 const EMPTY_FORM = {
-  title:      "",
-  message:    "",
-  type:       "GENERAL",
-  sendTo:     "All Users",
+  title: "",
+  message: "",
+  imageUrl: "",
+  actionUrl: "",
+  type: "GENERAL",
+  sendTo: "All Users",
   userSearch: "",
   linkCategory: "None", // None, Content, Plan
-  linkType:   "Movie", // Movie, Series
+  linkType: "Movie", // Movie, Series
   contentSearch: "",
 };
 
 // ── sendTo value → backend targetUserType mapping ─────────────────────────
 const SEND_TO_MAP = {
-  "All Users":       "ALL",
-  "Subscribers Only":"SUBSCRIBERS",
-  "Specific User":   "SPECIFIC_USER",
+  "All Users": "ALL",
+  "Subscribers Only": "SUBSCRIBERS",
+  "Specific User": "SPECIFIC_USER",
 };
 
 // ── Helper: resolve display target from a notification doc ─────────────────
 const resolveTarget = (n) => {
-  if (n.targetUser)       return n.targetUser?.name || n.targetUser?.email || "Specific User";
-  if (n.targetUserType)   return n.targetUserType === "ALL" ? "All Users" : n.targetUserType;
+  if (n.targetUser) return n.targetUser?.name || n.targetUser?.email || "Specific User";
+  if (n.targetUserType) return n.targetUserType === "ALL" ? "All Users" : n.targetUserType;
   return "All Users";
 };
 
+// ── Helper: resolve image URL from a notification doc ────────────────────
+const getNotifImage = (n) => {
+  if (!n) return null;
+  if (n.imageUrl) return n.imageUrl;
+  if (n.metadata?.imageUrl) return n.metadata.imageUrl;
+  if (typeof n.metadata?.contentId === "object" && n.metadata?.contentId?.poster) {
+    return n.metadata.contentId.poster;
+  }
+  if (typeof n.metadata?.contentId === "object" && n.metadata?.contentId?.banner) {
+    return n.metadata.contentId.banner;
+  }
+  return null;
+};
+
+// ── Helper: resolve action URL from a notification doc ───────────────────
+const getActionUrl = (n) => {
+  if (!n) return null;
+  if (n.actionUrl) return n.actionUrl;
+  if (n.metadata?.actionUrl) return n.metadata.actionUrl;
+  return null;
+};
+
 export default function NotificationsPage() {
-  const [form, setForm]               = useState(EMPTY_FORM);
-  const [loading, setLoading]         = useState(false);
-  const [fetching, setFetching]       = useState(true);
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [loading, setLoading] = useState(false);
+  const [fetching, setFetching] = useState(true);
   const [notifications, setNotifications] = useState([]);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const limit = 10;
-  const [users, setUsers]             = useState([]);
-  const [userDropOpen, setUserDropOpen]   = useState(false);
-  const [selectedUser, setSelectedUser]   = useState(null);
-  const [toast, setToast]             = useState(null);
-  const [viewNotif, setViewNotif]     = useState(null); // the notification being viewed
+  const [users, setUsers] = useState([]);
+  const [userDropOpen, setUserDropOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [toast, setToast] = useState(null);
+  const [viewNotif, setViewNotif] = useState(null); // the notification being viewed
+  const [deleteConfirm, setDeleteConfirm] = useState(null); // delete prompt modal state
 
   // Content for linking
   const [movies, setMovies] = useState([]);
@@ -131,7 +157,7 @@ export default function NotificationsPage() {
   // ── Filtered user list ────────────────────────────────────────────────
   const filteredUsers = users.filter(
     (u) =>
-      String(u.name  || "").toLowerCase().includes(form.userSearch.toLowerCase()) ||
+      String(u.name || "").toLowerCase().includes(form.userSearch.toLowerCase()) ||
       String(u.email || "").toLowerCase().includes(form.userSearch.toLowerCase()) ||
       String(u.phone || "").includes(form.userSearch)
   );
@@ -178,15 +204,45 @@ export default function NotificationsPage() {
       return;
     }
 
+    let attachmentType = "none";
+    let contentType = undefined;
+    let contentId = undefined;
+    let planId = undefined;
+
+    if (form.linkCategory === "Content") {
+      attachmentType = "content";
+      contentType = form.linkType.toLowerCase();
+      contentId = selectedContent?._id || selectedContent?.id;
+    } else if (form.linkCategory === "Plan") {
+      attachmentType = "plan";
+      contentType = "plan";
+      contentId = selectedContent?._id || selectedContent?.id;
+      planId = selectedContent?._id || selectedContent?.id;
+    }
+
+    let generatedActionUrl = "";
+    if (form.linkCategory === "Content" && selectedContent) {
+      const id = selectedContent._id || selectedContent.id;
+      if (form.linkType === "Movie") generatedActionUrl = `mirchiapp://movies/id/${id}`;
+      else if (form.linkType === "Series") generatedActionUrl = `mirchiapp://series/id/${id}`;
+    } else if (form.linkCategory === "Plan" && selectedContent) {
+      const id = selectedContent._id || selectedContent.id;
+      generatedActionUrl = `mirchiapp://plans/id/${id}`;
+    }
+
     setLoading(true);
     try {
       const payload = {
-        title:      form.title.trim(),
-        message:    form.message.trim(),
-        type:       form.type,
-        sendTo:     SEND_TO_MAP[form.sendTo] || "ALL",
-        contentType: activeLinkType !== "None" ? activeLinkType.toLowerCase() : undefined,
-        contentId:   activeLinkType !== "None" && selectedContent ? selectedContent._id : undefined,
+        title: form.title.trim(),
+        message: form.message.trim(),
+        type: form.type,
+        imageUrl: form.imageUrl.trim() || selectedContent?.poster || selectedContent?.banner || "",
+        actionUrl: generatedActionUrl || undefined,
+        sendTo: SEND_TO_MAP[form.sendTo] || "ALL",
+        attachmentType,
+        contentType,
+        contentId,
+        planId,
         ...(form.sendTo === "Specific User" && selectedUser
           ? { targetUser: selectedUser._id || selectedUser.id }
           : {}),
@@ -215,27 +271,29 @@ export default function NotificationsPage() {
 
   // ── Delete notification ───────────────────────────────────────────────
   const handleDelete = async (id) => {
-    if (!window.confirm("Delete this notification?")) return;
     try {
-      await API.delete(`/admin/notifications/${id}`);
       setNotifications((prev) => prev.filter((n) => n._id !== id));
+      await API.delete(`/admin/notifications/${id}`);
       showToast("Notification deleted.");
+      fetchNotifications(page);
     } catch (err) {
       showToast(err.response?.data?.message || "Delete failed.", "error");
+      fetchNotifications(page);
     }
   };
 
   // ── Delete all notifications ──────────────────────────────────────────
   const handleDeleteAll = async () => {
-    if (!window.confirm("Are you sure you want to delete ALL notifications? This action cannot be undone.")) return;
     try {
-      await API.delete("/admin/notifications/all");
       setNotifications([]);
       setTotalPages(1);
       setPage(1);
+      await API.delete("/admin/notifications/all");
       showToast("All notifications deleted.");
+      fetchNotifications(1);
     } catch (err) {
       showToast(err.response?.data?.message || "Delete all failed.", "error");
+      fetchNotifications(1);
     }
   };
 
@@ -320,6 +378,31 @@ export default function NotificationsPage() {
               onChange={ch}
               rows={4}
             />
+          </div>
+
+          {/* Image URL */}
+          <div className="notif-field-group">
+            <label className="notif-label">
+              Image URL <span className="notif-optional">(Optional - Auto-resolved if Content attached)</span>
+            </label>
+            <input
+              className="form-input-styled notif-input"
+              name="imageUrl"
+              placeholder="https://example.com/image.jpg or poster URL"
+              value={form.imageUrl}
+              onChange={ch}
+            />
+            {(form.imageUrl || selectedContent?.poster || selectedContent?.banner) && (
+              <div className="notif-form-img-preview-wrap">
+                <span className="notif-label" style={{ fontSize: "0.7rem", marginTop: 0 }}>Preview:</span>
+                <img
+                  src={form.imageUrl || selectedContent?.poster || selectedContent?.banner}
+                  alt="Notification preview"
+                  className="notif-form-img-preview"
+                  onError={(e) => { e.target.style.display = 'none'; }}
+                />
+              </div>
+            )}
           </div>
 
           {/* Type + Send To */}
@@ -424,30 +507,30 @@ export default function NotificationsPage() {
             <label className="notif-label">Attachment Type</label>
             <div style={{ display: 'flex', gap: '20px', marginTop: '8px', color: 'var(--text)' }}>
               <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
-                <input 
-                  type="radio" 
-                  name="linkCategory" 
-                  value="None" 
-                  checked={form.linkCategory === 'None'} 
-                  onChange={handleCategoryChange} 
+                <input
+                  type="radio"
+                  name="linkCategory"
+                  value="None"
+                  checked={form.linkCategory === 'None'}
+                  onChange={handleCategoryChange}
                 /> None
               </label>
               <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
-                <input 
-                  type="radio" 
-                  name="linkCategory" 
-                  value="Content" 
-                  checked={form.linkCategory === 'Content'} 
-                  onChange={handleCategoryChange} 
+                <input
+                  type="radio"
+                  name="linkCategory"
+                  value="Content"
+                  checked={form.linkCategory === 'Content'}
+                  onChange={handleCategoryChange}
                 /> Content
               </label>
               <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
-                <input 
-                  type="radio" 
-                  name="linkCategory" 
-                  value="Plan" 
-                  checked={form.linkCategory === 'Plan'} 
-                  onChange={handleCategoryChange} 
+                <input
+                  type="radio"
+                  name="linkCategory"
+                  value="Plan"
+                  checked={form.linkCategory === 'Plan'}
+                  onChange={handleCategoryChange}
                 /> Subscription Plan
               </label>
             </div>
@@ -515,7 +598,21 @@ export default function NotificationsPage() {
                           onMouseDown={() => {
                             setSelectedContent(c);
                             setContentDropOpen(false);
-                            setForm({ ...form, contentSearch: (c.title || c.name) });
+
+                            let autoUrl = "";
+                            const id = c._id || c.id;
+                            if (form.linkCategory === "Content") {
+                              if (form.linkType === "Movie") autoUrl = `mirchiapp://movies/id/${id}`;
+                              else if (form.linkType === "Series") autoUrl = `mirchiapp://series/id/${id}`;
+                            } else if (form.linkCategory === "Plan") {
+                              autoUrl = `mirchiapp://plans/id/${id}`;
+                            }
+
+                            setForm((prev) => ({
+                              ...prev,
+                              contentSearch: (c.title || c.name),
+                              actionUrl: autoUrl || prev.actionUrl
+                            }));
                           }}
                         >
                           <div className="notif-user-avatar">
@@ -570,7 +667,7 @@ export default function NotificationsPage() {
             <button
               className="icon-btn del"
               title="Delete All"
-              onClick={handleDeleteAll}
+              onClick={() => setDeleteConfirm({ type: "all" })}
               style={{ marginLeft: "auto" }}
               type="button"
             >
@@ -600,6 +697,7 @@ export default function NotificationsPage() {
             <table className="tbl">
               <thead>
                 <tr>
+                  <th style={{ width: "65px" }}>Image</th>
                   <th>Title</th>
                   <th>Type</th>
                   <th>Target</th>
@@ -611,7 +709,7 @@ export default function NotificationsPage() {
               <tbody>
                 {notifications.length === 0 ? (
                   <tr>
-                    <td colSpan={6}>
+                    <td colSpan={7}>
                       <div className="empty-state">
                         <div style={{ fontSize: "2rem" }}>🔔</div>
                         <p>No notifications sent yet</p>
@@ -619,72 +717,91 @@ export default function NotificationsPage() {
                     </td>
                   </tr>
                 ) : (
-                  notifications.map((n) => (
-                    <tr key={n._id} style={{ opacity: n.isRead ? 0.75 : 1, background: !n.isRead ? "rgba(255,255,255,0.02)" : "transparent" }}>
-                      <td>
-                        <span className="notif-row-title" style={{ fontWeight: !n.isRead ? "bold" : "normal" }}>{n.title}</span>
-                      </td>
+                  notifications.map((n) => {
+                    const notifImg = getNotifImage(n);
+                    return (
+                      <tr key={n._id} style={{ opacity: n.isRead ? 0.75 : 1, background: !n.isRead ? "rgba(255,255,255,0.02)" : "transparent" }}>
+                        <td>
+                          {notifImg ? (
+                            <img
+                              src={notifImg}
+                              alt={n.title}
+                              className="notif-tbl-img"
+                              onError={(e) => { e.target.style.display = 'none'; }}
+                            />
+                          ) : (
+                            <div className="notif-tbl-noimg">No img</div>
+                          )}
+                        </td>
 
-                      <td>
-                        <span
-                          className="badge"
-                          style={{
-                            background: TYPE_COLORS[n.type]?.bg  || TYPE_COLORS.GENERAL.bg,
-                            color:      TYPE_COLORS[n.type]?.color || TYPE_COLORS.GENERAL.color,
-                          }}
-                        >
-                          {n.type || "GENERAL"}
-                        </span>
-                      </td>
+                        <td>
+                          <span className="notif-row-title" style={{ fontWeight: !n.isRead ? "bold" : "normal" }}>{n.title}</span>
+                        </td>
 
-                      <td>
-                        <span className="notif-target">{resolveTarget(n)}</span>
-                      </td>
-
-                      <td>
-                        <span className="notif-date">
-                          {new Date(n.createdAt || n.sentAt).toLocaleDateString("en-IN", {
-                            day: "2-digit", month: "short", year: "numeric",
-                          })}
-                        </span>
-                      </td>
-
-                      <td>
-                        <span className={`badge ${n.isRead ? "" : "badge-active"}`} style={{ 
-                          background: n.isRead ? "rgba(100,116,139,0.15)" : "rgba(16, 185, 129, 0.15)",
-                          color: n.isRead ? "#94a3b8" : "#10b981"
-                        }}>
-                          {n.isRead ? "Read" : "Unread"}
-                        </span>
-                      </td>
-
-                      <td>
-                        <div className="tbl-actions" style={{ justifyContent: "center" }}>
-                          <button 
-                            className="icon-btn view" 
-                            title="View Details"
-                            type="button"
-                            onClick={() => handleView(n)}
+                        <td>
+                          <span
+                            className="badge"
+                            style={{
+                              background: TYPE_COLORS[n.type]?.bg || TYPE_COLORS.GENERAL.bg,
+                              color: TYPE_COLORS[n.type]?.color || TYPE_COLORS.GENERAL.color,
+                            }}
                           >
-                            <Eye size={15} />
-                          </button>
-                          <button
-                            className="icon-btn del"
-                            title="Delete"
-                            type="button"
-                            onClick={() => handleDelete(n._id)}
-                          >
-                            <Trash2 size={15} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
+                            {n.type || "GENERAL"}
+                          </span>
+                        </td>
+
+                        <td>
+                          <span className="notif-target">{resolveTarget(n)}</span>
+                        </td>
+
+                        <td>
+                          <span className="notif-date">
+                            {new Date(n.createdAt || n.sentAt).toLocaleDateString("en-IN", {
+                              day: "2-digit", month: "short", year: "numeric",
+                            })}
+                          </span>
+                        </td>
+
+                        <td>
+                          <span className={`badge ${n.isRead ? "" : "badge-active"}`} style={{
+                            background: n.isRead ? "rgba(100,116,139,0.15)" : "rgba(16, 185, 129, 0.15)",
+                            color: n.isRead ? "#94a3b8" : "#10b981"
+                          }}>
+                            {n.isRead ? "Read" : "Unread"}
+                          </span>
+                        </td>
+
+                        <td>
+                          <div className="tbl-actions" style={{ justifyContent: "center" }}>
+                            <button
+                              className="icon-btn view"
+                              title="View Details"
+                              type="button"
+                              onClick={() => handleView(n)}
+                            >
+                              <Eye size={15} />
+                            </button>
+                            <button
+                              className="icon-btn del"
+                              title="Delete notification"
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDeleteConfirm({ type: "single", notif: n });
+                              }}
+                            >
+                              <Trash2 size={15} style={{ pointerEvents: "none" }} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
           )}
-          
+
           {/* Pagination Controls */}
           {!fetching && totalPages > 1 && (
             <div className="pagination" style={{ display: "flex", justifyContent: "center", gap: "10px", marginTop: "20px" }}>
@@ -735,8 +852,8 @@ export default function NotificationsPage() {
                 <span
                   className="nd-type-badge"
                   style={{
-                    background: TYPE_COLORS[viewNotif.type]?.bg  || TYPE_COLORS.GENERAL.bg,
-                    color:      TYPE_COLORS[viewNotif.type]?.color || TYPE_COLORS.GENERAL.color,
+                    background: TYPE_COLORS[viewNotif.type]?.bg || TYPE_COLORS.GENERAL.bg,
+                    color: TYPE_COLORS[viewNotif.type]?.color || TYPE_COLORS.GENERAL.color,
                   }}
                 >
                   {viewNotif.type || "GENERAL"}
@@ -767,19 +884,39 @@ export default function NotificationsPage() {
                   </span>
                 </div>
 
-                {viewNotif.metadata?.actionUrl && (
+                {getNotifImage(viewNotif) && (
                   <div className="nd-meta-item nd-meta-full">
-                    <span className="nd-meta-label">🔗 Action URL</span>
+                    <span className="nd-meta-label">🖼️ Image URL</span>
                     <a
-                      href={viewNotif.metadata.actionUrl}
+                      href={getNotifImage(viewNotif)}
                       target="_blank"
                       rel="noreferrer"
                       className="nd-action-url"
+                      style={{ wordBreak: "break-all" }}
                     >
-                      {viewNotif.metadata.actionUrl}
+                      {getNotifImage(viewNotif)}
                     </a>
                   </div>
                 )}
+
+                <div className="nd-meta-item nd-meta-full">
+                  <span className="nd-meta-label">🔗 Action URL</span>
+                  {getActionUrl(viewNotif) ? (
+                    <a
+                      href={getActionUrl(viewNotif)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="nd-action-url"
+                      style={{ wordBreak: "break-all" }}
+                    >
+                      {getActionUrl(viewNotif)}
+                    </a>
+                  ) : (
+                    <span className="nd-meta-value" style={{ color: "var(--text-muted)", fontStyle: "italic", fontSize: "0.85rem" }}>
+                      None (No URL attached)
+                    </span>
+                  )}
+                </div>
 
                 {viewNotif.metadata?.contentType && (
                   <div className="nd-meta-item">
@@ -790,13 +927,14 @@ export default function NotificationsPage() {
               </div>
 
               {/* Attached image */}
-              {viewNotif.metadata?.imageUrl && (
+              {getNotifImage(viewNotif) && (
                 <div className="nd-image-wrap">
                   <span className="nd-meta-label">🖼️ Attached Image</span>
                   <img
-                    src={viewNotif.metadata.imageUrl}
+                    src={getNotifImage(viewNotif)}
                     alt="Notification attachment"
                     className="nd-preview-img"
+                    onError={(e) => { e.target.style.display = 'none'; }}
                   />
                 </div>
               )}
@@ -805,6 +943,56 @@ export default function NotificationsPage() {
             {/* Footer */}
             <div className="nd-footer">
               <button className="nd-close-btn" onClick={() => setViewNotif(null)}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Custom Delete Confirmation Modal ── */}
+      {deleteConfirm && (
+        <div className="nd-overlay" onClick={() => setDeleteConfirm(null)}>
+          <div className="nd-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "420px" }}>
+            <div className="nd-header" style={{ background: "linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(220, 38, 38, 0.08))" }}>
+              <div className="nd-header-icon">⚠️</div>
+              <div className="nd-header-text">
+                <span className="nd-header-title">Confirm Deletion</span>
+                <span className="nd-header-sub">Action cannot be undone</span>
+              </div>
+              <button className="nd-close" onClick={() => setDeleteConfirm(null)}>
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="nd-body" style={{ padding: "24px 20px", textAlign: "center" }}>
+              <p style={{ fontSize: "0.96rem", color: "var(--text)", margin: "0 0 10px 0", fontWeight: "600" }}>
+                {deleteConfirm.type === "all"
+                  ? "Are you sure you want to delete ALL notifications?"
+                  : `Are you sure you want to delete "${deleteConfirm.notif?.title || "this notification"}"?`}
+              </p>
+              <p style={{ fontSize: "0.84rem", color: "var(--text-muted)", margin: 0 }}>
+                This record will be permanently removed from the system.
+              </p>
+            </div>
+
+            <div className="nd-footer" style={{ justifyContent: "flex-end", gap: "10px" }}>
+              <button type="button" className="nd-close-btn" onClick={() => setDeleteConfirm(null)}>
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="nd-close-btn"
+                style={{ background: "#ef4444", color: "#ffffff", borderColor: "#dc2626", fontWeight: "700" }}
+                onClick={() => {
+                  if (deleteConfirm.type === "all") {
+                    handleDeleteAll();
+                  } else {
+                    handleDelete(deleteConfirm.notif._id);
+                  }
+                  setDeleteConfirm(null);
+                }}
+              >
+                Delete
+              </button>
             </div>
           </div>
         </div>

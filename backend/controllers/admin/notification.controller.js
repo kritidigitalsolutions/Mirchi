@@ -15,7 +15,9 @@ exports.sendNotification = async (req, res) => {
       targetUser,
       actionUrl,
       contentType,
-      contentId
+      contentId,
+      planId,
+      imageUrl
     } = req.body;
 
     if (!title || !message) {
@@ -25,31 +27,33 @@ exports.sendNotification = async (req, res) => {
       });
     }
 
-    let finalActionUrl = actionUrl || "";
-    let finalImageUrl = "";
+    const targetContentId = contentId || planId;
+    const targetContentType = contentType || (planId ? "plan" : undefined);
 
-    if (contentType && contentId) {
-      if (contentType === "movie") {
+    let finalActionUrl = actionUrl || "";
+    let finalImageUrl = imageUrl || "";
+
+    if (targetContentType && targetContentId) {
+      if (targetContentType === "movie") {
         const Movie = require("../../models/movie.model");
-        const movie = await Movie.findById(contentId);
+        const movie = await Movie.findById(targetContentId);
         if (movie) {
-          finalImageUrl = movie.poster || movie.thumbnailUrl || "";
-          finalActionUrl = `mirchiapp://movies/id/${movie._id}`;
+          finalImageUrl = imageUrl || movie.poster || movie.thumbnailUrl || "";
+          finalActionUrl = actionUrl || `mirchiapp://movies/id/${movie._id}`;
         }
-      } else if (contentType === "series") {
+      } else if (targetContentType === "series") {
         const Series = require("../../models/series.model");
-        const series = await Series.findById(contentId);
+        const series = await Series.findById(targetContentId);
         if (series) {
-          finalImageUrl = series.poster || series.thumbnailUrl || "";
-          finalActionUrl = `mirchiapp://series/id/${series._id}`;
+          finalImageUrl = imageUrl || series.poster || series.thumbnailUrl || "";
+          finalActionUrl = actionUrl || `mirchiapp://series/id/${series._id}`;
         }
-      } else if (contentType === "plan") {
+      } else if (targetContentType === "plan") {
         const Plan = require("../../models/plan.model");
-        const plan = await Plan.findById(contentId);
+        const plan = await Plan.findById(targetContentId);
         if (plan) {
-          // Plans don't have images in the schema, you can set a default or leave empty
-          finalImageUrl = ""; 
-          finalActionUrl = `mirchiapp://plans/id/${plan._id}`;
+          finalImageUrl = imageUrl || "";
+          finalActionUrl = actionUrl || `mirchiapp://plans/id/${plan._id}`;
         }
       }
     }
@@ -58,7 +62,15 @@ exports.sendNotification = async (req, res) => {
       title,
       message,
       type: type || "GENERAL",
-      metadata: { actionUrl: finalActionUrl, contentType, contentId, imageUrl: finalImageUrl },
+      imageUrl: finalImageUrl,
+      actionUrl: finalActionUrl,
+      metadata: {
+        actionUrl: finalActionUrl,
+        contentType: targetContentType,
+        contentId: targetContentId,
+        planId: planId || (targetContentType === "plan" ? targetContentId : undefined),
+        imageUrl: finalImageUrl
+      },
       createdBy: req.user.id,
       sentAt: new Date()
     };
@@ -184,11 +196,14 @@ exports.getNotifications = async (req, res) => {
 
 exports.deleteNotification = async (req, res) => {
   try {
-    const notification = await Notification.findByIdAndUpdate(
-      req.params.id,
-      { isActive: false },
-      { new: true }
-    );
+    let notification = await Notification.findByIdAndDelete(req.params.id);
+    if (!notification) {
+      notification = await Notification.findByIdAndUpdate(
+        req.params.id,
+        { isActive: false },
+        { new: true }
+      );
+    }
 
     if (!notification) {
       return res.status(404).json({
@@ -199,7 +214,7 @@ exports.deleteNotification = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: "Notification archived successfully"
+      message: "Notification deleted successfully"
     });
 
   } catch (error) {
@@ -212,11 +227,12 @@ exports.deleteNotification = async (req, res) => {
 
 exports.deleteAllNotifications = async (req, res) => {
   try {
-    await Notification.updateMany({ isActive: true }, { isActive: false });
+    await Notification.deleteMany({});
+    await Notification.updateMany({}, { isActive: false });
 
     res.status(200).json({
       success: true,
-      message: "All notifications archived successfully"
+      message: "All notifications deleted successfully"
     });
 
   } catch (error) {

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import API from "../api/axios";
 import { Layers, Plus, Search, ChevronUp, ChevronDown, Edit2, Trash2, X, Check, RefreshCw, Eye, EyeOff } from "lucide-react";
 import "./Dashboard.css";
+import "./CategoryLight.css";
 
 export default function Category() {
   const [categories, setCategories] = useState([]);
@@ -163,15 +164,15 @@ export default function Category() {
 
       <div style={{ display: "flex", gap: "20px", marginBottom: "25px" }}>
         <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "12px", padding: "20px 25px", minWidth: "160px", borderTop: "3px solid var(--primary)" }}>
-          <div style={{ fontSize: "32px", fontWeight: "700", color: "#fff", marginBottom: "4px" }}>{totalCount}</div>
+          <div style={{ fontSize: "32px", fontWeight: "700", color: "var(--text)", marginBottom: "4px" }}>{totalCount}</div>
           <div style={{ fontSize: "12px", textTransform: "uppercase", letterSpacing: "1px", color: "var(--text-muted)", fontWeight: "600" }}>TOTAL</div>
         </div>
         <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "12px", padding: "20px 25px", minWidth: "160px", borderTop: "3px solid var(--success)" }}>
-          <div style={{ fontSize: "32px", fontWeight: "700", color: "#fff", marginBottom: "4px" }}>{activeCount}</div>
+          <div style={{ fontSize: "32px", fontWeight: "700", color: "var(--text)", marginBottom: "4px" }}>{activeCount}</div>
           <div style={{ fontSize: "12px", textTransform: "uppercase", letterSpacing: "1px", color: "var(--text-muted)", fontWeight: "600" }}>ACTIVE</div>
         </div>
         <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "12px", padding: "20px 25px", minWidth: "160px", borderTop: "3px solid var(--danger)" }}>
-          <div style={{ fontSize: "32px", fontWeight: "700", color: "#fff", marginBottom: "4px" }}>{inactiveCount}</div>
+          <div style={{ fontSize: "32px", fontWeight: "700", color: "var(--text)", marginBottom: "4px" }}>{inactiveCount}</div>
           <div style={{ fontSize: "12px", textTransform: "uppercase", letterSpacing: "1px", color: "var(--text-muted)", fontWeight: "600" }}>INACTIVE</div>
         </div>
       </div>
@@ -343,7 +344,7 @@ export default function Category() {
 
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 0", borderTop: "1px solid var(--border)" }}>
                 <div>
-                  <h4 style={{ margin: "0 0 4px 0", fontSize: "14px", color: "#fff" }}>Active Category</h4>
+                  <h4 style={{ margin: "0 0 4px 0", fontSize: "14px", color: "var(--text)" }}>Active Category</h4>
                   <p style={{ margin: 0, fontSize: "12px", color: "var(--text-muted)" }}>Visible to users across the platform</p>
                 </div>
                 <label style={{ position: "relative", display: "inline-flex", alignItems: "center", cursor: "pointer" }}>

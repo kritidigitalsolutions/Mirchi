@@ -1,0 +1,118 @@
+/* ============================================================
+   CATEGORIES PAGE — BRIGHT MODE (LIGHT THEME) STYLES
+   ============================================================ */
+
+body.light .page-section {
+  color: #0f172a;
+}
+
+body.light .pg-title {
+  color: #0f172a !important;
+}
+
+body.light .pg-sub {
+  color: #64748b !important;
+}
+
+/* Refresh & Action Buttons */
+body.light .btn-ghost {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  color: #334155 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
+}
+
+body.light .btn-ghost:hover {
+  background: #f8fafc !important;
+  color: #0f172a !important;
+}
+
+/* Content Box & Table */
+body.light .content-box {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04) !important;
+}
+
+body.light .form-input {
+  background: #f8fafc !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+body.light .form-input::placeholder {
+  color: #94a3b8 !important;
+}
+
+body.light .form-input:focus {
+  background: #ffffff !important;
+  border-color: #e50914 !important;
+}
+
+/* Status badges */
+body.light .badge-active {
+  background: #d1fae5 !important;
+  color: #047857 !important;
+}
+
+body.light .badge-blocked {
+  background: #fee2e2 !important;
+  color: #b91c1c !important;
+}
+
+/* Action Icon Buttons */
+body.light .icon-btn {
+  background: #f1f5f9 !important;
+  border: 1px solid #e2e8f0 !important;
+  color: #475569 !important;
+}
+
+body.light .icon-btn:hover {
+  background: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+body.light .icon-btn.del:hover {
+  background: #fee2e2 !important;
+  color: #b91c1c !important;
+  border-color: #fca5a5 !important;
+}
+
+/* Modal Overlay & Box */
+body.light .modal-overlay {
+  background: rgba(15, 23, 42, 0.4) !important;
+  backdrop-filter: blur(8px) !important;
+}
+
+body.light .modal-box {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.15) !important;
+}
+
+body.light .modal-head {
+  border-bottom: 1px solid #f1f5f9 !important;
+}
+
+body.light .modal-head h3 {
+  color: #0f172a !important;
+}
+
+body.light .modal-close {
+  background: #f1f5f9 !important;
+  color: #64748b !important;
+}
+
+body.light .modal-close:hover {
+  background: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+body.light .form-label {
+  color: #334155 !important;
+}
+
+body.light .modal-foot {
+  background: #f8fafc !important;
+  border-top: 1px solid #e2e8f0 !important;
+}

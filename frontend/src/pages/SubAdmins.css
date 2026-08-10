@@ -1,3 +1,5 @@
+@import "./SubAdminsLight.css";
+
 /* ========================================
    SUB-ADMINS PAGE & MODAL STYLES
    (Scroll-optimized & Granular Matrix UI)
@@ -637,6 +639,15 @@
 
 .matrix-table tbody tr.module-row:hover {
   background: rgba(255, 255, 255, 0.03);
+}
+
+.module-title-cell {
+  font-weight: 600;
+  color: #f8fafc;
+}
+
+.status-toggle-title {
+  color: #f8fafc;
 }
 
 /* Custom Checkbox vs Disabled Dash */

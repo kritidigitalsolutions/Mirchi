@@ -1,3 +1,5 @@
+@import "./SubscriptionLight.css";
+
 .subscription-page {
   padding: 34px 28px;
   color: var(--text, #f8fafc);

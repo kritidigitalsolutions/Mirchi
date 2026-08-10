@@ -14,6 +14,7 @@ import {
   X,
 } from "lucide-react";
 import "./Subscription.css";
+import "./SubscriptionLight.css";
 
 const PAGE_SIZE = 10;
 

@@ -1,0 +1,241 @@
+/* ============================================================
+   NOTIFICATIONS PAGE — BRIGHT MODE (LIGHT THEME) STYLES
+   ============================================================ */
+
+body.light .notif-page {
+  color: #0f172a;
+}
+
+/* Page Header */
+body.light .pg-title {
+  color: #0f172a !important;
+}
+
+body.light .pg-sub {
+  color: #64748b !important;
+}
+
+/* Stats Chips */
+body.light .notif-stat-chip {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04) !important;
+}
+
+body.light .notif-stat-val {
+  color: #0f172a !important;
+}
+
+body.light .notif-stat-lbl {
+  color: #64748b !important;
+}
+
+/* Form Card */
+body.light .notif-card {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04) !important;
+}
+
+body.light .notif-card h3 {
+  color: #0f172a !important;
+}
+
+/* Field Groups & Labels */
+body.light .notif-label {
+  color: #334155 !important;
+}
+
+body.light .notif-optional {
+  color: #64748b !important;
+}
+
+/* Inputs & Selects & Textarea */
+body.light .notif-input {
+  background: #f8fafc !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+body.light .notif-input::placeholder {
+  color: #94a3b8 !important;
+}
+
+body.light .notif-input:focus {
+  background: #ffffff !important;
+  border-color: #8b5cf6 !important;
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.15) !important;
+}
+
+body.light .notif-select option {
+  background: #ffffff !important;
+  color: #0f172a !important;
+}
+
+/* Search Dropdown (Fixing overlapping/transparency) */
+body.light .notif-user-search-wrap {
+  position: relative !important;
+  z-index: 100 !important;
+}
+
+body.light .notif-user-dropdown {
+  background: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  box-shadow: 0 14px 35px rgba(15, 23, 42, 0.18) !important;
+  z-index: 9999 !important;
+}
+
+body.light .notif-user-option {
+  background: #ffffff !important;
+  border-bottom: 1px solid #f1f5f9 !important;
+}
+
+body.light .notif-user-option:hover {
+  background: #f1f5f9 !important;
+}
+
+body.light .notif-user-name {
+  color: #0f172a !important;
+}
+
+body.light .notif-user-meta {
+  color: #64748b !important;
+}
+
+body.light .notif-user-empty {
+  color: #64748b !important;
+}
+
+body.light .notif-user-clear {
+  background: #f1f5f9 !important;
+  border-color: #e2e8f0 !important;
+  color: #64748b !important;
+}
+
+body.light .notif-user-clear:hover {
+  background: #fee2e2 !important;
+  color: #dc2626 !important;
+  border-color: #fca5a5 !important;
+}
+
+/* Attachment Radio buttons */
+body.light .notif-card input[type="radio"] + span,
+body.light .notif-card label {
+  color: #334155 !important;
+}
+
+/* Form Buttons */
+body.light .notif-clear-btn {
+  background: #f1f5f9 !important;
+  border: 1px solid #e2e8f0 !important;
+  color: #475569 !important;
+}
+
+body.light .notif-clear-btn:hover {
+  background: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+/* Notifications History Table */
+body.light .notif-table-card {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04) !important;
+}
+
+body.light .notif-tbl-wrap {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+}
+
+body.light .notif-tbl thead th {
+  background: #f8fafc !important;
+  color: #475569 !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+}
+
+body.light .notif-tbl td {
+  border-bottom: 1px solid #f1f5f9 !important;
+  color: #334155 !important;
+}
+
+body.light .notif-tbl tbody tr:hover {
+  background: #f8fafc !important;
+}
+
+body.light .notif-row-title {
+  color: #0f172a !important;
+}
+
+body.light .notif-target {
+  color: #64748b !important;
+}
+
+body.light .notif-date {
+  color: #64748b !important;
+}
+
+body.light .notif-tbl-noimg {
+  background: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+  color: #94a3b8 !important;
+}
+
+/* Notification Details Modal in Light Mode */
+body.light .nd-modal {
+  background: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.14) !important;
+}
+
+body.light .nd-header {
+  background: linear-gradient(135deg, rgba(139,92,246,0.06), rgba(109,40,217,0.02)) !important;
+  border-bottom-color: #e2e8f0 !important;
+}
+
+body.light .nd-header-title {
+  color: #0f172a !important;
+}
+
+body.light .nd-title {
+  color: #0f172a !important;
+}
+
+body.light .nd-date {
+  color: #64748b !important;
+}
+
+body.light .nd-message {
+  background: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+  border-left-color: #8b5cf6 !important;
+  color: #1e293b !important;
+}
+
+body.light .nd-meta-item {
+  background: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+}
+
+body.light .nd-meta-label {
+  color: #64748b !important;
+}
+
+body.light .nd-meta-value {
+  color: #0f172a !important;
+}
+
+body.light .nd-action-url {
+  color: #7c3aed !important;
+}
+
+body.light .nd-footer {
+  background: #ffffff !important;
+  border-top-color: #e2e8f0 !important;
+}
+
+body.light .nd-close-btn {
+  background: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+  color: #374151 !important;
+}

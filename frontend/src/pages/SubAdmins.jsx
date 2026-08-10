@@ -18,6 +18,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import "./SubAdmins.css";
+import "./SubAdminsLight.css";
 
 const MODULE_GROUPS = [
   {
@@ -26,7 +27,7 @@ const MODULE_GROUPS = [
       { id: "movies", title: "Movies", availableActions: ["view", "create", "edit", "delete"] },
       { id: "series", title: "Web Series & Episodes", availableActions: ["view", "create", "edit", "delete"] },
       { id: "categories", title: "Categories", availableActions: ["view", "create", "edit", "delete"] },
-      { id: "ratings", title: "Ratings & Reviews", availableActions: ["view", "delete"] },
+      // { id: "ratings", title: "Ratings & Reviews", availableActions: ["view", "delete"] },
     ],
   },
   {
@@ -648,7 +649,7 @@ export default function SubAdmins() {
                 {editingStaff && (
                   <div className="status-toggle-row">
                     <div>
-                      <h4 style={{ margin: "0 0 2px 0", fontSize: "0.92rem", color: "#f8fafc" }}>Account Status</h4>
+                      <h4 className="status-toggle-title" style={{ margin: "0 0 2px 0", fontSize: "0.92rem" }}>Account Status</h4>
                       <p style={{ margin: 0, fontSize: "0.8rem", color: "#94a3b8" }}>
                         {form.isActive ? "Active (Can access permitted modules)" : "Disabled (Login blocked immediately)"}
                       </p>
@@ -742,7 +743,7 @@ export default function SubAdmins() {
                               const allChecked = isAllActionsSelected(mod);
                               return (
                                 <tr key={mod.id} className="module-row">
-                                  <td style={{ fontWeight: 600, color: "#f8fafc" }}>{mod.title}</td>
+                                  <td className="module-title-cell">{mod.title}</td>
                                   
                                   {/* VIEW Column */}
                                   <td className="text-center">

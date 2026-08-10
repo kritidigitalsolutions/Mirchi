@@ -13,9 +13,9 @@ const getMyNotifications = async (req, res) => {
         const userId = new mongoose.Types.ObjectId(req.user.id);
 
         // Fetch userType and timestamps from DB since JWT doesn't include them
-        const user = await User.findById(userId).select('userType lastLoginAt createdAt');
+        const user = await User.findById(userId).select('userType createdAt');
         const userType = user?.userType || 'INDIVIDUAL';
-        const notificationCutoff = user?.lastLoginAt || user?.createdAt || new Date(0);
+        const notificationCutoff = user?.createdAt || new Date(0);
         const activeSubscription = await Subscription.exists({
             user: userId,
             status: "active",
@@ -130,9 +130,9 @@ const getMyNotifications = async (req, res) => {
 const getUnreadCount = async (req, res) => {
     try {
         const userId = new mongoose.Types.ObjectId(req.user.id);
-        const user = await User.findById(userId).select('userType lastLoginAt createdAt');
+        const user = await User.findById(userId).select('userType createdAt');
         const userType = user?.userType || 'INDIVIDUAL';
-        const notificationCutoff = user?.lastLoginAt || user?.createdAt || new Date(0);
+        const notificationCutoff = user?.createdAt || new Date(0);
         const activeSubscription = await Subscription.exists({
             user: userId,
             status: "active",
@@ -260,9 +260,9 @@ const markAsRead = async (req, res) => {
 const markAllAsRead = async (req, res) => {
     try {
         const userId = new mongoose.Types.ObjectId(req.user.id);
-        const user = await User.findById(userId).select('userType lastLoginAt createdAt');
+        const user = await User.findById(userId).select('userType createdAt');
         const userType = user?.userType || 'INDIVIDUAL';
-        const notificationCutoff = user?.lastLoginAt || user?.createdAt || new Date(0);
+        const notificationCutoff = user?.createdAt || new Date(0);
         const activeSubscription = await Subscription.exists({
             user: userId,
             status: "active",
