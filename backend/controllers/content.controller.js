@@ -1,7 +1,6 @@
 const Movie = require("../models/movie.model");
 const Series = require("../models/series.model");
 
-
 // ========================================
 // GET HOME CONTENT (COMBINED)
 // ========================================
@@ -38,7 +37,7 @@ const getHomeContent = async (req, res) => {
     // Combine and sort by priority, then date
     const content = [...formattedMovies, ...formattedSeries].sort(
       (a, b) => {
-      const priorityDiff =(b.priority || 0)-(a.priority || 0);
+        const priorityDiff = (b.priority || 0) - (a.priority || 0);
         if (priorityDiff !== 0) return priorityDiff;
         return new Date(b.createdAt) - new Date(a.createdAt);
       }
@@ -76,23 +75,23 @@ const searchContent = async (req, res) => {
           $search: query
         }
       },
-  {
-    score: {
-      $meta: "textScore"
-    }
-  }
-)
-.select({
-  score: {
-    $meta: "textScore"
-  }
-})
-.sort({
-  score: {
-    $meta: "textScore"
-  }
-})
-.lean();
+      {
+        score: {
+          $meta: "textScore"
+        }
+      }
+    )
+      .select({
+        score: {
+          $meta: "textScore"
+        }
+      })
+      .sort({
+        score: {
+          $meta: "textScore"
+        }
+      })
+      .lean();
 
 
     const series = await Series.find(
@@ -101,38 +100,38 @@ const searchContent = async (req, res) => {
           $search: query
         }
       },
-  {
-    score: {
-      $meta: "textScore"
-    }
-  }
-)
-.select({
-  score: {
-    $meta: "textScore"
-  }
-})
-.sort({
-  score: {
-    $meta: "textScore"
-  }
-})
-.lean();
+      {
+        score: {
+          $meta: "textScore"
+        }
+      }
+    )
+      .select({
+        score: {
+          $meta: "textScore"
+        }
+      })
+      .sort({
+        score: {
+          $meta: "textScore"
+        }
+      })
+      .lean();
 
     const results = [
-  ...movies.map(m => ({
-    ...m,
-    type: "movie"
-  })),
-  ...series.map(s => ({
-    ...s,
-    type: "series"
-  }))
-].sort(
-  (a, b) =>
-    (b.score || 0) -
-    (a.score || 0)
-);
+      ...movies.map(m => ({
+        ...m,
+        type: "movie"
+      })),
+      ...series.map(s => ({
+        ...s,
+        type: "series"
+      }))
+    ].sort(
+      (a, b) =>
+        (b.score || 0) -
+        (a.score || 0)
+    );
 
 
 

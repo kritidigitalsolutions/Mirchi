@@ -128,6 +128,7 @@ const movieUserRoutes = require("./routes/user/movie.routes");
 const seriesUserRoutes = require("./routes/user/series.routes");
 const contentAdminRoutes = require("./routes/admin/content.routes");
 const contentUserRoutes = require("./routes/user/content.routes");
+const webpageAdminRoutes = require("./routes/admin/webpage.routes");
 
 const updateUpcomingStatus = require("./middlewares/updateUpcomingStatus.middleware");
 
@@ -169,6 +170,12 @@ app.use(
   contentAdminRoutes
 );
 
+app.use(
+  "/api/admin/webpage",
+  updateUpcomingStatus,
+  webpageAdminRoutes
+);
+
 
 // ========================================
 // USER ROUTES
@@ -196,6 +203,10 @@ app.use("/api/movies", updateUpcomingStatus, movieUserRoutes);
 app.use("/api/series", updateUpcomingStatus, seriesUserRoutes);
 
 app.use("/api/content", updateUpcomingStatus, contentUserRoutes);
+
+// Public webpage layout route (served from the curated WebpageConfig)
+const webpageUserRoutes = require("./routes/user/webpage.routes");
+app.use("/api/webpage", webpageUserRoutes);
 
 //legal routes for admin
 const adminLegal = require("./routes/admin/legal.routes");

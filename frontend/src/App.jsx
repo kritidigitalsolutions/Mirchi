@@ -40,6 +40,7 @@ const HelpPage = lazyLoad(() => import("./pages/HelpPage"));
 const Settings = lazyLoad(() => import("./pages/Settings"));
 const SubAdminsPage = lazyLoad(() => import("./pages/SubAdmins"));
 const CategoryPage = lazyLoad(() => import("./pages/Category"));
+const WebpageLayout = lazyLoad(() => import("./pages/WebpageLayout"));
 
 // ── Toast Context ──
 const ToastContext = createContext();
@@ -126,6 +127,7 @@ function App() {
             <Route path="settings" element={<Settings />} />
             <Route path="subadmins" element={<SubAdminsPage />} />
             <Route path="categories" element={<CategoryPage />} />
+            <Route path="webpage" element={<WebpageLayout />} />
           </Route>
         </Routes>
       </Suspense>
