@@ -6,12 +6,21 @@ const paymentTransactionSchema = new mongoose.Schema({
   paymentId: { type: String, required: true, unique: true, index: true },
   user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true, index: true },
   plan: { type: mongoose.Schema.Types.ObjectId, ref: "Plan", required: true },
+  source: { type: String, enum: ['web', 'android', 'ios', 'api'], default: 'web' },
   promoCode: { type: String, default: null },
   amount: { type: Number, required: true, min: 0 },
   currency: { type: String, default: "INR" },
   status: { type: String, enum: ["pending", "paid", "failed"], default: "pending", index: true },
   subscription: { type: mongoose.Schema.Types.ObjectId, ref: "Subscription", default: null },
   gatewayPayload: { type: mongoose.Schema.Types.Mixed, default: null },
+  // Meta CAPI context — captured at order creation, consumed on webhook success
+  clientIpAddress: { type: String, default: null },
+  clientUserAgent: { type: String, default: null },
+  fbp: { type: String, default: null },
+  fbc: { type: String, default: null },
+  metaPurchaseSent: { type: Boolean, default: false },
 }, { timestamps: true });
+
+paymentTransactionSchema.index({ status: 1, metaPurchaseSent: 1 });
 
 module.exports = mongoose.models.PaymentTransaction || mongoose.model("PaymentTransaction", paymentTransactionSchema);
