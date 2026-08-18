@@ -1,6 +1,24 @@
 const User = require("../../models/user.model");
 const Subscription = require("../../models/subscription.model");
 
+// MongoDB stores timestamps in UTC. Dashboard registration reporting is based
+// on the India calendar day, regardless of where the API process is hosted.
+const INDIA_TIMEZONE_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+
+const getIndiaDayBounds = (date = new Date(), daysOffset = 0) => {
+    const indiaNow = new Date(date.getTime() + INDIA_TIMEZONE_OFFSET_MS);
+    const startOfIndiaDayAsUtc = Date.UTC(
+        indiaNow.getUTCFullYear(),
+        indiaNow.getUTCMonth(),
+        indiaNow.getUTCDate() + daysOffset
+    );
+
+    const start = new Date(startOfIndiaDayAsUtc - INDIA_TIMEZONE_OFFSET_MS);
+    const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
+
+    return { start, end };
+};
+
 
 // ========================================
 // GET ALL USERS
@@ -190,16 +208,8 @@ exports.toggleBlockUser = async (
 
 exports.getRegistrationStats = async (req, res) => {
     try {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-
-        const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
-        yesterday.setHours(0, 0, 0, 0);
-
-        const tomorrow = new Date();
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        tomorrow.setHours(0, 0, 0, 0);
+        const { start: today, end: tomorrow } = getIndiaDayBounds();
+        const { start: yesterday } = getIndiaDayBounds(new Date(), -1);
 
         const [todayCount, yesterdayCount, totalCount] = await Promise.all([
             User.countDocuments({ createdAt: { $gte: today, $lt: tomorrow } }),
@@ -229,21 +239,17 @@ exports.getUserGrowth = async (req, res) => {
         const daysOfWeek = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
         const growthData = [];
 
-        // Loop for the last 7 days
+        // Loop for the last 7 India calendar days.
         for (let i = 6; i >= 0; i--) {
-            const d = new Date();
-            d.setDate(d.getDate() - i);
-            d.setHours(0, 0, 0, 0);
-
-            const nextD = new Date(d);
-            nextD.setDate(nextD.getDate() + 1);
+            const { start: d, end: nextD } = getIndiaDayBounds(new Date(), -i);
+            const indiaDay = new Date(d.getTime() + INDIA_TIMEZONE_OFFSET_MS);
 
             const count = await User.countDocuments({
                 createdAt: { $gte: d, $lt: nextD },
             });
 
             growthData.push({
-                day: daysOfWeek[d.getDay()],
+                day: daysOfWeek[indiaDay.getUTCDay()],
                 users: count,
             });
         }

@@ -90,7 +90,7 @@ export default function Dashboard() {
   const canAccessContent = hasPermission("content");
   const canAccessPricing = hasPermission("pricing");
 
-  // Registration totals are calculated on the server using its current day.
+  // Registration totals are calculated on the server using the India calendar day.
   // Refresh this independently so an open Dashboard rolls into the new day
   // without requiring the admin to reload the page.
   async function fetchRegistrationStats() {
@@ -181,8 +181,8 @@ export default function Dashboard() {
   useEffect(() => {
     fetchData();
 
-    // Re-check the server's 12:00 AM–11:59:59 PM window every minute.
-    // This makes the card update within one minute of the server's new day.
+    // Re-check the server's India 12:00 AM–11:59:59 PM window every minute.
+    // This makes the card update within one minute of India's new day.
     const registrationRefresh = window.setInterval(fetchRegistrationStats, 60_000);
     return () => window.clearInterval(registrationRefresh);
   }, []);
