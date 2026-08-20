@@ -195,3 +195,43 @@ body.light .subscription-details-content dd {
 body.light .subscription-details-loading {
   color: #64748b;
 }
+
+/* Subscription Stats Grid Light Mode */
+body.light .subscription-stat-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+body.light .subscription-stat-card:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+}
+
+body.light .subscription-stat-card.active {
+  border-color: #a855f7;
+  background: #faf5ff;
+  box-shadow: 0 0 0 1px #a855f7, 0 6px 16px rgba(168, 85, 247, 0.12);
+}
+
+body.light .subscription-stat-title {
+  color: #64748b;
+}
+
+body.light .subscription-stat-badge {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+body.light .subscription-stat-amount {
+  color: #0f172a;
+}
+
+body.light .subscription-stat-users {
+  color: #64748b;
+}
+
+body.light .subscription-user-phone {
+  color: #64748b;
+}
+
