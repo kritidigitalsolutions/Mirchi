@@ -358,6 +358,7 @@ exports.getAllSubscriptions =
           $or: [
             { name: { $regex: escapedSearch, $options: "i" } },
             { email: { $regex: escapedSearch, $options: "i" } },
+            { phone: { $regex: escapedSearch, $options: "i" } },
           ],
         }).select("_id");
 
@@ -372,7 +373,7 @@ exports.getAllSubscriptions =
         await Subscription.find(filter)
           .populate(
             "user",
-            "name email"
+            "name email phone"
           )
           .populate("plan")
           .sort({

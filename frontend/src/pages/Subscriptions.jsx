@@ -147,7 +147,7 @@ export default function SubscriptionPage() {
           <Search size={18} />
           <input
             type="search"
-            placeholder="Search by user name or email..."
+            placeholder="Search by user name, email, or number..."
             value={search}
             onChange={updateFilter(setSearch)}
           />
