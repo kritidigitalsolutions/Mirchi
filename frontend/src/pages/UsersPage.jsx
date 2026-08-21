@@ -6,6 +6,7 @@ import "./Dashboard.css";
 export default function UsersPage() {
   const [users, setUsers] = useState([]);
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [selected, setSelected] = useState(null);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
@@ -24,7 +25,7 @@ export default function UsersPage() {
     setLoading(true);
     try {
       const res = await API.get("/admin/users", {
-        params: { page, limit: 10, search: search.trim() },
+        params: { page, limit: 10, search: search.trim(), status: statusFilter },
       });
       setUsers(res.data.users || []);
       setPagination(res.data.pagination || { currentPage: 1, totalPages: 1, totalUsers: 0, limit: 10 });
@@ -38,7 +39,7 @@ export default function UsersPage() {
     }
   };
 
-  useEffect(() => { fetchUsers(); }, [page, search]);
+  useEffect(() => { fetchUsers(); }, [page, search, statusFilter]);
 
   const handleDelete = async (id) => {
     if (!window.confirm("Delete this user permanently?")) return;
@@ -74,17 +75,29 @@ export default function UsersPage() {
 
       {/* Stats */}
       <div className="stat-grid">
-        <div className="stat-card s-green">
+        <div 
+          className={`stat-card s-green ${statusFilter === "all" ? "active-filter" : ""}`}
+          onClick={() => { setStatusFilter("all"); setPage(1); }}
+          style={{ cursor: "pointer" }}
+        >
           <div className="stat-icon"><User size={24} /></div>
           <div className="stat-label">Total Users</div>
-          <div className="stat-value">{pagination.totalUsers}</div>
+          <div className="stat-value">{stats.activeUsers + stats.blockedUsers || pagination.totalUsers}</div>
         </div>
-        <div className="stat-card s-blue">
+        <div 
+          className={`stat-card s-blue ${statusFilter === "active" ? "active-filter" : ""}`}
+          onClick={() => { setStatusFilter("active"); setPage(1); }}
+          style={{ cursor: "pointer" }}
+        >
           <div className="stat-icon"><CheckCircle size={24} /></div>
           <div className="stat-label">Active</div>
           <div className="stat-value">{stats.activeUsers}</div>
         </div>
-        <div className="stat-card s-red">
+        <div 
+          className={`stat-card s-red ${statusFilter === "blocked" ? "active-filter" : ""}`}
+          onClick={() => { setStatusFilter("blocked"); setPage(1); }}
+          style={{ cursor: "pointer" }}
+        >
           <div className="stat-icon"><AlertCircle size={24} /></div>
           <div className="stat-label">Blocked</div>
           <div className="stat-value">{stats.blockedUsers}</div>
@@ -99,6 +112,15 @@ export default function UsersPage() {
             <input placeholder="Search by name, email, or number..." value={search}
               onChange={e => { setSearch(e.target.value); setPage(1); }} />
           </div>
+          <select 
+            className="filter-select"
+            value={statusFilter}
+            onChange={e => { setStatusFilter(e.target.value); setPage(1); }}
+          >
+            <option value="all">All Statuses</option>
+            <option value="active">Active</option>
+            <option value="blocked">Blocked</option>
+          </select>
         </div>
 
         {loading ? (

@@ -31,15 +31,24 @@ exports.getAllUsers = async (
         const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
         const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 10, 1), 10000);
         const search = req.query.search?.trim();
-        const filter = {};
+        const status = req.query.status?.trim()?.toLowerCase();
+        
+        const searchFilter = {};
 
         if (search) {
             const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-            filter.$or = [
+            searchFilter.$or = [
                 { name: { $regex: escapedSearch, $options: "i" } },
                 { email: { $regex: escapedSearch, $options: "i" } },
                 { phone: { $regex: escapedSearch, $options: "i" } },
             ];
+        }
+
+        const filter = { ...searchFilter };
+        if (status === "active") {
+            filter.isBlocked = { $ne: true };
+        } else if (status === "blocked") {
+            filter.isBlocked = true;
         }
 
         const totalUsers = await User.countDocuments(filter);
@@ -52,8 +61,8 @@ exports.getAllUsers = async (
                 .sort({ createdAt: -1 })
                 .skip((currentPage - 1) * limit)
                 .limit(limit),
-            User.countDocuments({ ...filter, isBlocked: { $ne: true } }),
-            User.countDocuments({ ...filter, isBlocked: true }),
+            User.countDocuments({ ...searchFilter, isBlocked: { $ne: true } }),
+            User.countDocuments({ ...searchFilter, isBlocked: true }),
         ]);
 
         res.status(200).json({
