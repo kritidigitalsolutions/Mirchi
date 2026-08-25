@@ -1,6 +1,7 @@
 const Episode = require("../../models/episode.model");
 const Series = require("../../models/series.model");
 const { getMediaUrl, deleteMedia, deleteMediaFiles } = require("../../utils/mediaUrl");
+const { invalidateHomeCache } = require("../../config/redis");
 
 // Helper to update totalSeasons and totalEpisodes in Series
 const updateSeriesStats = async (seriesId) => {
@@ -54,6 +55,7 @@ const addEpisode = async (req, res) => {
     await updateSeriesStats(req.body.seriesId);
 
 
+    invalidateHomeCache().catch(console.error);
     return res.status(201).json({ success: true, message: "Episode added successfully", episode });
   } catch (error) {
 
@@ -123,6 +125,7 @@ const updateEpisode = async (req, res) => {
     // Update totalSeasons in case seasonNumber changed
     await updateSeriesStats(updatedEpisode.seriesId);
 
+    invalidateHomeCache().catch(console.error);
     return res.json({ success: true, message: "Episode updated successfully", episode: updatedEpisode });
 
 
@@ -173,6 +176,7 @@ const deleteEpisode = async (req, res) => {
     // Update totalSeasons
     await updateSeriesStats(episode.seriesId);
 
+    invalidateHomeCache().catch(console.error);
     return res.json({ success: true, message: "Episode deleted successfully" });
 
 
@@ -199,6 +203,7 @@ const deleteSeason = async (req, res) => {
     // Update totalSeasons
     await updateSeriesStats(seriesId);
 
+    invalidateHomeCache().catch(console.error);
     return res.json({ success: true, message: `Season ${seasonNumber} episodes deleted successfully` });
 
 

@@ -1,6 +1,7 @@
 const Series = require("../../models/series.model");
 const Episode = require("../../models/episode.model");
 const { getMediaUrl, deleteMedia, deleteMediaFiles } = require("../../utils/mediaUrl");
+const { invalidateHomeCache } = require("../../config/redis");
 
 // ========================================
 // HELPERS
@@ -119,6 +120,7 @@ const addSeries = async (req, res) => {
       priority,
     });
 
+    invalidateHomeCache().catch(console.error);
     return res.status(201).json({
       success: true,
       message: "Series added successfully",
@@ -341,6 +343,7 @@ const updateSeries = async (req, res) => {
 
     await series.save();
 
+    invalidateHomeCache().catch(console.error);
     return res.json({ success: true, message: "Series updated successfully", series });
   } catch (error) {
     console.error("UPDATE SERIES ERROR:", error);
@@ -380,6 +383,7 @@ const deleteSeries = async (req, res) => {
       await Series.updateMany({ priority: { $gt: targetPriority } }, { $inc: { priority: -1 } });
     }
 
+    invalidateHomeCache().catch(console.error);
     return res.json({ success: true, message: "Series and all its episodes deleted successfully" });
   } catch (error) {
     console.error("DELETE SERIES ERROR:", error);
@@ -398,6 +402,7 @@ const togglePublishSeries = async (req, res) => {
     series.isPublished = !series.isPublished;
     await series.save();
 
+    invalidateHomeCache().catch(console.error);
     return res.json({ success: true, message: "Series publish status updated", isPublished: series.isPublished });
   } catch (error) {
     return res.status(500).json({ success: false, message: "Failed to toggle publish status" });

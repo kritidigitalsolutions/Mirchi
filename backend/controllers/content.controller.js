@@ -1,16 +1,23 @@
 const Movie = require("../models/movie.model");
 const Series = require("../models/series.model");
+const { redis, HOME_CACHE_KEY, invalidateHomeCache } = require("../config/redis");
+
+const CACHE_TTL_SECONDS = 180; // 3 minute cache
 
 // ========================================
 // GET HOME CONTENT (COMBINED)
 // ========================================
 const getHomeContent = async (req, res) => {
   try {
+    // Try cache first
+    const cached = await redis.get(HOME_CACHE_KEY).catch(() => null);
+    if (cached) {
+      return res.json(JSON.parse(cached));
+    }
+
     // Fetch active movies and series
     const movies = await Movie.find({}).sort({ priority: -1, createdAt: -1 }).lean();
     const series = await Series.find({}).sort({ priority: -1, createdAt: -1 }).lean();
-// const movies = await Movie.find({}).sort({ priority: -1, createdAt: -1 }).limit(50).lean();
-// const series = await Series.find({}).sort({ priority: -1, createdAt: -1 }).limit(50).lean();
     const [
       moviesCount,
       seriesCount,
@@ -21,20 +28,17 @@ const getHomeContent = async (req, res) => {
       Series.find({}, "totalEpisodes").lean()
     ]);
     const episodesCount = seriesData.reduce((acc, s) => acc + (s.totalEpisodes || 0), 0);
-
     // Format and add flags
     const formattedMovies = movies.map((m) => ({
       ...m,
       type: "movie",
       isTrending: m.category?.includes("trending") || false
     }));
-
     const formattedSeries = series.map((s) => ({
       ...s,
       type: "series",
       isTrending: s.category?.includes("trending") || false
     }));
-
     // Combine and sort by priority, then date
     const content = [...formattedMovies, ...formattedSeries].sort(
       (a, b) => {
@@ -44,13 +48,18 @@ const getHomeContent = async (req, res) => {
       }
     );
 
-    return res.json({
+    const responseData = {
       success: true,
       moviesCount,
       seriesCount,
       episodesCount,
       content
-    });
+    };
+
+    // Save to cache (non-blocking — response ruknega nahi agar Redis slow/down ho)
+    redis.set(HOME_CACHE_KEY, JSON.stringify(responseData), "EX", CACHE_TTL_SECONDS).catch(() => {});
+
+    return res.json(responseData);
   } catch (error) {
     return res.status(500).json({
       success: false,
@@ -58,9 +67,6 @@ const getHomeContent = async (req, res) => {
     });
   }
 };
-
-
-
 
 // ========================================
 // SEARCH CONTENT
@@ -93,7 +99,6 @@ const searchContent = async (req, res) => {
         }
       })
       .lean();
-
 
     const series = await Series.find(
       {
@@ -133,8 +138,6 @@ const searchContent = async (req, res) => {
         (b.score || 0) -
         (a.score || 0)
     );
-
-
 
     return res.json({
       success: true,

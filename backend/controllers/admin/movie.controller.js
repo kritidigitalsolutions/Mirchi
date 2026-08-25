@@ -1,5 +1,6 @@
 const Movie = require("../../models/movie.model");
 const { getMediaUrl, deleteMedia, deleteMediaFiles } = require("../../utils/mediaUrl");
+const { invalidateHomeCache } = require("../../config/redis");
 
 // ========================================
 // HELPERS
@@ -169,6 +170,7 @@ const addMovie = async (req, res) => {
       priority,
     });
 
+    invalidateHomeCache().catch(console.error);
     return res.status(201).json({
       success: true,
       message: "Movie added successfully",
@@ -525,6 +527,7 @@ const updateMovie = async (req, res) => {
 
     await movie.save();
 
+    invalidateHomeCache().catch(console.error);
     return res.json({
       success: true,
       message: "Movie updated successfully",
@@ -565,6 +568,7 @@ const deleteMovie = async (req, res) => {
       await Movie.updateMany({ priority: { $gt: targetPriority } }, { $inc: { priority: -1 } });
     }
 
+    invalidateHomeCache().catch(console.error);
     return res.json({ success: true, message: "Movie deleted successfully" });
   } catch (error) {
     return res.status(500).json({ success: false, message: "Failed to delete movie" });
@@ -583,6 +587,7 @@ const togglePublishMovie = async (req, res) => {
     movie.isPublished = !movie.isPublished;
     await movie.save();
 
+    invalidateHomeCache().catch(console.error);
     return res.json({ success: true, message: "Movie publish status updated", isPublished: movie.isPublished });
   } catch (error) {
     return res.status(500).json({ success: false, message: "Failed to toggle publish status" });
