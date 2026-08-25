@@ -9,7 +9,8 @@ const getHomeContent = async (req, res) => {
     // Fetch active movies and series
     const movies = await Movie.find({}).sort({ priority: -1, createdAt: -1 }).lean();
     const series = await Series.find({}).sort({ priority: -1, createdAt: -1 }).lean();
-
+// const movies = await Movie.find({}).sort({ priority: -1, createdAt: -1 }).limit(50).lean();
+// const series = await Series.find({}).sort({ priority: -1, createdAt: -1 }).limit(50).lean();
     const [
       moviesCount,
       seriesCount,
