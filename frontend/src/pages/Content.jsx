@@ -83,8 +83,8 @@ export default function Content() {
     }
   };
 
-  const [contentType, setContentType] = useState("movies");
-  const [subType, setSubType] = useState("non-adult");
+  const [contentType, setContentType] = useState("all");
+  const [subType, setSubType] = useState("all");
   const [isHideAdult, setIsHideAdult] = useState(false);
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -325,11 +325,28 @@ export default function Content() {
   const fetchData = async (signal) => {
     setLoading(true);
     try {
-      const endpoint = contentType === "movies" ? "/admin/movies" : "/admin/series";
-      const is18plus = subType === "adult";
-      const res = await API.get(`${endpoint}?page=${currentPage}&limit=10&is18plus=${is18plus}`, { signal });
+      let endpoint;
+      let key;
+      if (contentType === "movies") {
+        endpoint = "/admin/movies";
+        key = "movies";
+      } else if (contentType === "series") {
+        endpoint = "/admin/series";
+        key = "series";
+      } else {
+        endpoint = "/admin/content/all";
+        key = "content";
+      }
 
-      const key = contentType === "movies" ? "movies" : "series";
+      let queryStr = `page=${currentPage}&limit=10`;
+      if (subType === "adult") {
+        queryStr += "&is18plus=true";
+      } else if (subType === "non-adult") {
+        queryStr += "&is18plus=false";
+      } // If subType is "all", do not pass is18plus
+
+      const res = await API.get(`${endpoint}?${queryStr}`, { signal });
+
       const fetchedData = res.data[key] || [];
       setData(fetchedData);
       setTotalPages(res.data.pages || 1);
@@ -385,10 +402,24 @@ export default function Content() {
   const doSearch = async (q) => {
     setIsSearching(true);
     try {
-      const is18plus = subType === "adult";
-      const endpoint = contentType === "movies" ? `/admin/movies/search?q=${encodeURIComponent(q)}&is18plus=${is18plus}` : `/admin/series/search?q=${encodeURIComponent(q)}&is18plus=${is18plus}`;
+      let endpoint;
+      let ageParam = "";
+      if (subType === "adult") {
+        ageParam = "&is18plus=true";
+      } else if (subType === "non-adult") {
+        ageParam = "&is18plus=false";
+      }
+
+      if (contentType === "movies") {
+        endpoint = `/admin/movies/search?q=${encodeURIComponent(q)}${ageParam}`;
+      } else if (contentType === "series") {
+        endpoint = `/admin/series/search?q=${encodeURIComponent(q)}${ageParam}`;
+      } else {
+        endpoint = `/admin/content/all?q=${encodeURIComponent(q)}${ageParam}`;
+      }
       const res = await API.get(endpoint);
-      setSearchResults(res.data.results || []);
+      const results = res.data.results || res.data.content || [];
+      setSearchResults(results);
     } catch (err) {
       // Fallback to local search if admin search endpoint doesn't exist
       const localResults = data.filter(item =>
@@ -436,7 +467,8 @@ export default function Content() {
 
     try {
       setLoading(true);
-      const endpoint = isSeries ? `/admin/series/${item._id}/toggle-publish` : `/admin/movies/${item._id}/toggle-publish`;
+      const targetIsSeries = isSeries || item.contentType === "series";
+      const endpoint = targetIsSeries ? `/admin/series/${item._id}/toggle-publish` : `/admin/movies/${item._id}/toggle-publish`;
       const res = await API.put(endpoint, {});
       if (res.data.success) {
         const controller = new AbortController();
@@ -454,8 +486,10 @@ export default function Content() {
   const filteredDisplayData = displayData.filter(item => {
     if (subType === "adult") {
       return item.is18plus === true;
-    } else {
+    } else if (subType === "non-adult") {
       return item.is18plus !== true;
+    } else {
+      return true; // "all"
     }
   });
 
@@ -616,7 +650,8 @@ export default function Content() {
     setUploadPhase("saving");
 
     try {
-      const typeFolder = contentType === "movies" ? "movies" : "series";
+      const isItemMovie = editData.contentType === "movie" || (editData.contentType !== "series" && contentType === "movies");
+      const typeFolder = isItemMovie ? "movies" : "series";
 
       // 1. Direct upload cast image files and update payload URLs
       const invalidCast = (editData.cast || []).find((c, idx) => {
@@ -670,7 +705,7 @@ export default function Content() {
 
       // 5. Direct upload video (movies only)
       let videoUrl = uploadData.videoUrl || "";
-      if (contentType === "movies" && uploadData.video) {
+      if (isItemMovie && uploadData.video) {
         videoUrl = await uploadToBunny(uploadData.video, "movies", "videos", (percent) => {
           setUploadProgress(percent);
         });
@@ -703,11 +738,11 @@ export default function Content() {
       formData.append("poster", posterUrl);
       formData.append("banner", bannerUrl);
       formData.append("trailerUrl", trailerUrl);
-      if (contentType === "movies") {
+      if (isItemMovie) {
         formData.append("videoUrl", videoUrl);
       }
 
-      const route = contentType === "movies" ? "movies" : "series";
+      const route = isItemMovie ? "movies" : "series";
       await API.patch(`/admin/${route}/${selectedItem._id}`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
@@ -790,7 +825,8 @@ export default function Content() {
   const handleDelete = async (item) => {
     if (!window.confirm(`Delete '${item.title || item.name}' permanently?`)) return;
     try {
-      if (contentType === "movies") await API.delete(`/admin/movies/${item._id}`);
+      const isSeries = item.contentType === "series" || (item.contentType !== "movie" && contentType === "series");
+      if (!isSeries) await API.delete(`/admin/movies/${item._id}`);
       else await API.delete(`/admin/series/${item._id}`);
 
       alert("Deleted");
@@ -886,6 +922,13 @@ export default function Content() {
             {/* Main Type Selector */}
             <div className="tab-group" style={{ display: "flex", background: "var(--bg3)", padding: "4px", borderRadius: "12px", gap: "4px" }}>
               <button
+                className={`btn ${contentType === "all" ? "btn-primary" : "btn-ghost"}`}
+                onClick={() => { setContentType("all"); setCurrentPage(1); }}
+                style={{ borderRadius: "8px", boxShadow: contentType === "all" ? "var(--shadow-sm)" : "none" }}
+              >
+                <Layers size={18} /> All
+              </button>
+              <button
                 className={`btn ${contentType === "movies" ? "btn-primary" : "btn-ghost"}`}
                 onClick={() => { setContentType("movies"); setCurrentPage(1); }}
                 style={{ borderRadius: "8px", boxShadow: contentType === "movies" ? "var(--shadow-sm)" : "none" }}
@@ -920,6 +963,24 @@ export default function Content() {
           <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
             <span style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--text-muted)", marginRight: 4 }}>Age Filter:</span>
             <div className="tab-group" style={{ display: "flex", background: "var(--bg3)", padding: "4px", borderRadius: "12px", gap: "4px" }}>
+              <button
+                type="button"
+                onClick={() => { setSubType("all"); setCurrentPage(1); }}
+                style={{
+                  borderRadius: "8px",
+                  fontSize: "0.85rem",
+                  padding: "6px 16px",
+                  border: "none",
+                  cursor: "pointer",
+                  fontWeight: 600,
+                  transition: "all 0.2s ease",
+                  background: subType === "all" ? "linear-gradient(135deg, #007bff, #0056b3)" : "transparent",
+                  color: subType === "all" ? "#ffffff" : "var(--text-muted)",
+                  boxShadow: subType === "all" ? "0 2px 8px rgba(0, 123, 255, 0.3)" : "none"
+                }}
+              >
+                All
+              </button>
               <button
                 type="button"
                 onClick={() => { setSubType("non-adult"); setCurrentPage(1); }}
@@ -1176,6 +1237,121 @@ export default function Content() {
                         </td>
                       </tr>
                     ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={totalItems}
+              onPageChange={setCurrentPage}
+            />
+          </div>
+        )}
+
+
+        {/* ========== COMBINED TABLE ========== */}
+        {contentType === "all" && !selectedSeries && (
+          <div className="table-section">
+            <div className="section-head" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" }}>
+              <h3 style={{ margin: 0 }}><Layers size={20} /> Combined Library</h3>
+              <span style={{ fontSize: "0.85rem", color: "var(--text-muted)", fontWeight: 600 }}>{totalItems} Total Items</span>
+            </div>
+            {loading ? <p>Loading…</p> : (
+              <div className="tbl-wrap">
+                <table className="tbl">
+                  <thead>
+                    <tr>
+                      <th>Title</th><th>Type</th><th>Category</th><th>Year</th><th>Rating</th><th>Priority</th><th>Status</th><th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredDisplayData.length === 0 ? (
+                      <tr><td colSpan={8}>No items found</td></tr>
+                    ) : filteredDisplayData.map(item => {
+                      const isItemSeries = item.contentType === "series";
+                      return (
+                        <tr key={item._id}>
+                          <td>
+                            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                              <div style={{ position: "relative", width: 40, height: 60, flexShrink: 0 }}>
+                                <img src={getFullUrl(item.poster)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 4 }} />
+                                {item.isHide && <span style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", background: "rgba(0,0,0,0.72)", color: "#fff", borderRadius: 4, fontSize: "0.55rem", fontWeight: 800, letterSpacing: "0.5px" }}>HIDDEN</span>}
+                              </div>
+                              <div>
+                                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                  <div style={{ fontWeight: 600 }}>{item.title}</div>
+                                  {item.is18plus && <span style={{ background: "orange", color: "white", padding: "1px 4px", borderRadius: 4, fontSize: "0.7rem", fontWeight: "bold" }}>18+</span>}
+                                </div>
+                                {!isItemSeries && <div style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>{item.duration}</div>}
+                                {isItemSeries && <div style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>{item.totalSeasons || 0} Seasons</div>}
+                                {isLocked(item) && (
+                                  <div style={{ fontSize: "0.75rem", color: "var(--orange)" }}>
+                                    <Calendar size={11} style={{ marginRight: 3, verticalAlign: "middle" }} />
+                                    {new Date(item.releaseDate).toLocaleString([], { dateStyle: "short", timeStyle: "short" })}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+                          <td>
+                            <span className={`badge ${isItemSeries ? "badge-coming" : "badge-pub"}`} style={{ textTransform: "uppercase", padding: "2px 8px" }}>
+                              {isItemSeries ? "Series" : "Movie"}
+                            </span>
+                          </td>
+                          <td>
+                            {Array.isArray(item.category) && item.category.length > 0 ? (
+                              <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                                {item.category.map((c, idx) => (
+                                  <span key={idx} style={{ background: "rgba(108,99,255,0.2)", color: "#9f99ff", padding: "2px 6px", borderRadius: 10, fontSize: "0.75rem", fontWeight: 500 }}>
+                                    {getCategoryName(c)}
+                                  </span>
+                                ))}
+                              </div>
+                            ) : (
+                              <span style={{ color: "var(--text-muted)", fontSize: "0.8rem" }}>—</span>
+                            )}
+                          </td>
+                          <td>{item.releaseYear}</td>
+                          <td>{item.rating}</td>
+                          <td><strong>{item.priority || 0}</strong></td>
+                          <td>
+                            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                              <span className={`badge ${isLocked(item) ? "badge-coming" : (item.isPublished !== false ? "badge-pub" : "badge-draft")}`}>
+                                {isLocked(item) ? "Coming Soon" : (item.isPublished !== false ? "Published" : "Draft")}
+                              </span>
+                              <label className="switch" style={{ margin: 0 }}>
+                                <input
+                                  type="checkbox"
+                                  checked={item.isPublished !== false}
+                                  onChange={() => handleTogglePublish(item, isItemSeries)}
+                                />
+                                <span className="slider round"></span>
+                              </label>
+                            </div>
+                          </td>
+                          <td>
+                            <div className="tbl-actions">
+                              <button className="icon-btn view" onClick={() => openView(item)} title="View">
+                                <Eye size={18} />
+                              </button>
+                              <button className="icon-btn edit" onClick={() => openEdit(item)} title="Edit">
+                                <Edit2 size={18} />
+                              </button>
+                              <button className="icon-btn del" onClick={() => handleDelete(item)} title="Delete">
+                                <Trash2 size={18} />
+                              </button>
+                              {isItemSeries && (
+                                <button className="btn btn-ghost eps-btn" onClick={() => handleSeriesClick(item)}>
+                                  <Tv size={14} /> Seasons
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -1606,7 +1782,7 @@ export default function Content() {
                   <div className="vp-hero">
                     <img src={getFullUrl(selectedItem.banner || selectedItem.poster)} alt="" className="vp-hero-img" />
                     <div className="vp-hero-overlay">
-                      <span className="vp-type-badge">{contentType === "movies" ? "MOVIE" : "SERIES"}</span>
+                      <span className="vp-type-badge">{(selectedItem.contentType === "series" || contentType === "series") ? "SERIES" : "MOVIE"}</span>
                       <h2 className="vp-title">{selectedItem.title}</h2>
                       <div className="vp-quick-meta">
                         <span><Calendar size={13} /> {selectedItem.releaseYear}</span>
@@ -1670,7 +1846,7 @@ export default function Content() {
                   </div>
 
                   {/* Full Movie */}
-                  {contentType === "movies" && (
+                  {(selectedItem.contentType === "movie" || contentType === "movies") && (
                     <div className="vp-section">
                       <div className="vp-section-label"><Film size={14} /> Full Movie</div>
                       {!isLocked(selectedItem) && (selectedItem.videoUrl || selectedItem.video) ? (
@@ -2087,7 +2263,7 @@ export default function Content() {
                       </div>
                       <input className="form-input" style={{ marginTop: 8 }} placeholder="Or Paste URL" value={uploadData.trailerUrl} onChange={e => handleUploadChange("trailerUrl", e.target.value)} />
                     </div>
-                    {contentType === "movies" && (
+                    {(editData.contentType === "movie" || (editData.contentType !== "series" && contentType === "movies")) && (
                       <div className="form-row">
                         <label className="form-label" style={{ opacity: isLocked(selectedItem) ? 0.5 : 1 }}>Full Movie Video</label>
                         <div className="file-input-wrapper">

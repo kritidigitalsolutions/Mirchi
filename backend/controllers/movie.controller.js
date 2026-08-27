@@ -1,4 +1,5 @@
 const Movie = require("../models/movie.model");
+const Interaction = require("../models/interaction.model");
 
 // ========================================
 // GET ALL MOVIES
@@ -109,7 +110,6 @@ const getMovieById = async (req, res) => {
 const toggleMovieLike = async (req, res) => {
   try {
     const userId = req.user.id;
-
     const movie = await Movie.findById(req.params.id);
 
     if (!movie) {
@@ -119,41 +119,41 @@ const toggleMovieLike = async (req, res) => {
       });
     }
 
-    const liked = movie.likes.includes(userId);
-    const disliked = movie.dislikes.includes(userId);
+    const existing = await Interaction.findOne({ user: userId, contentId: movie._id });
+    let liked = false;
 
-    // remove dislike if exists
-    if (disliked) {
-      movie.dislikes = movie.dislikes.filter(
-        id => id.toString() !== userId
-      );
-    }
-
-    if (liked) {
-      // unlike
-      movie.likes = movie.likes.filter(
-        id => id.toString() !== userId
-      );
+    if (existing && existing.type === "like") {
+      // User is unliking
+      await Interaction.deleteOne({ _id: existing._id });
+      movie.likes = Math.max((movie.likes || 0) - 1, 0);
+      liked = false;
     } else {
-      // like
-      movie.likes.push(userId);
+      // User is liking
+      if (existing && existing.type === "dislike") {
+        // Was disliked, change to like
+        existing.type = "like";
+        await existing.save();
+        movie.dislikes = Math.max((movie.dislikes || 0) - 1, 0);
+      } else {
+        // New like
+        await Interaction.create({ user: userId, contentId: movie._id, contentType: "movie", type: "like" });
+      }
+      movie.likes = (movie.likes || 0) + 1;
+      liked = true;
     }
 
     await movie.save();
 
     res.status(200).json({
       success: true,
-      message: liked
-        ? "Movie unliked"
-        : "Movie liked",
-      totalLikes: movie.likes.length,
-      totalDislikes: movie.dislikes.length,
-      liked: !liked,
+      message: !liked ? "Movie unliked" : "Movie liked",
+      totalLikes: movie.likes,
+      totalDislikes: movie.dislikes,
+      liked: liked,
     });
 
   } catch (error) {
     console.error("Toggle Movie Like Error:", error);
-
     res.status(500).json({
       success: false,
       message: "Server error",
@@ -168,7 +168,6 @@ const toggleMovieLike = async (req, res) => {
 const toggleMovieDislike = async (req, res) => {
   try {
     const userId = req.user.id;
-
     const movie = await Movie.findById(req.params.id);
 
     if (!movie) {
@@ -178,41 +177,41 @@ const toggleMovieDislike = async (req, res) => {
       });
     }
 
-    const liked = movie.likes.includes(userId);
-    const disliked = movie.dislikes.includes(userId);
+    const existing = await Interaction.findOne({ user: userId, contentId: movie._id });
+    let disliked = false;
 
-    // remove like if exists
-    if (liked) {
-      movie.likes = movie.likes.filter(
-        id => id.toString() !== userId
-      );
-    }
-
-    if (disliked) {
-      // remove dislike
-      movie.dislikes = movie.dislikes.filter(
-        id => id.toString() !== userId
-      );
+    if (existing && existing.type === "dislike") {
+      // User is removing dislike
+      await Interaction.deleteOne({ _id: existing._id });
+      movie.dislikes = Math.max((movie.dislikes || 0) - 1, 0);
+      disliked = false;
     } else {
-      // add dislike
-      movie.dislikes.push(userId);
+      // User is disliking
+      if (existing && existing.type === "like") {
+        // Was liked, change to dislike
+        existing.type = "dislike";
+        await existing.save();
+        movie.likes = Math.max((movie.likes || 0) - 1, 0);
+      } else {
+        // New dislike
+        await Interaction.create({ user: userId, contentId: movie._id, contentType: "movie", type: "dislike" });
+      }
+      movie.dislikes = (movie.dislikes || 0) + 1;
+      disliked = true;
     }
 
     await movie.save();
 
     res.status(200).json({
       success: true,
-      message: disliked
-        ? "Movie dislike removed"
-        : "Movie disliked",
-      totalLikes: movie.likes.length,
-      totalDislikes: movie.dislikes.length,
-      disliked: !disliked,
+      message: !disliked ? "Movie dislike removed" : "Movie disliked",
+      totalLikes: movie.likes,
+      totalDislikes: movie.dislikes,
+      disliked: disliked,
     });
 
   } catch (error) {
     console.error("Toggle Movie Dislike Error:", error);
-
     res.status(500).json({
       success: false,
       message: "Server error",

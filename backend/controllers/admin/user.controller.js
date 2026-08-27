@@ -248,18 +248,48 @@ exports.getUserGrowth = async (req, res) => {
         const daysOfWeek = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
         const growthData = [];
 
-        // Loop for the last 7 India calendar days.
-        for (let i = 6; i >= 0; i--) {
-            const { start: d, end: nextD } = getIndiaDayBounds(new Date(), -i);
-            const indiaDay = new Date(d.getTime() + INDIA_TIMEZONE_OFFSET_MS);
+        // Define the bounds for the last 7 days
+        const { start: earliestDate } = getIndiaDayBounds(new Date(), -6);
+        const { end: latestDate } = getIndiaDayBounds(new Date(), 0);
 
-            const count = await User.countDocuments({
-                createdAt: { $gte: d, $lt: nextD },
-            });
+        // Fetch counts using a single aggregation pipeline
+        const aggregationResult = await User.aggregate([
+            {
+                $match: {
+                    createdAt: { $gte: earliestDate, $lt: latestDate },
+                }
+            },
+            {
+                $group: {
+                    _id: {
+                        $dayOfWeek: {
+                            date: "$createdAt",
+                            timezone: "+05:30"
+                        }
+                    },
+                    count: { $sum: 1 }
+                }
+            }
+        ]);
+
+        // Map aggregation results to easily accessible dictionary { 1: count (Sun), 2: count (Mon)... }
+        const countsByDay = {};
+        aggregationResult.forEach(item => {
+            countsByDay[item._id] = item.count;
+        });
+
+        // Loop to construct sequential data in order of the last 7 days
+        for (let i = 6; i >= 0; i--) {
+            const { start: d } = getIndiaDayBounds(new Date(), -i);
+            const indiaDay = new Date(d.getTime() + INDIA_TIMEZONE_OFFSET_MS);
+            
+            // MongoDB $dayOfWeek returns 1 (Sunday) to 7 (Saturday)
+            const dayIndex = indiaDay.getUTCDay(); // 0 (Sun) to 6 (Sat)
+            const mongoDayOfWeek = dayIndex + 1;
 
             growthData.push({
-                day: daysOfWeek[indiaDay.getUTCDay()],
-                users: count,
+                day: daysOfWeek[dayIndex],
+                users: countsByDay[mongoDayOfWeek] || 0,
             });
         }
 

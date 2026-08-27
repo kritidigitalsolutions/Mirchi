@@ -81,4 +81,8 @@ authProvider: {
     }
 );
 
+// Indexes for performance (especially for dashboard analytics)
+userSchema.index({ createdAt: -1 });
+userSchema.index({ isBlocked: 1 });
+
 module.exports = mongoose.models.User || mongoose.model("User", userSchema);

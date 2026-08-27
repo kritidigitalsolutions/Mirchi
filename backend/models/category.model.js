@@ -24,7 +24,26 @@ const categorySchema = new mongoose.Schema(
     priority: {
       type: Number,
       default: 0
-    }
+    },
+
+    // Admin-curated content for this category row (saved independently of webpage module)
+    curatedContent: [
+      {
+        contentType: {
+          type: String,
+          enum: ["Movie", "Series"],
+          required: true
+        },
+        contentId: {
+          type: mongoose.Schema.Types.ObjectId,
+          required: true
+        },
+        position: {
+          type: Number,
+          default: 0
+        }
+      }
+    ]
   },
   { timestamps: true }
 );

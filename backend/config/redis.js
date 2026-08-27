@@ -3,11 +3,19 @@ const Redis = require("ioredis");
 const redis = new Redis({
   host: process.env.REDIS_HOST || "127.0.0.1",
   port: process.env.REDIS_PORT || 6379,
-  retryStrategy: (times) => Math.min(times * 50, 2000),
+  retryStrategy: (times) => {
+    // Stop retrying after 3 attempts to prevent infinite terminal spam if Redis is not running
+    if (times > 3) return null;
+    return Math.min(times * 50, 2000);
+  },
 });
 
+let errorLogged = false;
 redis.on("error", (err) => {
-  console.error("Redis Error:", err.message);
+  if (!errorLogged) {
+    console.error("Redis Error:", err.message, "(further connection errors will be suppressed)");
+    errorLogged = true;
+  }
 });
 
 const HOME_CACHE_KEY = "home_content_cache";

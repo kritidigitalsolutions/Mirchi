@@ -5,7 +5,8 @@ const {
   createCategory,
   getAllCategories,
   updateCategory,
-  deleteCategory
+  deleteCategory,
+  saveCuratedContent
 } = require("../../controllers/admin/category.controller");
 
 router.use(isAdmin, hasPermission("content", "categories"));
@@ -14,5 +15,6 @@ router.post("/", createCategory);
 router.get("/", getAllCategories);
 router.put("/:id", updateCategory);
 router.delete("/:id", deleteCategory);
+router.put("/:id/content", saveCuratedContent);
 
 module.exports = router;

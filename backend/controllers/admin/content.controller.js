@@ -36,19 +36,71 @@ const getContentStats = async (req, res) => {
 // ========================================
 const getAllContent = async (req, res) => {
   try {
-    const movies = await Movie.find().sort({ createdAt: -1 }).lean();
-    const series = await Series.find().sort({ createdAt: -1 }).lean();
+    const page = Number(req.query.page) || 1;
+    const hasLimit = req.query.limit !== undefined && req.query.limit !== "0" && req.query.limit !== "all";
+    const limit = hasLimit ? Number(req.query.limit) : 0;
+    const skip = hasLimit ? (page - 1) * limit : 0;
 
-    const formattedMovies = movies.map(m => ({ ...m, contentType: "movie" }));
-    const formattedSeries = series.map(s => ({ ...s, contentType: "series" }));
+    const query = {};
+    if (req.query.is18plus !== undefined) {
+      query.is18plus = req.query.is18plus === "true";
+    }
+    if (req.query.q) {
+      query.title = {
+        $regex: req.query.q,
+        $options: "i",
+      };
+    }
 
-    const allContent = [...formattedMovies, ...formattedSeries].sort((a, b) => 
+    // Get metadata (IDs and createdAt) for sorting and pagination in memory
+    const [moviesMeta, seriesMeta] = await Promise.all([
+      Movie.find(query, { _id: 1, createdAt: 1 }).sort({ createdAt: -1 }).lean(),
+      Series.find(query, { _id: 1, createdAt: 1 }).sort({ createdAt: -1 }).lean()
+    ]);
+
+    const formattedMovies = moviesMeta.map(m => ({ _id: m._id, createdAt: m.createdAt, type: "movie" }));
+    const formattedSeries = seriesMeta.map(s => ({ _id: s._id, createdAt: s.createdAt, type: "series" }));
+
+    // Combine and sort by createdAt descending
+    const allMeta = [...formattedMovies, ...formattedSeries].sort((a, b) => 
       new Date(b.createdAt) - new Date(a.createdAt)
     );
 
+    const total = allMeta.length;
+    const totalPages = limit > 0 ? Math.ceil(total / limit) : 1;
+
+    // Get the page slice
+    const pageMeta = limit > 0 ? allMeta.slice(skip, skip + limit) : allMeta;
+
+    // Group page elements by type to query details in bulk
+    const movieIds = pageMeta.filter(item => item.type === "movie").map(item => item._id);
+    const seriesIds = pageMeta.filter(item => item.type === "series").map(item => item._id);
+
+    const [moviesDetails, seriesDetails] = await Promise.all([
+      movieIds.length > 0 ? Movie.find({ _id: { $in: movieIds } }).lean() : [],
+      seriesIds.length > 0 ? Series.find({ _id: { $in: seriesIds } }).lean() : []
+    ]);
+
+    // Create lookup maps
+    const movieMap = new Map(moviesDetails.map(m => [m._id.toString(), { ...m, contentType: "movie" }]));
+    const seriesMap = new Map(seriesDetails.map(s => [s._id.toString(), { ...s, contentType: "series" }]));
+
+    // Construct the final ordered page content
+    const pageContent = pageMeta.map(item => {
+      const idStr = item._id.toString();
+      if (item.type === "movie") {
+        return movieMap.get(idStr);
+      } else {
+        return seriesMap.get(idStr);
+      }
+    }).filter(Boolean); // Filter out any nulls just in case
+
     return res.json({
       success: true,
-      content: allContent
+      total,
+      page,
+      pages: totalPages,
+      content: pageContent
     });
   } catch (error) {
     return res.status(500).json({

@@ -59,7 +59,7 @@ exports.createCategory = async (req, res) => {
 // ========================================
 exports.getAllCategories = async (req, res) => {
   try {
-    const categories = await Category.find().select("_id name slug priority isActive createdAt").sort({ priority: 1, name: 1 });
+    const categories = await Category.find().select("_id name slug priority isActive createdAt curatedContent").sort({ priority: 1, name: 1 });
 
     return res.status(200).json({
       success: true,
@@ -157,6 +157,40 @@ exports.deleteCategory = async (req, res) => {
     });
   } catch (error) {
     console.error("DELETE CATEGORY ERROR:", error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// ========================================
+// SAVE CURATED CONTENT FOR CATEGORY
+// ========================================
+exports.saveCuratedContent = async (req, res) => {
+  try {
+    const category = await Category.findById(req.params.id);
+    if (!category) {
+      return res.status(404).json({ success: false, message: "Category not found" });
+    }
+
+    const { items } = req.body; // [{ contentType: "Movie"|"Series", contentId: "..." }]
+    if (!Array.isArray(items)) {
+      return res.status(400).json({ success: false, message: "items must be an array" });
+    }
+
+    category.curatedContent = items.map((i, index) => ({
+      contentType: i.contentType,
+      contentId: i.contentId,
+      position: index + 1
+    }));
+
+    await category.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Curated content saved successfully",
+      count: category.curatedContent.length
+    });
+  } catch (error) {
+    console.error("SAVE CURATED CONTENT ERROR:", error);
     return res.status(500).json({ success: false, message: error.message });
   }
 };

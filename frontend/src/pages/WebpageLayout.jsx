@@ -3,9 +3,17 @@ import API from "../api/axios";
 import { useToast } from "../App";
 import "./WebpageLayout.css";
 import {
-  Plus, Trash2, ChevronLeft, ChevronRight, Search, Check, X,
+  Plus, Trash2, Edit2, Search, Check, X,
   LayoutGrid, Save, AlertCircle, PlayCircle, Sliders, ChevronDown, ChevronUp
 } from "lucide-react";
+
+const HideArrowsStyle = () => (
+  <style>{`
+    .wl-pos-input::-webkit-outer-spin-button,
+    .wl-pos-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+    .wl-pos-input { -moz-appearance: textfield; }
+  `}</style>
+);
 
 export default function WebpageLayout() {
   const { showToast } = useToast();
@@ -150,13 +158,33 @@ export default function WebpageLayout() {
     });
   };
 
-  const moveSectionItem = (secIdx, itemIdx, dir, e) => {
-    e.stopPropagation();
+  const moveSectionItemToPos = (secIdx, currentIdx, newPosVal) => {
+    let newPos = parseInt(newPosVal, 10) - 1;
+    if (isNaN(newPos)) return;
     setSections(prev => {
       const next = [...prev];
-      const sec = { ...next[secIdx], items: swap(next[secIdx].items, itemIdx, dir) };
-      next[secIdx] = sec;
+      const items = [...next[secIdx].items];
+      if (newPos < 0) newPos = 0;
+      if (newPos >= items.length) newPos = items.length - 1;
+      if (currentIdx === newPos) return prev;
+      const [moved] = items.splice(currentIdx, 1);
+      items.splice(newPos, 0, moved);
+      next[secIdx] = { ...next[secIdx], items };
       return next;
+    });
+  };
+
+  const moveBannerToPos = (currentIdx, newPosVal) => {
+    let newPos = parseInt(newPosVal, 10) - 1;
+    if (isNaN(newPos)) return;
+    setHeroBanners(prev => {
+      const items = [...prev];
+      if (newPos < 0) newPos = 0;
+      if (newPos >= items.length) newPos = items.length - 1;
+      if (currentIdx === newPos) return prev;
+      const [moved] = items.splice(currentIdx, 1);
+      items.splice(newPos, 0, moved);
+      return items;
     });
   };
 
@@ -235,18 +263,25 @@ export default function WebpageLayout() {
               <div className="wl-card-media" onClick={() => toggleItem(secIdx, item, true)} title="Click to deselect">
                 <img src={imgUrl(item.poster)} alt="" className="wl-poster" />
                 <div className="wl-card-badge wl-card-badge--check"><Check size={10} /></div>
-                <div className="wl-card-pos">#{idx + 1}</div>
+                <label className="wl-card-pos" onClick={e => e.stopPropagation()} style={{ display: 'flex', alignItems: 'center', background: 'var(--primary)', padding: '4px 8px', borderRadius: '6px', cursor: 'text', boxShadow: '0 2px 4px rgba(0,0,0,0.3)' }} title="Type to change order">
+                  <span style={{ marginRight: '4px', fontSize: '11px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Pos</span>
+                  <input
+                    className="wl-pos-input"
+                    key={`wlpos-${secIdx}-${item._id}-${idx}`}
+                    type="number"
+                    defaultValue={idx + 1}
+                    onBlur={e => moveSectionItemToPos(secIdx, idx, e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') e.target.blur(); }}
+                    style={{ width: '36px', background: 'rgba(255,255,255,0.2)', border: '1px dashed rgba(255,255,255,0.6)', color: '#fff', fontWeight: 'bold', fontSize: '13px', outline: 'none', textAlign: 'center', padding: '2px 0', borderRadius: '4px' }}
+                    min="1" max={selectedList.length}
+                  />
+                  <Edit2 size={12} style={{ marginLeft: '6px', opacity: 0.9 }} />
+                </label>
               </div>
               <div className="wl-card-body">
                 <p className="wl-card-title">{item.title}</p>
                 <div className="wl-card-foot">
                   <span className={`wl-type ${item.contentType}`}>{item.contentType}</span>
-                  <div className="wl-reorder">
-                    <button className="wl-arrow" disabled={idx === 0}
-                      onClick={e => moveSectionItem(secIdx, idx, -1, e)}><ChevronLeft size={13} /></button>
-                    <button className="wl-arrow" disabled={idx === selectedList.length - 1}
-                      onClick={e => moveSectionItem(secIdx, idx, 1, e)}><ChevronRight size={13} /></button>
-                  </div>
                 </div>
               </div>
             </div>
@@ -284,6 +319,7 @@ export default function WebpageLayout() {
   /* ── Main render ── */
   return (
     <div className="page-section">
+      <HideArrowsStyle />
       {/* Header */}
       <div className="pg-header">
         <div>
@@ -367,14 +403,20 @@ export default function WebpageLayout() {
                       <div className="wl-banner-foot">
                         <span className="wl-banner-title">{item.title}</span>
                         <div className="wl-banner-actions">
-                          <button className="wl-arrow" disabled={idx === 0}
-                            onClick={() => setHeroBanners(p => swap(p, idx, -1))}>
-                            <ChevronLeft size={15} />
-                          </button>
-                          <button className="wl-arrow" disabled={idx === heroBanners.length - 1}
-                            onClick={() => setHeroBanners(p => swap(p, idx, 1))}>
-                            <ChevronRight size={15} />
-                          </button>
+                          <label style={{ display: 'flex', alignItems: 'center', background: 'var(--primary)', padding: '4px 8px', borderRadius: '6px', cursor: 'text', gap: 4 }} title="Type position">
+                            <span style={{ fontSize: '11px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px', color: '#fff' }}>Pos</span>
+                            <input
+                              className="wl-pos-input"
+                              key={`bnpos-${idx}`}
+                              type="number"
+                              defaultValue={idx + 1}
+                              onBlur={e => moveBannerToPos(idx, e.target.value)}
+                              onKeyDown={e => { if (e.key === 'Enter') e.target.blur(); }}
+                              style={{ width: '32px', background: 'rgba(255,255,255,0.2)', border: '1px dashed rgba(255,255,255,0.6)', color: '#fff', fontWeight: 'bold', fontSize: '13px', outline: 'none', textAlign: 'center', padding: '2px 0', borderRadius: '4px' }}
+                              min="1" max={heroBanners.length}
+                            />
+                            <Edit2 size={11} style={{ color: '#fff', opacity: 0.9 }} />
+                          </label>
                           <button className="wl-arrow wl-arrow--del" onClick={() => removeBanner(idx)}>
                             <Trash2 size={15} />
                           </button>

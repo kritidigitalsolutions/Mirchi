@@ -20,7 +20,7 @@ const connectDB = async () => {
       serverSelectionTimeoutMS: 5000,
       connectTimeoutMS: 10000,
       socketTimeoutMS: 45000,
-      maxPoolSize: 100,
+      maxPoolSize: 25,
     });
 
     isConnected = connection.connections[0].readyState === 1;

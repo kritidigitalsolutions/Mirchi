@@ -21,13 +21,13 @@ const startServer = async () => {
     // Create Default Admin
     await createDefaultAdmin();
 
-    // Run Subscription Auto-Expiration Sync
-    await autoExpireAllSubscriptions();
-
-    // Periodically run auto-expire every hour
-    setInterval(async () => {
+    // Periodically run auto-expire every hour (only on primary PM2 instance to avoid race conditions)
+    if (!process.env.NODE_APP_INSTANCE || process.env.NODE_APP_INSTANCE === "0") {
       await autoExpireAllSubscriptions();
-    }, 60 * 60 * 1000);
+      setInterval(async ( ) => {
+        await autoExpireAllSubscriptions();
+      }, 60 * 60 * 1000);
+    }
 
     // Start Server
     const server = app.listen(PORT, "0.0.0.0", () => {

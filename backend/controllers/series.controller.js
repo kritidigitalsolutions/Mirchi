@@ -1,5 +1,6 @@
 const Series = require("../models/series.model");
 const Episode = require("../models/episode.model");
+const Interaction = require("../models/interaction.model");
 
 // ========================================
 // GET ALL SERIES
@@ -157,9 +158,7 @@ const getEpisodesBySeries = async (req, res) => {
 
 const toggleSeriesLike = async (req, res) => {
   try {
-
     const userId = req.user.id;
-
     const series = await Series.findById(req.params.id);
 
     if (!series) {
@@ -169,50 +168,40 @@ const toggleSeriesLike = async (req, res) => {
       });
     }
 
-    const liked = series.likes.some(
-      id => id.toString() === userId
-    );
+    const existing = await Interaction.findOne({ user: userId, contentId: series._id });
+    let liked = false;
 
-    const disliked = series.dislikes.some(
-      id => id.toString() === userId
-    );
-
-    // remove dislike
-    if (disliked) {
-      series.dislikes = series.dislikes.filter(
-        id => id.toString() !== userId
-      );
-    }
-
-    if (liked) {
-
-      // unlike
-      series.likes = series.likes.filter(
-        id => id.toString() !== userId
-      );
-
+    if (existing && existing.type === "like") {
+      // User is unliking
+      await Interaction.deleteOne({ _id: existing._id });
+      series.likes = Math.max((series.likes || 0) - 1, 0);
+      liked = false;
     } else {
-
-      // like
-      series.likes.push(userId);
+      // User is liking
+      if (existing && existing.type === "dislike") {
+        // Was disliked, change to like
+        existing.type = "like";
+        await existing.save();
+        series.dislikes = Math.max((series.dislikes || 0) - 1, 0);
+      } else {
+        // New like
+        await Interaction.create({ user: userId, contentId: series._id, contentType: "series", type: "like" });
+      }
+      series.likes = (series.likes || 0) + 1;
+      liked = true;
     }
 
     await series.save();
 
     return res.status(200).json({
       success: true,
-      message: liked
-        ? "Series unliked"
-        : "Series liked",
-      totalLikes: series.likes.length,
-      totalDislikes: series.dislikes.length,
-      liked: !liked,
+      message: !liked ? "Series unliked" : "Series liked",
+      totalLikes: series.likes,
+      totalDislikes: series.dislikes,
+      liked: liked,
     });
-
   } catch (error) {
-
     console.error("Toggle Series Like Error:", error);
-
     return res.status(500).json({
       success: false,
       message: "Server error",
@@ -226,9 +215,7 @@ const toggleSeriesLike = async (req, res) => {
 
 const toggleSeriesDislike = async (req, res) => {
   try {
-
     const userId = req.user.id;
-
     const series = await Series.findById(req.params.id);
 
     if (!series) {
@@ -238,50 +225,40 @@ const toggleSeriesDislike = async (req, res) => {
       });
     }
 
-    const liked = series.likes.some(
-      id => id.toString() === userId
-    );
+    const existing = await Interaction.findOne({ user: userId, contentId: series._id });
+    let disliked = false;
 
-    const disliked = series.dislikes.some(
-      id => id.toString() === userId
-    );
-
-    // remove like
-    if (liked) {
-      series.likes = series.likes.filter(
-        id => id.toString() !== userId
-      );
-    }
-
-    if (disliked) {
-
-      // remove dislike
-      series.dislikes = series.dislikes.filter(
-        id => id.toString() !== userId
-      );
-
+    if (existing && existing.type === "dislike") {
+      // User is removing dislike
+      await Interaction.deleteOne({ _id: existing._id });
+      series.dislikes = Math.max((series.dislikes || 0) - 1, 0);
+      disliked = false;
     } else {
-
-      // add dislike
-      series.dislikes.push(userId);
+      // User is disliking
+      if (existing && existing.type === "like") {
+        // Was liked, change to dislike
+        existing.type = "dislike";
+        await existing.save();
+        series.likes = Math.max((series.likes || 0) - 1, 0);
+      } else {
+        // New dislike
+        await Interaction.create({ user: userId, contentId: series._id, contentType: "series", type: "dislike" });
+      }
+      series.dislikes = (series.dislikes || 0) + 1;
+      disliked = true;
     }
 
     await series.save();
 
     return res.status(200).json({
       success: true,
-      message: disliked
-        ? "Series dislike removed"
-        : "Series disliked",
-      totalLikes: series.likes.length,
-      totalDislikes: series.dislikes.length,
-      disliked: !disliked,
+      message: !disliked ? "Series dislike removed" : "Series disliked",
+      totalLikes: series.likes,
+      totalDislikes: series.dislikes,
+      disliked: disliked,
     });
-
   } catch (error) {
-
     console.error("Toggle Series Dislike Error:", error);
-
     return res.status(500).json({
       success: false,
       message: "Server error",
