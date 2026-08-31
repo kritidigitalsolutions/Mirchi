@@ -663,6 +663,24 @@ export default function Content() {
   /* ===================== EDIT SAVE ===================== */
   const handleSave = async () => {
     if (!editData) return;
+
+    if (editData.releaseYear) {
+      const rYear = Number(editData.releaseYear);
+      if (isNaN(rYear) || rYear < 1800 || rYear > 2100) {
+        alert("Release year must be a valid 4-digit year between 1800 and 2100.");
+        return;
+      }
+    }
+
+    if (editData.releaseDate) {
+      const date = new Date(editData.releaseDate);
+      const rYear = date.getFullYear();
+      if (isNaN(date.getTime()) || rYear < 1800 || rYear > 2100) {
+        alert("Scheduled release date year must be between 1800 and 2100.");
+        return;
+      }
+    }
+
     setLoading(true);
     setUploadProgress(0);
     setUploadPhase("saving");
@@ -2002,7 +2020,18 @@ export default function Content() {
                     </div>
                     <div className="form-row">
                       <label className="form-label">Release Year</label>
-                      <input className="form-input" type="number" value={editData.releaseYear || ""} onChange={e => setEditData(s => ({ ...s, releaseYear: Number(e.target.value) }))} />
+                      <input
+                        className="form-input"
+                        type="number"
+                        value={editData.releaseYear || ""}
+                        onChange={e => {
+                          let val = e.target.value;
+                          if (val.length > 4) {
+                            val = val.slice(0, 4);
+                          }
+                          setEditData(s => ({ ...s, releaseYear: val === "" ? "" : Number(val) }));
+                        }}
+                      />
                     </div>
                     <div className="form-row">
                       <label className="form-label">Rating (0–10)</label>
@@ -2168,7 +2197,17 @@ export default function Content() {
                           className="form-input"
                           type="datetime-local"
                           value={editData.releaseDate || ""}
-                          onChange={e => setEditData(s => ({ ...s, releaseDate: e.target.value }))}
+                          onChange={e => {
+                            let val = e.target.value;
+                            if (val) {
+                              const parts = val.split("-");
+                              if (parts[0] && parts[0].length > 4) {
+                                parts[0] = parts[0].slice(0, 4);
+                                val = parts.join("-");
+                              }
+                            }
+                            setEditData(s => ({ ...s, releaseDate: val }));
+                          }}
                         />
                       </div>
                     )}

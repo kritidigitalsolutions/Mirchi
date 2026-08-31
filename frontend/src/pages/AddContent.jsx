@@ -202,10 +202,27 @@ export default function AddContent() {
     }
   };
 
-  // Submit
- // Submit
+// Submit
 const handleSubmit = async (e) => {
   e.preventDefault();
+
+  if (form.releaseYear) {
+    const rYear = Number(form.releaseYear);
+    if (isNaN(rYear) || rYear < 1800 || rYear > 2100) {
+      alert("Release year must be a valid 4-digit year between 1800 and 2100.");
+      return;
+    }
+  }
+
+  if (form.releaseDate) {
+    const date = new Date(form.releaseDate);
+    const rYear = date.getFullYear();
+    if (isNaN(date.getTime()) || rYear < 1800 || rYear > 2100) {
+      alert("Scheduled release date year must be between 1800 and 2100.");
+      return;
+    }
+  }
+
   setLoading(true);
   setUploadProgress(0);
   setUploadPhase("main");

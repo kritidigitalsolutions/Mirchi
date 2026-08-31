@@ -63,6 +63,27 @@ const addSeries = async (req, res) => {
       return res.status(400).json({ success: false, message: "Title is required" });
     }
 
+    if (req.body.releaseYear) {
+      const year = Number(req.body.releaseYear);
+      if (isNaN(year) || year < 1800 || year > 2100) {
+        return res.status(400).json({
+          success: false,
+          message: "Release year must be between 1800 and 2100",
+        });
+      }
+    }
+
+    if (req.body.releaseDate) {
+      const date = new Date(req.body.releaseDate);
+      const year = date.getFullYear();
+      if (isNaN(date.getTime()) || year < 1800 || year > 2100) {
+        return res.status(400).json({
+          success: false,
+          message: "Release date year must be between 1800 and 2100",
+        });
+      }
+    }
+
     const poster = req.files?.poster?.[0];
     const banner = req.files?.banner?.[0];
     const trailer = req.files?.trailer?.[0];
@@ -220,6 +241,27 @@ const updateSeries = async (req, res) => {
     const series = await Series.findById(id);
     if (!series) {
       return res.status(404).json({ success: false, message: "Series not found" });
+    }
+
+    if (req.body.releaseYear) {
+      const year = Number(req.body.releaseYear);
+      if (isNaN(year) || year < 1800 || year > 2100) {
+        return res.status(400).json({
+          success: false,
+          message: "Release year must be between 1800 and 2100",
+        });
+      }
+    }
+
+    if (req.body.releaseDate !== undefined && req.body.releaseDate !== "null" && req.body.releaseDate !== "") {
+      const date = new Date(req.body.releaseDate);
+      const year = date.getFullYear();
+      if (isNaN(date.getTime()) || year < 1800 || year > 2100) {
+        return res.status(400).json({
+          success: false,
+          message: "Release date year must be between 1800 and 2100",
+        });
+      }
     }
 
     const genre = parseJSON(req.body.genre, series.genre);
