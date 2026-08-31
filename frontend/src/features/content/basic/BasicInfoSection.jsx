@@ -313,7 +313,14 @@ export default function BasicInfoSection({
           <label className="form-label">
             SCHEDULED RELEASE DATE & TIME <span style={{ color: "#ff4d4d" }}>*</span>
           </label>
-          <input className="form-input-styled" type="datetime-local" name="releaseDate" onChange={ch} value={form.releaseDate} />
+          <input
+            className="form-input-styled"
+            type="datetime-local"
+            name="releaseDate"
+            onChange={ch}
+            value={form.releaseDate}
+            min={new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16)}
+          />
           <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginTop: "4px", display: "block" }}>
             Must be a future date within the next 10 years
           </span>

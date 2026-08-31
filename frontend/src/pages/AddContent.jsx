@@ -225,6 +225,10 @@ const handleSubmit = async (e) => {
       alert("Please set a complete Scheduled Release Date & Time when 'Coming Soon' is Yes.");
       return;
     }
+    if (date <= new Date()) {
+      alert("Scheduled release date & time must be a future date within the next 10 years.");
+      return;
+    }
     const rYear = date.getFullYear();
     const maxYear = new Date().getFullYear() + 10;
     if (rYear > maxYear) {
@@ -235,8 +239,8 @@ const handleSubmit = async (e) => {
     const date = new Date(form.releaseDate);
     const rYear = date.getFullYear();
     const maxYear = new Date().getFullYear() + 10;
-    if (!isNaN(date.getTime()) && rYear > maxYear) {
-      alert(`Scheduled release date year cannot be more than ${maxYear} (10 years from now).`);
+    if (isNaN(date.getTime()) || rYear < 1800 || rYear > maxYear) {
+      alert(`Scheduled release date year must be a valid 4-digit year between 1800 and ${maxYear}.`);
       return;
     }
   }

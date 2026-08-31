@@ -90,6 +90,12 @@ const addSeries = async (req, res) => {
           message: "Please set a complete Scheduled Release Date & Time when 'Coming Soon' is Yes.",
         });
       }
+      if (date <= new Date()) {
+        return res.status(400).json({
+          success: false,
+          message: "Scheduled release date & time must be a future date within the next 10 years.",
+        });
+      }
       if (year > maxYear) {
         return res.status(400).json({
           success: false,
@@ -294,6 +300,12 @@ const updateSeries = async (req, res) => {
         return res.status(400).json({
           success: false,
           message: "Please set a complete Scheduled Release Date & Time when 'Coming Soon' is Yes.",
+        });
+      }
+      if (date <= new Date()) {
+        return res.status(400).json({
+          success: false,
+          message: "Scheduled release date & time must be a future date within the next 10 years.",
         });
       }
       if (year > maxYear) {

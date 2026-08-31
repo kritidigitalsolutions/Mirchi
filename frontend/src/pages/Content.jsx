@@ -683,6 +683,10 @@ export default function Content() {
         alert("Please set a complete Scheduled Release Date & Time when 'Coming Soon' is Yes.");
         return;
       }
+      if (date <= new Date()) {
+        alert("Scheduled release date & time must be a future date within the next 10 years.");
+        return;
+      }
       const rYear = date.getFullYear();
       const maxYear = new Date().getFullYear() + 10;
       if (rYear > maxYear) {
@@ -693,8 +697,8 @@ export default function Content() {
       const date = new Date(editData.releaseDate);
       const rYear = date.getFullYear();
       const maxYear = new Date().getFullYear() + 10;
-      if (!isNaN(date.getTime()) && rYear > maxYear) {
-        alert(`Scheduled release date year cannot be more than ${maxYear} (10 years from now).`);
+      if (isNaN(date.getTime()) || rYear < 1800 || rYear > maxYear) {
+        alert(`Scheduled release date year must be a valid 4-digit year between 1800 and ${maxYear}.`);
         return;
       }
     }
@@ -2217,6 +2221,7 @@ export default function Content() {
                           className="form-input"
                           type="datetime-local"
                           value={editData.releaseDate || ""}
+                          min={new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16)}
                           onChange={e => {
                             let val = e.target.value;
                             if (val) {
