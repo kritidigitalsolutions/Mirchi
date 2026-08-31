@@ -3,11 +3,25 @@ import API, { BASE_URL } from "../api/axios";
 import { uploadToBunny, fetchBunnyConfig } from "../features/services/bunnyUpload";
 
 import "./Content.css";
+import "./ContentLight.css";
 import {
   Eye, Edit2, Trash2, X, Play, Film, Tv,
   Search, Plus, ChevronRight, ChevronLeft, ChevronDown, ChevronUp, User, Calendar, Video,
   Activity, Upload, Layers, Check
 } from "lucide-react";
+
+/* ===================== HELPER FOR LOCAL DATE/TIME INPUT ===================== */
+const formatLocalDateForInput = (dateString) => {
+  if (!dateString) return "";
+  const d = new Date(dateString);
+  if (isNaN(d.getTime())) return "";
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  const hours = String(d.getHours()).padStart(2, "0");
+  const minutes = String(d.getMinutes()).padStart(2, "0");
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+};
 
 /* ===================== PAGINATION COMPONENT ===================== */
 const Pagination = ({ currentPage, totalPages, totalItems, onPageChange }) => {
@@ -591,7 +605,11 @@ export default function Content() {
   /* ===================== MODALS ===================== */
   const openView = (item) => { setSelectedItem(item); setModalMode("view"); setEditData(null); };
   const openEdit = (item) => {
-    setEditData({ ...item, cast: item.cast ? [...item.cast.map(c => ({ ...c }))] : [] });
+    setEditData({
+      ...item,
+      releaseDate: item.releaseDate ? formatLocalDateForInput(item.releaseDate) : "",
+      cast: item.cast ? [...item.cast.map(c => ({ ...c }))] : []
+    });
     setSelectedItem(item);
     setModalMode("edit");
     setCastFiles({});
@@ -729,7 +747,11 @@ export default function Content() {
           return;
         }
 
-        formData.append(k, value);
+        if (k === "releaseDate") {
+          formData.append(k, new Date(value).toISOString());
+        } else {
+          formData.append(k, value);
+        }
       });
       if (editData.genre) formData.append("genre", JSON.stringify(editData.genre));
       if (editData.category) formData.append("category", JSON.stringify(editData.category));
@@ -2145,11 +2167,7 @@ export default function Content() {
                         <input
                           className="form-input"
                           type="datetime-local"
-                          value={
-                            editData.releaseDate && !isNaN(Date.parse(editData.releaseDate))
-                              ? new Date(editData.releaseDate).toISOString().slice(0, 16)
-                              : ""
-                          }
+                          value={editData.releaseDate || ""}
                           onChange={e => setEditData(s => ({ ...s, releaseDate: e.target.value }))}
                         />
                       </div>

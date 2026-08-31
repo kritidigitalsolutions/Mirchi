@@ -1749,6 +1749,7 @@ body.light .checkbox-row:has(input[name="isPremium"]) span {
     display: inline-block;
     width: 34px;
     height: 20px;
+    flex-shrink: 0;
 }
 .switch input {
     opacity: 0;

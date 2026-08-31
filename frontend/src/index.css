@@ -106,6 +106,19 @@ select {
   transition: border-color 0.25s, box-shadow 0.25s, background 0.3s;
 }
 
+/* Fix date/time picker icon for dark mode (default) and light mode */
+input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  cursor: pointer;
+}
+
+body.light input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+body.light input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(0);
+}
+
+
 /* ---- Global buttons ---- */
 button {
   font-family: inherit;

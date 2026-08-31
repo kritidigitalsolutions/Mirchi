@@ -1,0 +1,160 @@
+/* ============================================================
+   CONTENT PAGE — BRIGHT MODE (LIGHT THEME) STYLES
+   ============================================================ */
+
+/* Global Section styling */
+body.light .page-section {
+  color: #0f172a;
+}
+
+body.light .pg-title {
+  color: #0f172a !important;
+}
+
+body.light .pg-sub {
+  color: #64748b !important;
+}
+
+/* Modal Overlay & Box */
+body.light .modal-overlay {
+  background: rgba(15, 23, 42, 0.45) !important;
+  backdrop-filter: blur(8px) !important;
+}
+
+body.light .modal-box {
+  background: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.15) !important;
+}
+
+body.light .modal-head {
+  border-bottom: 1px solid #e2e8f0 !important;
+  background: #ffffff !important;
+}
+
+body.light .modal-head h3 {
+  color: #0f172a !important;
+}
+
+body.light .modal-close {
+  color: #64748b !important;
+}
+
+body.light .modal-close:hover {
+  background: #f1f5f9 !important;
+  color: #0f172a !important;
+}
+
+body.light .modal-body {
+  background: #ffffff !important;
+  color: #0f172a !important;
+}
+
+body.light .modal-footer {
+  border-top: 1px solid #e2e8f0 !important;
+  background: #f8fafc !important;
+}
+
+/* Form Styling */
+body.light .form-label {
+  color: #475569 !important;
+}
+
+body.light .form-input {
+  background: #f8fafc !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+body.light .form-input:focus {
+  background: #ffffff !important;
+  border-color: #e50914 !important;
+  box-shadow: 0 0 0 3px rgba(229, 9, 20, 0.1) !important;
+}
+
+body.light .form-input:disabled {
+  background: #f1f5f9 !important;
+  color: #94a3b8 !important;
+  border-color: #e2e8f0 !important;
+}
+
+body.light .form-input::placeholder {
+  color: #94a3b8 !important;
+}
+
+/* Category Chips */
+body.light .category-chip {
+  background: #f1f5f9 !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #475569 !important;
+}
+
+body.light .category-chip:hover {
+  background: #e2e8f0 !important;
+  border-color: #94a3b8 !important;
+  color: #0f172a !important;
+}
+
+body.light .category-chip.active {
+  background: rgba(229, 9, 20, 0.1) !important;
+  border-color: #e50914 !important;
+  color: #e50914 !important;
+  box-shadow: 0 0 12px rgba(229, 9, 20, 0.15) !important;
+}
+
+/* Age Classification / Content Type Toggle buttons */
+body.light .content-type-toggle {
+  background: #f1f5f9 !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+/* Buttons in modal */
+body.light .btn-ghost {
+  background: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #475569 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02) !important;
+}
+
+body.light .btn-ghost:hover {
+  background: #f1f5f9 !important;
+  color: #0f172a !important;
+}
+
+/* Cast Section and Items */
+body.light .cast-section {
+  border-top: 1px solid #e2e8f0 !important;
+  padding-top: 15px !important;
+}
+
+body.light .cast-edit-row {
+  background: #f8fafc !important;
+  border: 1px solid #e2e8f0 !important;
+}
+
+body.light .cast-img-placeholder {
+  background: #e2e8f0 !important;
+  color: #64748b !important;
+}
+
+body.light .cast-file-label {
+  background: rgba(15, 23, 42, 0.6) !important;
+  color: #ffffff !important;
+}
+
+body.light .icon-btn {
+  background: #f1f5f9 !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #475569 !important;
+}
+
+body.light .icon-btn:hover {
+  background: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+body.light .icon-btn.del:hover {
+  background: #fee2e2 !important;
+  color: #b91c1c !important;
+  border-color: #fca5a5 !important;
+}
