@@ -66,13 +66,39 @@ const addMovie = async (req, res) => {
       }
     }
 
-    if (req.body.releaseDate) {
-      const date = new Date(req.body.releaseDate);
-      const year = date.getFullYear();
-      if (isNaN(date.getTime()) || year < 1800 || year > 2100) {
+    const isComingSoonAdd = req.body.isComingSoon === "true" || req.body.isComingSoon === true;
+    if (isComingSoonAdd) {
+      if (!req.body.releaseDate || req.body.releaseDate === "null" || req.body.releaseDate === "") {
         return res.status(400).json({
           success: false,
-          message: "Release date year must be between 1800 and 2100",
+          message: "Please set a complete Scheduled Release Date & Time when 'Coming Soon' is Yes.",
+        });
+      }
+      const date = new Date(req.body.releaseDate);
+      const year = date.getFullYear();
+      const maxYear = new Date().getFullYear() + 10;
+      if (isNaN(date.getTime())) {
+        return res.status(400).json({
+          success: false,
+          message: "Please set a complete Scheduled Release Date & Time when 'Coming Soon' is Yes.",
+        });
+      }
+      if (year > maxYear) {
+        return res.status(400).json({
+          success: false,
+          message: `Scheduled release date year cannot be more than ${maxYear} (10 years from now).`,
+        });
+      }
+    } else if (req.body.releaseDate && req.body.releaseDate !== "null" && req.body.releaseDate !== "") {
+      const date = new Date(req.body.releaseDate);
+      const year = date.getFullYear();
+      const maxYear = new Date().getFullYear() + 10;
+      if (isNaN(date.getTime()) || year < 1800 || year > maxYear) {
+        return res.status(400).json({
+          success: false,
+          message: year > maxYear
+            ? `Scheduled release date year cannot be more than ${maxYear} (10 years from now).`
+            : "Scheduled release date year must be valid",
         });
       }
     }
@@ -376,13 +402,39 @@ const updateMovie = async (req, res) => {
       }
     }
 
-    if (req.body.releaseDate !== undefined && req.body.releaseDate !== "null" && req.body.releaseDate !== "") {
-      const date = new Date(req.body.releaseDate);
-      const year = date.getFullYear();
-      if (isNaN(date.getTime()) || year < 1800 || year > 2100) {
+    const isComingSoonUpdate = req.body.isComingSoon === "true" || req.body.isComingSoon === true;
+    if (isComingSoonUpdate) {
+      if (!req.body.releaseDate || req.body.releaseDate === "null" || req.body.releaseDate === "") {
         return res.status(400).json({
           success: false,
-          message: "Release date year must be between 1800 and 2100",
+          message: "Please set a complete Scheduled Release Date & Time when 'Coming Soon' is Yes.",
+        });
+      }
+      const date = new Date(req.body.releaseDate);
+      const year = date.getFullYear();
+      const maxYear = new Date().getFullYear() + 10;
+      if (isNaN(date.getTime())) {
+        return res.status(400).json({
+          success: false,
+          message: "Please set a complete Scheduled Release Date & Time when 'Coming Soon' is Yes.",
+        });
+      }
+      if (year > maxYear) {
+        return res.status(400).json({
+          success: false,
+          message: `Scheduled release date year cannot be more than ${maxYear} (10 years from now).`,
+        });
+      }
+    } else if (req.body.releaseDate !== undefined && req.body.releaseDate !== "null" && req.body.releaseDate !== "") {
+      const date = new Date(req.body.releaseDate);
+      const year = date.getFullYear();
+      const maxYear = new Date().getFullYear() + 10;
+      if (isNaN(date.getTime()) || year < 1800 || year > maxYear) {
+        return res.status(400).json({
+          success: false,
+          message: year > maxYear
+            ? `Scheduled release date year cannot be more than ${maxYear} (10 years from now).`
+            : "Release date year must be valid",
         });
       }
     }
@@ -442,6 +494,11 @@ const updateMovie = async (req, res) => {
     movie.isComingSoon =
       req.body.isComingSoon === "true";
 
+    // If coming soon is turned off, clear the release date
+    if (!movie.isComingSoon) {
+      movie.releaseDate = null;
+    }
+
     movie.isPremium =
       req.body.isPremium === "true";
 
@@ -454,9 +511,9 @@ const updateMovie = async (req, res) => {
     if (req.body.isHide !== undefined) {
       movie.isHide = req.body.isHide === "true" || req.body.isHide === true;
     }
-    if (!movie.is18plus || movie.allAges) {
+    // If allAges is explicitly true, enforce non-adult state
+    if (movie.allAges) {
       movie.isHide = false;
-      movie.allAges = true;
       movie.is18plus = false;
     }
     if (req.body.isPublished !== undefined) {

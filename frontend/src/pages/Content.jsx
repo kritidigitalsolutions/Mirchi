@@ -672,11 +672,29 @@ export default function Content() {
       }
     }
 
-    if (editData.releaseDate) {
+    const isComingSoon = editData.isComingSoon === true || editData.isComingSoon === "true" || editData.isComingSoon === "yes";
+    if (isComingSoon) {
+      if (!editData.releaseDate) {
+        alert("Please set a complete Scheduled Release Date & Time when 'Coming Soon' is Yes.");
+        return;
+      }
+      const date = new Date(editData.releaseDate);
+      if (isNaN(date.getTime())) {
+        alert("Please set a complete Scheduled Release Date & Time when 'Coming Soon' is Yes.");
+        return;
+      }
+      const rYear = date.getFullYear();
+      const maxYear = new Date().getFullYear() + 10;
+      if (rYear > maxYear) {
+        alert(`Scheduled release date year cannot be more than ${maxYear} (10 years from now).`);
+        return;
+      }
+    } else if (editData.releaseDate) {
       const date = new Date(editData.releaseDate);
       const rYear = date.getFullYear();
-      if (isNaN(date.getTime()) || rYear < 1800 || rYear > 2100) {
-        alert("Scheduled release date year must be between 1800 and 2100.");
+      const maxYear = new Date().getFullYear() + 10;
+      if (!isNaN(date.getTime()) && rYear > maxYear) {
+        alert(`Scheduled release date year cannot be more than ${maxYear} (10 years from now).`);
         return;
       }
     }
@@ -2102,7 +2120,7 @@ export default function Content() {
                     </div>
                     <div className="form-row">
                       <label className="form-label">Coming Soon</label>
-                      <select className="form-input" value={editData.isComingSoon ? "yes" : "no"} onChange={e => setEditData(s => ({ ...s, isComingSoon: e.target.value === "yes" }))}>
+                      <select className="form-input" value={editData.isComingSoon ? "yes" : "no"} onChange={e => setEditData(s => ({ ...s, isComingSoon: e.target.value === "yes", releaseDate: e.target.value === "yes" ? s.releaseDate : "" }))}>
                         <option value="no">No</option>
                         <option value="yes">Yes</option>
                       </select>
@@ -2192,7 +2210,9 @@ export default function Content() {
                     </div>
                     {editData.isComingSoon && (
                       <div className="form-row">
-                        <label className="form-label">Release Date & Time</label>
+                        <label className="form-label">
+                          SCHEDULED RELEASE DATE & TIME <span style={{ color: "#ff4d4d" }}>*</span>
+                        </label>
                         <input
                           className="form-input"
                           type="datetime-local"
@@ -2209,6 +2229,9 @@ export default function Content() {
                             setEditData(s => ({ ...s, releaseDate: val }));
                           }}
                         />
+                        <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginTop: "4px", display: "block" }}>
+                          Must be a future date within the next 10 years
+                        </span>
                       </div>
                     )}
 

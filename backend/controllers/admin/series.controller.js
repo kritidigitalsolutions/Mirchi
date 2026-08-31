@@ -73,13 +73,39 @@ const addSeries = async (req, res) => {
       }
     }
 
-    if (req.body.releaseDate) {
-      const date = new Date(req.body.releaseDate);
-      const year = date.getFullYear();
-      if (isNaN(date.getTime()) || year < 1800 || year > 2100) {
+    const isComingSoonAdd = req.body.isComingSoon === "true" || req.body.isComingSoon === true;
+    if (isComingSoonAdd) {
+      if (!req.body.releaseDate || req.body.releaseDate === "null" || req.body.releaseDate === "") {
         return res.status(400).json({
           success: false,
-          message: "Release date year must be between 1800 and 2100",
+          message: "Please set a complete Scheduled Release Date & Time when 'Coming Soon' is Yes.",
+        });
+      }
+      const date = new Date(req.body.releaseDate);
+      const year = date.getFullYear();
+      const maxYear = new Date().getFullYear() + 10;
+      if (isNaN(date.getTime())) {
+        return res.status(400).json({
+          success: false,
+          message: "Please set a complete Scheduled Release Date & Time when 'Coming Soon' is Yes.",
+        });
+      }
+      if (year > maxYear) {
+        return res.status(400).json({
+          success: false,
+          message: `Scheduled release date year cannot be more than ${maxYear} (10 years from now).`,
+        });
+      }
+    } else if (req.body.releaseDate && req.body.releaseDate !== "null" && req.body.releaseDate !== "") {
+      const date = new Date(req.body.releaseDate);
+      const year = date.getFullYear();
+      const maxYear = new Date().getFullYear() + 10;
+      if (isNaN(date.getTime()) || year < 1800 || year > maxYear) {
+        return res.status(400).json({
+          success: false,
+          message: year > maxYear
+            ? `Scheduled release date year cannot be more than ${maxYear} (10 years from now).`
+            : "Release date year must be valid",
         });
       }
     }
@@ -253,13 +279,39 @@ const updateSeries = async (req, res) => {
       }
     }
 
-    if (req.body.releaseDate !== undefined && req.body.releaseDate !== "null" && req.body.releaseDate !== "") {
-      const date = new Date(req.body.releaseDate);
-      const year = date.getFullYear();
-      if (isNaN(date.getTime()) || year < 1800 || year > 2100) {
+    const isComingSoonUpdate = req.body.isComingSoon === "true" || req.body.isComingSoon === true;
+    if (isComingSoonUpdate) {
+      if (!req.body.releaseDate || req.body.releaseDate === "null" || req.body.releaseDate === "") {
         return res.status(400).json({
           success: false,
-          message: "Release date year must be between 1800 and 2100",
+          message: "Please set a complete Scheduled Release Date & Time when 'Coming Soon' is Yes.",
+        });
+      }
+      const date = new Date(req.body.releaseDate);
+      const year = date.getFullYear();
+      const maxYear = new Date().getFullYear() + 10;
+      if (isNaN(date.getTime())) {
+        return res.status(400).json({
+          success: false,
+          message: "Please set a complete Scheduled Release Date & Time when 'Coming Soon' is Yes.",
+        });
+      }
+      if (year > maxYear) {
+        return res.status(400).json({
+          success: false,
+          message: `Scheduled release date year cannot be more than ${maxYear} (10 years from now).`,
+        });
+      }
+    } else if (req.body.releaseDate !== undefined && req.body.releaseDate !== "null" && req.body.releaseDate !== "") {
+      const date = new Date(req.body.releaseDate);
+      const year = date.getFullYear();
+      const maxYear = new Date().getFullYear() + 10;
+      if (isNaN(date.getTime()) || year < 1800 || year > maxYear) {
+        return res.status(400).json({
+          success: false,
+          message: year > maxYear
+            ? `Scheduled release date year cannot be more than ${maxYear} (10 years from now).`
+            : "Release date year must be valid",
         });
       }
     }
@@ -279,7 +331,8 @@ const updateSeries = async (req, res) => {
     }
     if (req.body.rating) series.rating = req.body.rating;
     series.isComingSoon = req.body.isComingSoon === "true";
-    if (!series.isComingSoon && req.body.releaseDate === undefined) {
+    // Always clear release date if coming soon is turned off
+    if (!series.isComingSoon) {
       series.releaseDate = null;
     }
     series.isPremium = req.body.isPremium === "true";
@@ -292,9 +345,9 @@ const updateSeries = async (req, res) => {
     if (req.body.isHide !== undefined) {
       series.isHide = req.body.isHide === "true" || req.body.isHide === true;
     }
-    if (!series.is18plus || series.allAges) {
+    // If allAges is explicitly true, enforce non-adult state
+    if (series.allAges) {
       series.isHide = false;
-      series.allAges = true;
       series.is18plus = false;
     }
     if (req.body.isPublished !== undefined) {

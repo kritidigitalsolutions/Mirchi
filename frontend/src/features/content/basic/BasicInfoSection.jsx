@@ -310,8 +310,13 @@ export default function BasicInfoSection({
 
       {form.isComingSoon && (
         <div className="form-row" style={{ marginTop: 20, animation: "pageIn 0.3s ease" }}>
-          <label className="form-label">Scheduled Release Date & Time</label>
-          <input className="form-input-styled" type="datetime-local" name="releaseDate" onChange={ch} value={form.releaseDate} required />
+          <label className="form-label">
+            SCHEDULED RELEASE DATE & TIME <span style={{ color: "#ff4d4d" }}>*</span>
+          </label>
+          <input className="form-input-styled" type="datetime-local" name="releaseDate" onChange={ch} value={form.releaseDate} />
+          <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginTop: "4px", display: "block" }}>
+            Must be a future date within the next 10 years
+          </span>
         </div>
       )}
     </div>

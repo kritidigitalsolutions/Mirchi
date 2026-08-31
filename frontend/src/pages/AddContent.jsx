@@ -214,11 +214,29 @@ const handleSubmit = async (e) => {
     }
   }
 
-  if (form.releaseDate) {
+  const isComingSoon = form.isComingSoon === true || form.isComingSoon === "true" || form.isComingSoon === "yes";
+  if (isComingSoon) {
+    if (!form.releaseDate) {
+      alert("Please set a complete Scheduled Release Date & Time when 'Coming Soon' is Yes.");
+      return;
+    }
+    const date = new Date(form.releaseDate);
+    if (isNaN(date.getTime())) {
+      alert("Please set a complete Scheduled Release Date & Time when 'Coming Soon' is Yes.");
+      return;
+    }
+    const rYear = date.getFullYear();
+    const maxYear = new Date().getFullYear() + 10;
+    if (rYear > maxYear) {
+      alert(`Scheduled release date year cannot be more than ${maxYear} (10 years from now).`);
+      return;
+    }
+  } else if (form.releaseDate) {
     const date = new Date(form.releaseDate);
     const rYear = date.getFullYear();
-    if (isNaN(date.getTime()) || rYear < 1800 || rYear > 2100) {
-      alert("Scheduled release date year must be between 1800 and 2100.");
+    const maxYear = new Date().getFullYear() + 10;
+    if (!isNaN(date.getTime()) && rYear > maxYear) {
+      alert(`Scheduled release date year cannot be more than ${maxYear} (10 years from now).`);
       return;
     }
   }
