@@ -248,54 +248,53 @@ exports.getUserGrowth = async (req, res) => {
         const daysOfWeek = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
         const growthData = [];
 
-        // Define the bounds for the last 7 days
-        const { start: earliestDate } = getIndiaDayBounds(new Date(), -6);
-        const { end: latestDate } = getIndiaDayBounds(new Date(), 0);
+        const now = new Date();
+        const indiaNow = new Date(now.getTime() + INDIA_TIMEZONE_OFFSET_MS);
+        const dayOfWeek = indiaNow.getUTCDay();
+        const { start: currentWeekStart } = getIndiaDayBounds(now, -dayOfWeek);
+        const { start: previousWeekStart } = getIndiaDayBounds(now, -dayOfWeek - 7);
 
-        // Fetch counts using a single aggregation pipeline
-        const aggregationResult = await User.aggregate([
+        const [currentWeekResult, previousWeekResult] = await Promise.all([
+            User.aggregate([
             {
                 $match: {
-                    createdAt: { $gte: earliestDate, $lt: latestDate },
+                    createdAt: { $gte: currentWeekStart, $lte: now },
                 }
             },
             {
                 $group: {
                     _id: {
-                        $dayOfWeek: {
-                            date: "$createdAt",
-                            timezone: "+05:30"
-                        }
+                        $dateToString: { format: "%Y-%m-%d", date: "$createdAt", timezone: "+05:30" }
                     },
                     count: { $sum: 1 }
                 }
             }
+            ]),
+            User.countDocuments({ createdAt: { $gte: previousWeekStart, $lt: currentWeekStart } }),
         ]);
 
-        // Map aggregation results to easily accessible dictionary { 1: count (Sun), 2: count (Mon)... }
         const countsByDay = {};
-        aggregationResult.forEach(item => {
+        currentWeekResult.forEach(item => {
             countsByDay[item._id] = item.count;
         });
 
-        // Loop to construct sequential data in order of the last 7 days
-        for (let i = 6; i >= 0; i--) {
-            const { start: d } = getIndiaDayBounds(new Date(), -i);
-            const indiaDay = new Date(d.getTime() + INDIA_TIMEZONE_OFFSET_MS);
-            
-            // MongoDB $dayOfWeek returns 1 (Sunday) to 7 (Saturday)
-            const dayIndex = indiaDay.getUTCDay(); // 0 (Sun) to 6 (Sat)
-            const mongoDayOfWeek = dayIndex + 1;
+        for (let i = 0; i < 7; i++) {
+            const { start: dayStart } = getIndiaDayBounds(currentWeekStart, i);
+            const indiaDay = new Date(dayStart.getTime() + INDIA_TIMEZONE_OFFSET_MS);
+            const dayIndex = indiaDay.getUTCDay();
+            const dateKey = `${indiaDay.getUTCFullYear()}-${String(indiaDay.getUTCMonth() + 1).padStart(2, "0")}-${String(indiaDay.getUTCDate()).padStart(2, "0")}`;
 
             growthData.push({
                 day: daysOfWeek[dayIndex],
-                users: countsByDay[mongoDayOfWeek] || 0,
+                users: countsByDay[dateKey] || 0,
             });
         }
 
         res.status(200).json({
             success: true,
             data: growthData,
+            currentWeekUsers: growthData.reduce((sum, item) => sum + item.users, 0),
+            previousWeekUsers: previousWeekResult,
         });
     } catch (error) {
         console.error("Get User Growth Error:", error);

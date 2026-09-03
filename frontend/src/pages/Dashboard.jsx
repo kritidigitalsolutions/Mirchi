@@ -45,6 +45,7 @@ export default function Dashboard() {
     totalSubscribedUsers: 0,
     totalNotSubscribedUsers: 0,
     expirySubscriptionCount: 0,
+    churnRate: 0,
   });
   const [registrationStats, setRegistrationStats] = useState({
     todayRegistration: 0,
@@ -62,6 +63,7 @@ export default function Dashboard() {
 
   const [loading, setLoading] = useState(true);
   const [growthData, setGrowthData] = useState([]);
+  const [growthComparison, setGrowthComparison] = useState({ currentWeekUsers: 0, previousWeekUsers: 0 });
 
   const GROWTH = growthData.length ? growthData : [];
 
@@ -99,11 +101,12 @@ export default function Dashboard() {
     try {
       const response = await API.get("/admin/user/registration-stats");
       if (response?.data) {
-        setRegistrationStats(response.data.data || {
-          todayRegistration: 0,
-          yesterdayRegistration: 0,
-          totalRegistration: 0,
-        });
+        const registrationData = response.data.data || {};
+        setRegistrationStats((current) => ({
+          ...current,
+          todayRegistration: registrationData.todayRegistration || 0,
+          yesterdayRegistration: registrationData.yesterdayRegistration || 0,
+        }));
       }
     } catch (err) {
       console.log("Registration stats refresh error:", err);
@@ -131,6 +134,10 @@ export default function Dashboard() {
         setUsers(uData?.users || uData?.data || uData || []);
         setTotalUsers(uData?.count || uData?.pagination?.totalUsers || 0);
         setActiveUsersCount(uData?.stats?.activeUsers || 0);
+        setRegistrationStats((current) => ({
+          ...current,
+          totalRegistration: uData?.count || uData?.pagination?.totalUsers || 0,
+        }));
       }
 
       if (sRes.status === "fulfilled" && sRes.value && sRes.value.data) {
@@ -144,6 +151,10 @@ export default function Dashboard() {
 
       if (gRes.status === "fulfilled" && gRes.value && gRes.value.data) {
         setGrowthData(gRes.value.data.data || []);
+        setGrowthComparison({
+          currentWeekUsers: gRes.value.data.currentWeekUsers || 0,
+          previousWeekUsers: gRes.value.data.previousWeekUsers || 0,
+        });
       }
 
       if (subStatsRes.status === "fulfilled" && subStatsRes.value && subStatsRes.value.data) {
@@ -151,6 +162,7 @@ export default function Dashboard() {
           totalSubscribedUsers: 0,
           totalNotSubscribedUsers: 0,
           expirySubscriptionCount: 0,
+          churnRate: 0,
         });
       }
 
@@ -166,11 +178,12 @@ export default function Dashboard() {
       }
 
       if (regStatsRes.status === "fulfilled" && regStatsRes.value && regStatsRes.value.data) {
-        setRegistrationStats(regStatsRes.value.data.data || {
-          todayRegistration: 0,
-          yesterdayRegistration: 0,
-          totalRegistration: 0,
-        });
+        const registrationData = regStatsRes.value.data.data || {};
+        setRegistrationStats((current) => ({
+          ...current,
+          todayRegistration: registrationData.todayRegistration || 0,
+          yesterdayRegistration: registrationData.yesterdayRegistration || 0,
+        }));
       }
     } catch (err) {
       console.log("Dashboard fetch error:", err);
@@ -199,13 +212,13 @@ export default function Dashboard() {
     if (!growthData || growthData.length === 0 || !totalUsers) {
       return "0% this week";
     }
-    const newUsersThisWeek = growthData.reduce((sum, item) => sum + (item.users || 0), 0);
-    const usersBeforeThisWeek = totalUsers - newUsersThisWeek;
-    if (usersBeforeThisWeek <= 0) {
-      return "↑ +100% this week";
+    const currentWeek = growthComparison.currentWeekUsers;
+    const previousWeek = growthComparison.previousWeekUsers;
+    if (!previousWeek) {
+      return currentWeek ? "↑ new users this week" : "0% this week";
     }
-    const pct = ((newUsersThisWeek / usersBeforeThisWeek) * 100).toFixed(1);
-    return `↑ +${pct}% this week`;
+    const pct = (((currentWeek - previousWeek) / previousWeek) * 100).toFixed(1);
+    return `${pct >= 0 ? "↑ +" : "↓ "}${Math.abs(pct)}% vs last week`;
   };
 
   const getContentLibraryTrend = () => {
@@ -254,11 +267,7 @@ export default function Dashboard() {
   };
 
   const getExpirySubscriptionTrend = () => {
-    const expired = subscriptionStats.expirySubscriptionCount || 0;
-    const sub = subscriptionStats.totalSubscribedUsers || 0;
-    const totalSubs = expired + sub;
-    if (!totalSubs) return "0% churn rate";
-    const pct = ((expired / totalSubs) * 100).toFixed(1);
+    const pct = Number(subscriptionStats.churnRate || 0).toFixed(1);
     return `↓ ${pct}% churn rate`;
   };
 
@@ -333,7 +342,7 @@ export default function Dashboard() {
         {canAccessUsers && (
           <div className="stat-card s-green">
             <div className="stat-icon"><Radio size={32} /></div>
-            <div className="stat-label">Active Users</div>
+              <div className="stat-label">Unblocked Users</div>
             <div className="stat-value">{loading ? "..." : activeUsersCount}</div>
             <div className="stat-trend up">
               {totalUsers ? `↑ ${((activeUsersCount / totalUsers) * 100).toFixed(1)}% of total` : "Live now"}
@@ -390,7 +399,7 @@ export default function Dashboard() {
             </div>
             <div className="stat-card s-orange">
               <div className="stat-icon"><Clock3 size={28} /></div>
-              <div className="stat-label">Expiry Subscription counts</div>
+              <div className="stat-label">Expired Users</div>
               <div className="stat-value">{loading ? "..." : subscriptionStats.expirySubscriptionCount}</div>
               <div className="stat-trend down">{getExpirySubscriptionTrend()}</div>
             </div>

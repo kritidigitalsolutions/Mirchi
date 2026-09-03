@@ -66,7 +66,7 @@ exports.getSubscriptionStats = async (req, res) => {
     const [
       totalUsers,
       activeSubscriptionUsers,
-      expiredSubscriptionCount,
+      expiredSubscriptionUsers,
     ] = await Promise.all([
       User.countDocuments(),
       Subscription.distinct("user", {
@@ -75,12 +75,16 @@ exports.getSubscriptionStats = async (req, res) => {
           $gte: now,
         },
       }),
-      Subscription.countDocuments({
+      Subscription.distinct("user", {
         status: "expired",
       }),
     ]);
 
     const totalSubscribedUsers = activeSubscriptionUsers.length;
+    const activeUserIds = new Set(activeSubscriptionUsers.map((id) => id.toString()));
+    const expiredUserCount = expiredSubscriptionUsers.filter(
+      (id) => !activeUserIds.has(id.toString())
+    ).length;
     const totalNotSubscribedUsers = Math.max(
       totalUsers - totalSubscribedUsers,
       0
@@ -91,7 +95,10 @@ exports.getSubscriptionStats = async (req, res) => {
       data: {
         totalSubscribedUsers,
         totalNotSubscribedUsers,
-        expirySubscriptionCount: expiredSubscriptionCount,
+        expirySubscriptionCount: expiredUserCount,
+        churnRate: totalSubscribedUsers + expiredUserCount
+          ? (expiredUserCount / (totalSubscribedUsers + expiredUserCount)) * 100
+          : 0,
       },
     });
   } catch (err) {
@@ -128,7 +135,8 @@ exports.getIncomeStats = async (req, res) => {
     // auto cleanup
     await expireOldSubscriptions();
 
-    const { start: startOfToday, end: startOfTomorrow } = getIndiaDayBounds(new Date(), 0);
+    const now = new Date();
+    const { start: startOfToday } = getIndiaDayBounds(now, 0);
     const { start: startOfYesterday } = getIndiaDayBounds(new Date(), -1);
 
     const indiaNow = new Date(Date.now() + INDIA_TIMEZONE_OFFSET_MS);
@@ -187,7 +195,7 @@ exports.getIncomeStats = async (req, res) => {
         ...baseMatch,
         createdAt: {
           $gte: startOfToday,
-          $lt: startOfTomorrow,
+          $lt: now,
         },
       }),
       sumAmount({
@@ -201,21 +209,21 @@ exports.getIncomeStats = async (req, res) => {
         ...baseMatch,
         createdAt: {
           $gte: startOfWeek,
-          $lt: startOfTomorrow,
+          $lt: now,
         },
       }),
       sumAmount({
         ...baseMatch,
         createdAt: {
           $gte: startOfMonth,
-          $lt: startOfTomorrow,
+          $lt: now,
         },
       }),
       sumAmount({
         ...baseMatch,
         createdAt: {
           $gte: startOfYear,
-          $lt: startOfTomorrow,
+          $lt: now,
         },
       }),
       sumAmount(baseMatch),
