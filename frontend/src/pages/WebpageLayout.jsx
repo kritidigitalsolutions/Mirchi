@@ -4,7 +4,7 @@ import { useToast } from "../App";
 import "./WebpageLayout.css";
 import {
   Plus, Trash2, Edit2, Search, Check, X,
-  LayoutGrid, Save, AlertCircle, PlayCircle, Sliders, ChevronDown, ChevronUp
+  LayoutGrid, Save, AlertCircle, PlayCircle, Sliders, ChevronDown, ChevronUp, ChevronLeft, ChevronRight
 } from "lucide-react";
 
 const HideArrowsStyle = () => (
@@ -14,6 +14,48 @@ const HideArrowsStyle = () => (
     .wl-pos-input { -moz-appearance: textfield; }
   `}</style>
 );
+
+function PositionInput({ currentPos, onSave }) {
+  const [val, setVal] = useState(currentPos);
+
+  useEffect(() => {
+    setVal(currentPos);
+  }, [currentPos]);
+
+  const commitChange = () => {
+    let num = parseInt(val, 10);
+    if (isNaN(num) || num < 1) num = 1;
+    if (num !== currentPos) {
+      onSave(num);
+    } else {
+      setVal(currentPos);
+    }
+  };
+
+  return (
+    <div
+      className="cat-pos-box"
+      onClick={e => e.stopPropagation()}
+      title="Type position and press Enter or click outside"
+    >
+      <span className="cat-pos-label">POS</span>
+      <input
+        type="number"
+        className="cat-pos-input"
+        value={val}
+        min={1}
+        onChange={e => setVal(e.target.value)}
+        onBlur={commitChange}
+        onKeyDown={e => {
+          if (e.key === "Enter") {
+            commitChange();
+            e.target.blur();
+          }
+        }}
+      />
+    </div>
+  );
+}
 
 export default function WebpageLayout() {
   const { showToast } = useToast();
@@ -159,19 +201,54 @@ export default function WebpageLayout() {
   };
 
   const moveSectionItemToPos = (secIdx, currentIdx, newPosVal) => {
-    let newPos = parseInt(newPosVal, 10) - 1;
-    if (isNaN(newPos)) return;
+    let targetIdx = parseInt(newPosVal, 10) - 1;
+    if (isNaN(targetIdx)) return;
     setSections(prev => {
       const next = [...prev];
       const items = [...next[secIdx].items];
-      if (newPos < 0) newPos = 0;
-      if (newPos >= items.length) newPos = items.length - 1;
-      if (currentIdx === newPos) return prev;
+      if (targetIdx < 0) targetIdx = 0;
+      if (targetIdx >= items.length) targetIdx = items.length - 1;
+      if (currentIdx === targetIdx) return prev;
       const [moved] = items.splice(currentIdx, 1);
-      items.splice(newPos, 0, moved);
+      items.splice(targetIdx, 0, moved);
       next[secIdx] = { ...next[secIdx], items };
       return next;
     });
+  };
+
+  const moveSectionItemStep = (secIdx, currentIdx, direction) => {
+    setSections(prev => {
+      const next = [...prev];
+      const items = [...next[secIdx].items];
+      const targetIdx = currentIdx + direction;
+      if (targetIdx < 0 || targetIdx >= items.length) return prev;
+      const [moved] = items.splice(currentIdx, 1);
+      items.splice(targetIdx, 0, moved);
+      next[secIdx] = { ...next[secIdx], items };
+      return next;
+    });
+  };
+
+  const addAllToSection = (secIdx, connectedItems) => {
+    setSections(prev => {
+      const next = [...prev];
+      const items = connectedItems.map(i => ({
+        contentType: i.contentType === "movie" ? "Movie" : "Series",
+        contentId: i,
+      }));
+      next[secIdx] = { ...next[secIdx], items };
+      return next;
+    });
+    showToast("Added all items to section. Click 'Publish Layout' to save.", "success");
+  };
+
+  const clearSectionItems = (secIdx) => {
+    setSections(prev => {
+      const next = [...prev];
+      next[secIdx] = { ...next[secIdx], items: [] };
+      return next;
+    });
+    showToast("Cleared section items. Click 'Publish Layout' to save.", "success");
   };
 
   const moveBannerToPos = (currentIdx, newPosVal) => {
@@ -235,10 +312,18 @@ export default function WebpageLayout() {
         </div>
       );
 
-    const selectedIds = new Set(sec.items.map(x => String(x.contentId?._id || x.contentId)));
-    const selectedList = sec.items
-      .map(x => connected.find(c => String(c._id) === String(x.contentId?._id || x.contentId)))
-      .filter(Boolean);
+    const rawItems = sec.items || [];
+    const selectedList = [];
+
+    rawItems.forEach(item => {
+      const idStr = String(item.contentId?._id || item.contentId);
+      const found = connected.find(c => String(c._id) === idStr);
+      if (found) {
+        selectedList.push(found);
+      }
+    });
+
+    const selectedIds = new Set(selectedList.map(x => String(x._id)));
     let unselected = connected.filter(c => !selectedIds.has(String(c._id)));
     if (searchQ.trim())
       unselected = unselected.filter(c => c.title.toLowerCase().includes(searchQ.toLowerCase()));
@@ -246,7 +331,35 @@ export default function WebpageLayout() {
     return (
       <div className="wl-curator">
         <div className="wl-curator-toolbar">
-          <span className="wl-count-label">{selectedList.length} selected for this row</span>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+            <span className="wl-count-label" style={{ fontWeight: "700" }}>
+              {selectedList.length} of {connected.length} selected
+            </span>
+
+            <div className="wl-curator-actions">
+              {unselected.length > 0 && (
+                <button
+                  type="button"
+                  className="wl-btn-action"
+                  onClick={() => addAllToSection(secIdx, connected)}
+                  title="Add all tagged series to this row"
+                >
+                  <Plus size={13} /> Add All ({unselected.length})
+                </button>
+              )}
+              {selectedList.length > 0 && (
+                <button
+                  type="button"
+                  className="wl-btn-action wl-btn-action--danger"
+                  onClick={() => clearSectionItems(secIdx)}
+                  title="Clear all items from this row"
+                >
+                  <Trash2 size={13} /> Clear Row
+                </button>
+              )}
+            </div>
+          </div>
+
           <div className="search-bar wl-mini-search">
             <Search size={13} className="search-icon" />
             <input className="search-input" placeholder="Filter available content…"
@@ -256,53 +369,96 @@ export default function WebpageLayout() {
           </div>
         </div>
 
-        <div className="wl-grid">
-          {/* ── Selected ── */}
-          {selectedList.map((item, idx) => (
-            <div key={item._id} className="wl-card wl-card--selected">
-              <div className="wl-card-media" onClick={() => toggleItem(secIdx, item, true)} title="Click to deselect">
-                <img src={imgUrl(item.poster)} alt="" className="wl-poster" />
-                <div className="wl-card-badge wl-card-badge--check"><Check size={10} /></div>
-                <label className="wl-card-pos" onClick={e => e.stopPropagation()} style={{ display: 'flex', alignItems: 'center', background: 'var(--primary)', padding: '4px 8px', borderRadius: '6px', cursor: 'text', boxShadow: '0 2px 4px rgba(0,0,0,0.3)' }} title="Type to change order">
-                  <span style={{ marginRight: '4px', fontSize: '11px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Pos</span>
-                  <input
-                    className="wl-pos-input"
-                    key={`wlpos-${secIdx}-${item._id}-${idx}`}
-                    type="number"
-                    defaultValue={idx + 1}
-                    onBlur={e => moveSectionItemToPos(secIdx, idx, e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter') e.target.blur(); }}
-                    style={{ width: '36px', background: 'rgba(255,255,255,0.2)', border: '1px dashed rgba(255,255,255,0.6)', color: '#fff', fontWeight: 'bold', fontSize: '13px', outline: 'none', textAlign: 'center', padding: '2px 0', borderRadius: '4px' }}
-                    min="1" max={selectedList.length}
-                  />
-                  <Edit2 size={12} style={{ marginLeft: '6px', opacity: 0.9 }} />
-                </label>
-              </div>
-              <div className="wl-card-body">
-                <p className="wl-card-title">{item.title}</p>
-                <div className="wl-card-foot">
-                  <span className={`wl-type ${item.contentType}`}>{item.contentType}</span>
-                </div>
-              </div>
+        {selectedList.length > 0 && (
+          <div>
+            <div style={{ fontSize: "12px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-muted)", marginBottom: "8px", display: "flex", alignItems: "center", gap: "6px" }}>
+              <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#10b981", display: "inline-block" }}></span>
+              Curated Display Order (Type Position to Reorder):
             </div>
-          ))}
+            <div className="wl-grid">
+              {selectedList.map((item, idx) => (
+                <div key={item._id} className="wl-card wl-card--selected">
+                  <div className="wl-card-media" title={item.title}>
+                    <img src={imgUrl(item.poster)} alt="" className="wl-poster" />
+                    <div className="wl-card-badge wl-card-badge--check"><Check size={10} /></div>
 
-          {/* ── Unselected ── */}
-          {unselected.map(item => (
-            <div key={item._id} className="wl-card wl-card--dim">
-              <div className="wl-card-media" onClick={() => toggleItem(secIdx, item, false)} title="Click to add">
-                <img src={imgUrl(item.poster)} alt="" className="wl-poster" />
-                <div className="wl-card-badge wl-card-badge--add"><Plus size={10} /></div>
-              </div>
-              <div className="wl-card-body">
-                <p className="wl-card-title">{item.title}</p>
-                <div className="wl-card-foot">
-                  <span className={`wl-type ${item.contentType}`}>{item.contentType}</span>
+                    {/* Top Right Explicit Remove Button */}
+                    <button
+                      type="button"
+                      className="wl-card-remove"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleItem(secIdx, item, true);
+                      }}
+                      title="Remove from row"
+                    >
+                      <X size={13} />
+                    </button>
+
+                    {/* Bottom Position Bar with Step Arrows and Typeable Input */}
+                    <div className="wl-pos-controls" onClick={e => e.stopPropagation()}>
+                      <button
+                        type="button"
+                        className="wl-step-btn"
+                        disabled={idx === 0}
+                        onClick={() => moveSectionItemStep(secIdx, idx, -1)}
+                        title="Move Left"
+                      >
+                        <ChevronLeft size={14} />
+                      </button>
+
+                      <PositionInput
+                        currentPos={idx + 1}
+                        onSave={(newPos) => moveSectionItemToPos(secIdx, idx, newPos)}
+                      />
+
+                      <button
+                        type="button"
+                        className="wl-step-btn"
+                        disabled={idx === selectedList.length - 1}
+                        onClick={() => moveSectionItemStep(secIdx, idx, 1)}
+                        title="Move Right"
+                      >
+                        <ChevronRight size={14} />
+                      </button>
+                    </div>
+                  </div>
+                  <div className="wl-card-body">
+                    <p className="wl-card-title">{item.title}</p>
+                    <div className="wl-card-foot">
+                      <span className={`wl-type ${item.contentType}`}>{item.contentType}</span>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              ))}
             </div>
-          ))}
-        </div>
+          </div>
+        )}
+
+        {unselected.length > 0 && (
+          <div style={{ marginTop: selectedList.length > 0 ? "20px" : "10px" }}>
+            <div style={{ fontSize: "12px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-muted)", marginBottom: "8px", display: "flex", alignItems: "center", gap: "6px" }}>
+              <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: "var(--text-muted)", display: "inline-block" }}></span>
+              Available Content ({unselected.length}) — Click card to add:
+            </div>
+            <div className="wl-grid">
+              {unselected.map(item => (
+                <div key={item._id} className="wl-card wl-card--dim">
+                  <div className="wl-card-media" onClick={() => toggleItem(secIdx, item, false)} title={`Click to add "${item.title}"`}>
+                    <img src={imgUrl(item.poster)} alt="" className="wl-poster" />
+                    <div className="wl-card-badge wl-card-badge--add"><Plus size={10} /></div>
+                  </div>
+                  <div className="wl-card-body">
+                    <p className="wl-card-title">{item.title}</p>
+                    <div className="wl-card-foot">
+                      <span className={`wl-type ${item.contentType}`}>{item.contentType}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     );
   };

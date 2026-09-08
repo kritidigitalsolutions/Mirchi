@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import API from "../api/axios";
+import { useToast } from "../App";
 import { Layers, Plus, Search, ChevronUp, ChevronDown, Edit2, Trash2, X, Check, RefreshCw, Eye, EyeOff, LayoutGrid, AlertCircle, ChevronLeft, ChevronRight } from "lucide-react";
 import "./Dashboard.css";
 import "./CategoryLight.css";
@@ -18,7 +19,50 @@ const HideArrowsStyle = () => (
   `}</style>
 );
 
+function PositionInput({ currentPos, onSave }) {
+  const [val, setVal] = useState(currentPos);
+
+  useEffect(() => {
+    setVal(currentPos);
+  }, [currentPos]);
+
+  const commitChange = () => {
+    let num = parseInt(val, 10);
+    if (isNaN(num) || num < 1) num = 1;
+    if (num !== currentPos) {
+      onSave(num);
+    } else {
+      setVal(currentPos);
+    }
+  };
+
+  return (
+    <div
+      className="cat-pos-box"
+      onClick={e => e.stopPropagation()}
+      title="Type any position number (e.g. 1, 2, 5, 10, 20...) and press Enter or click outside"
+    >
+      <span className="cat-pos-label">POS</span>
+      <input
+        type="number"
+        className="cat-pos-input"
+        value={val}
+        min={1}
+        onChange={e => setVal(e.target.value)}
+        onBlur={commitChange}
+        onKeyDown={e => {
+          if (e.key === "Enter") {
+            commitChange();
+            e.target.blur();
+          }
+        }}
+      />
+    </div>
+  );
+}
+
 export default function Category() {
+  const { showToast } = useToast();
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
@@ -39,7 +83,8 @@ export default function Category() {
   const [curatedMap, setCuratedMap] = useState({});
   const [contentList, setContentList] = useState([]);
   const [sectionSearches, setSectionSearches] = useState({});
-  const [savingLayout, setSavingLayout] = useState(false);
+  const [savingCatId, setSavingCatId] = useState(null);
+  const [saveStatus, setSaveStatus] = useState({});
 
   const fetchCategories = async () => {
     setLoading(true);
@@ -193,54 +238,104 @@ export default function Category() {
 
   // Save curated items for a category directly to the category model
   const saveCuratedContent = async (catId, items) => {
-    setSavingLayout(true);
+    setSavingCatId(catId);
     try {
-      await API.put(`/admin/categories/${catId}/content`, {
-        items: items.map(i => ({
-          contentType: i.contentType,
-          contentId: i.contentId?._id || i.contentId,
+      const payload = {
+        items: items.map((i, index) => ({
+          contentType: (i.contentType || "").toLowerCase() === "movie" ? "Movie" : "Series",
+          contentId: String(i.contentId?._id || i.contentId),
+          position: i.position !== undefined && i.position !== null && !isNaN(Number(i.position))
+            ? Number(i.position)
+            : (index + 1)
         }))
-      });
-      setCuratedMap(prev => ({ ...prev, [catId]: items }));
+      };
+      await API.put(`/admin/categories/${catId}/content`, payload);
+      setSaveStatus(prev => ({ ...prev, [catId]: "saved" }));
+      setTimeout(() => {
+        setSaveStatus(prev => ({ ...prev, [catId]: null }));
+      }, 2500);
+      if (showToast) showToast("Category series order saved!", "success");
     } catch (err) {
       const msg = err?.response?.data?.message || "Failed to save content";
-      alert(msg);
+      if (showToast) showToast(msg, "error");
+      else alert(msg);
     } finally {
-      setSavingLayout(false);
+      setSavingCatId(null);
     }
   };
 
-  const toggleCarouselItem = (catId, slug, item, removing) => {
-    const currentItems = [...(curatedMap[catId] || [])];
-    let nextItems;
-    if (removing) {
-      nextItems = currentItems.filter(
-        x => String(x.contentId?._id || x.contentId) !== String(item._id)
-      );
-    } else {
-      nextItems = [...currentItems, {
+  const handleSetCustomPosition = (catId, contentId, newPositionVal) => {
+    let targetNum = parseInt(newPositionVal, 10);
+    if (isNaN(targetNum) || targetNum < 1) targetNum = 1;
+
+    setCuratedMap(prev => {
+      const currentList = [...(prev[catId] || [])];
+      const idStr = String(contentId);
+      const index = currentList.findIndex(i => String(i.contentId?._id || i.contentId) === idStr);
+      if (index === -1) return prev;
+
+      const updated = currentList.map((item, idx) => {
+        if (idx === index) {
+          return { ...item, position: targetNum };
+        }
+        return item;
+      });
+
+      // Sort by position ascending so items arrange by custom numbers
+      updated.sort((a, b) => (a.position || 0) - (b.position || 0));
+
+      saveCuratedContent(catId, updated);
+      return { ...prev, [catId]: updated };
+    });
+  };
+
+  const handleAddItem = (catId, item) => {
+    setCuratedMap(prev => {
+      const currentList = [...(prev[catId] || [])];
+      const idStr = String(item._id);
+      if (currentList.some(i => String(i.contentId?._id || i.contentId) === idStr)) {
+        return prev;
+      }
+
+      const maxPos = currentList.reduce((max, i) => Math.max(max, Number(i.position || 0)), 0);
+      const nextPos = maxPos + 1;
+
+      const newItem = {
         contentType: item.contentType === "movie" ? "Movie" : "Series",
-        contentId: item,
-      }];
-    }
-    setCuratedMap(prev => ({ ...prev, [catId]: nextItems }));
-    saveCuratedContent(catId, nextItems);
+        contentId: idStr,
+        position: nextPos
+      };
+
+      const updated = [...currentList, newItem];
+      saveCuratedContent(catId, updated);
+      return { ...prev, [catId]: updated };
+    });
   };
 
-  const moveToPos = (catId, currentIdx, newPosVal) => {
-    let newPos = parseInt(newPosVal, 10) - 1;
-    if (isNaN(newPos)) return;
+  const handleRemoveItem = (catId, contentId) => {
+    setCuratedMap(prev => {
+      const currentList = [...(prev[catId] || [])];
+      const idStr = String(contentId);
+      const updated = currentList.filter(i => String(i.contentId?._id || i.contentId) !== idStr);
+      saveCuratedContent(catId, updated);
+      return { ...prev, [catId]: updated };
+    });
+  };
 
-    const currentItems = [...(curatedMap[catId] || [])];
-    if (newPos < 0) newPos = 0;
-    if (newPos >= currentItems.length) newPos = currentItems.length - 1;
-    if (currentIdx === newPos) return;
+  const handleAddAll = (catId, connectedItems) => {
+    const newList = connectedItems.map((item, idx) => ({
+      contentType: item.contentType === "movie" ? "Movie" : "Series",
+      contentId: String(item._id),
+      position: idx + 1
+    }));
+    setCuratedMap(prev => ({ ...prev, [catId]: newList }));
+    saveCuratedContent(catId, newList);
+  };
 
-    const [movedItem] = currentItems.splice(currentIdx, 1);
-    currentItems.splice(newPos, 0, movedItem);
-
-    setCuratedMap(prev => ({ ...prev, [catId]: currentItems }));
-    saveCuratedContent(catId, currentItems);
+  const handleClearAll = (catId) => {
+    if (!window.confirm("Are you sure you want to clear all curated items for this category?")) return;
+    setCuratedMap(prev => ({ ...prev, [catId]: [] }));
+    saveCuratedContent(catId, []);
   };
 
   const toggleExpand = (slug) => {
@@ -249,8 +344,6 @@ export default function Category() {
 
   const renderInlineCarousel = (catId, slug) => {
     const catObj = categories.find(c => c._id === catId);
-    const curatedItems = curatedMap[catId] || [];
-
     const searchQ = sectionSearches[slug] || "";
 
     // All content tagged with this category (slug, name, or id)
@@ -270,96 +363,173 @@ export default function Category() {
       );
     }
 
-    const selectedIds = new Set(curatedItems.map(x => String(x.contentId?._id || x.contentId)));
-    const selectedList = curatedItems
-      .map(x => connected.find(c => String(c._id) === String(x.contentId?._id || x.contentId)))
-      .filter(Boolean);
+    const rawCurated = (curatedMap[catId] || []).map((c, i) => ({
+      contentType: (c.contentType || "").toLowerCase() === "movie" ? "Movie" : "Series",
+      contentId: String(c.contentId?._id || c.contentId),
+      position: c.position !== undefined && c.position !== null && !isNaN(Number(c.position))
+        ? Number(c.position)
+        : (i + 1)
+    })).sort((a, b) => (a.position || 0) - (b.position || 0));
+
+    const selectedList = [];
+
+    rawCurated.forEach(cItem => {
+      const found = connected.find(c => String(c._id) === cItem.contentId);
+      if (found) {
+        selectedList.push({
+          ...found,
+          curatedPosition: cItem.position
+        });
+      }
+    });
+
+    const selectedIds = new Set(selectedList.map(x => String(x._id)));
     let unselected = connected.filter(c => !selectedIds.has(String(c._id)));
     if (searchQ.trim()) {
       unselected = unselected.filter(c => c.title.toLowerCase().includes(searchQ.toLowerCase()));
     }
 
-    const imgUrl = (url) => (!url ? "" : url);
+    const isSavingThis = savingCatId === catId;
+    const isSavedThis = saveStatus[catId] === "saved";
 
     return (
-      <div className="wl-curator" style={{ margin: 0, border: "none", background: "transparent" }}>
-        <div className="wl-curator-toolbar" style={{ marginTop: 0 }}>
-          <span className="wl-count-label">{selectedList.length} selected for this row</span>
+      <div className="wl-curator" style={{ margin: 0, border: "none", background: "transparent", padding: "16px" }}>
+        <div className="wl-curator-toolbar" style={{ marginTop: 0, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+            <span className="wl-count-label" style={{ fontWeight: "700" }}>
+              {selectedList.length} of {connected.length} Selected
+            </span>
+
+            <div className="wl-curator-actions">
+              {unselected.length > 0 && (
+                <button
+                  type="button"
+                  className="wl-btn-action"
+                  onClick={() => handleAddAll(catId, connected)}
+                  title="Add all tagged series to this curated order"
+                >
+                  <Plus size={13} /> Add All ({unselected.length})
+                </button>
+              )}
+              {selectedList.length > 0 && (
+                <button
+                  type="button"
+                  className="wl-btn-action wl-btn-action--danger"
+                  onClick={() => handleClearAll(catId)}
+                  title="Remove all items from row"
+                >
+                  <Trash2 size={13} /> Clear Row
+                </button>
+              )}
+            </div>
+
+            {isSavingThis && (
+              <span className="wl-save-status saving">
+                <RefreshCw size={12} style={{ animation: "spin 1s linear infinite" }} /> Saving order...
+              </span>
+            )}
+            {isSavedThis && !isSavingThis && (
+              <span className="wl-save-status saved">
+                <Check size={13} /> Saved
+              </span>
+            )}
+          </div>
+
           <div className="search-bar wl-mini-search" style={{ margin: 0 }}>
             <Search size={13} className="search-icon" />
-            <input className="search-input" placeholder="Filter available content…"
+            <input
+              className="search-input"
+              placeholder="Filter available content…"
               value={searchQ}
-              onChange={e => setSectionSearches(p => ({ ...p, [slug]: e.target.value }))} />
-            {searchQ && <button className="search-clear" onClick={() => setSectionSearches(p => ({ ...p, [slug]: "" }))}><X size={12} /></button>}
+              onChange={e => setSectionSearches(p => ({ ...p, [slug]: e.target.value }))}
+            />
+            {searchQ && (
+              <button className="search-clear" onClick={() => setSectionSearches(p => ({ ...p, [slug]: "" }))}>
+                <X size={12} />
+              </button>
+            )}
           </div>
         </div>
 
-        {savingLayout && <div style={{ fontSize: "12px", color: "var(--primary)", marginBottom: 10 }}>Saving to homepage...</div>}
-
-        <div className="wl-grid">
-          {/* Selected Items */}
-          {selectedList.map((item, idx) => (
-            <div key={item._id} className="wl-card wl-card--selected">
-              <div className="wl-card-media" onClick={() => toggleCarouselItem(catId, slug, item, true)} title="Click to remove from row">
-                <img src={imgUrl(item.poster)} alt="" className="wl-poster" />
-                <div className="wl-card-badge wl-card-badge--check"><Check size={10} /></div>
-                <label className="wl-card-pos" onClick={e => e.stopPropagation()} style={{ display: 'flex', alignItems: 'center', background: 'var(--primary)', padding: '4px 8px', borderRadius: '6px', cursor: 'text', boxShadow: '0 2px 4px rgba(0,0,0,0.3)' }} title="Type to change order">
-                  <span style={{ marginRight: '4px', fontSize: '11px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Pos</span>
-                  <input 
-                    className="pos-input-no-arrows"
-                    key={`pos-${catId}-${item._id}-${idx}`}
-                    type="number" 
-                    defaultValue={idx + 1}
-                    onBlur={e => {
-                      moveToPos(catId, idx, e.target.value);
-                      e.target.value = idx + 1; // Force visual reset to bounded value
-                    }}
-                    onKeyDown={e => {
-                      if(e.key === 'Enter') e.target.blur();
-                    }}
-                    style={{
-                      width: "36px",
-                      background: "rgba(255,255,255,0.2)",
-                      border: "1px dashed rgba(255,255,255,0.6)",
-                      color: "#fff",
-                      fontWeight: "bold",
-                      fontSize: "13px",
-                      outline: "none",
-                      textAlign: "center",
-                      padding: "2px 0",
-                      borderRadius: "4px"
-                    }}
-                    min="1"
-                    max={selectedList.length}
-                  />
-                  <Edit2 size={12} style={{ marginLeft: '6px', opacity: 0.9 }} />
-                </label>
-              </div>
-              <div className="wl-card-body">
-                <p className="wl-card-title">{item.title}</p>
-                <div className="wl-card-foot">
-                  <span className={`wl-type ${item.contentType}`}>{item.contentType}</span>
-                </div>
-              </div>
+        {selectedList.length > 0 && (
+          <div style={{ marginTop: "14px" }}>
+            <div style={{ fontSize: "12px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-muted)", marginBottom: "8px", display: "flex", alignItems: "center", gap: "6px" }}>
+              <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#10b981", display: "inline-block" }}></span>
+              Curated Display Order (Type any Position number or use &lt; / &gt; arrows to reorder):
             </div>
-          ))}
+            <div className="wl-grid">
+              {selectedList.map((item, idx) => (
+                <div key={`${item._id}-${item.curatedPosition}`} className="wl-card wl-card--selected">
+                  <div className="wl-card-media" title={item.title}>
+                    <img src={item.poster || ""} alt={item.title} className="wl-poster" />
+                    <div className="wl-card-badge wl-card-badge--check">
+                      <Check size={11} />
+                    </div>
 
-          {/* Unselected Items */}
-          {unselected.map(item => (
-            <div key={item._id} className="wl-card wl-card--dim">
-              <div className="wl-card-media" onClick={() => toggleCarouselItem(catId, slug, item, false)} title="Click to add to row">
-                <img src={imgUrl(item.poster)} alt="" className="wl-poster" />
-                <div className="wl-card-badge wl-card-badge--add"><Plus size={10} /></div>
-              </div>
-              <div className="wl-card-body">
-                <p className="wl-card-title">{item.title}</p>
-                <div className="wl-card-foot">
-                  <span className={`wl-type ${item.contentType}`}>{item.contentType}</span>
+                    {/* Top Right Explicit Remove Button */}
+                    <button
+                      type="button"
+                      className="wl-card-remove"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRemoveItem(catId, item._id);
+                      }}
+                      title="Remove from row"
+                    >
+                      <X size={13} />
+                    </button>
+
+                    {/* Bottom Position Box (Type any custom position number) */}
+                    <div className="wl-card-pos-container" onClick={e => e.stopPropagation()}>
+                      <PositionInput
+                        currentPos={item.curatedPosition !== undefined ? item.curatedPosition : (idx + 1)}
+                        onSave={(newPos) => handleSetCustomPosition(catId, item._id, newPos)}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="wl-card-body">
+                    <p className="wl-card-title" title={item.title}>{item.title}</p>
+                    <div className="wl-card-foot">
+                      <span className={`wl-type ${item.contentType || "Series"}`}>{item.contentType || "Series"}</span>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              ))}
             </div>
-          ))}
-        </div>
+          </div>
+        )}
+
+        {unselected.length > 0 && (
+          <div style={{ marginTop: selectedList.length > 0 ? "24px" : "10px" }}>
+            <div style={{ fontSize: "12px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-muted)", marginBottom: "8px", display: "flex", alignItems: "center", gap: "6px" }}>
+              <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: "var(--text-muted)", display: "inline-block" }}></span>
+              Available Content ({unselected.length}) — Click card or '+' to add to row:
+            </div>
+            <div className="wl-grid">
+              {unselected.map(item => (
+                <div key={item._id} className="wl-card wl-card--dim">
+                  <div
+                    className="wl-card-media"
+                    onClick={() => handleAddItem(catId, item)}
+                    title={`Click to add "${item.title}"`}
+                  >
+                    <img src={item.poster || ""} alt={item.title} className="wl-poster" />
+                    <div className="wl-card-badge wl-card-badge--add">
+                      <Plus size={12} />
+                    </div>
+                  </div>
+                  <div className="wl-card-body">
+                    <p className="wl-card-title" title={item.title}>{item.title}</p>
+                    <div className="wl-card-foot">
+                      <span className={`wl-type ${item.contentType || "Series"}`}>{item.contentType || "Series"}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     );
   };

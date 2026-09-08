@@ -1,4 +1,6 @@
+const mongoose = require("mongoose");
 const Category = require("../../models/category.model");
+const { invalidateHomeCache } = require("../../config/redis");
 
 // ========================================
 // CREATE CATEGORY
@@ -17,24 +19,16 @@ exports.createCategory = async (req, res) => {
     }
 
     let newPriority = parseInt(priority, 10);
-    const maxCat = await Category.findOne().sort({ priority: -1 });
-    const maxPriority = maxCat && maxCat.priority ? maxCat.priority : 0;
-
-    if (isNaN(newPriority) || newPriority < 1) {
-      newPriority = maxPriority + 1;
-    } else if (newPriority <= maxPriority) {
-      await Category.updateMany(
-        { priority: { $gte: newPriority } },
-        { $inc: { priority: 1 } }
-      );
-    } else if (newPriority > maxPriority + 1) {
-      newPriority = maxPriority + 1;
+    if (isNaN(newPriority) || newPriority < 0) {
+      const maxCat = await Category.findOne().sort({ priority: -1 });
+      newPriority = (maxCat && maxCat.priority ? maxCat.priority : 0) + 1;
     }
 
     const categoryData = { name, priority: newPriority };
     if (isActive !== undefined) categoryData.isActive = isActive === true || isActive === "true";
     
     const category = await Category.create(categoryData);
+    invalidateHomeCache();
 
     return res.status(201).json({
       success: true,
@@ -89,29 +83,14 @@ exports.updateCategory = async (req, res) => {
 
     if (priority !== undefined) {
       let newPriority = parseInt(priority, 10);
-      let oldPriority = category.priority;
-      if (!isNaN(newPriority) && newPriority !== oldPriority && newPriority > 0) {
-        const maxCat = await Category.findOne().sort({ priority: -1 });
-        const maxPriority = maxCat && maxCat.priority ? maxCat.priority : 0;
-        if (newPriority > maxPriority) newPriority = maxPriority;
-
-        if (newPriority < oldPriority) {
-          await Category.updateMany(
-            { priority: { $gte: newPriority, $lt: oldPriority } },
-            { $inc: { priority: 1 } }
-          );
-        } else if (newPriority > oldPriority) {
-          await Category.updateMany(
-            { priority: { $gt: oldPriority, $lte: newPriority } },
-            { $inc: { priority: -1 } }
-          );
-        }
+      if (!isNaN(newPriority) && newPriority >= 0) {
         category.priority = newPriority;
       }
     }
     if (isActive !== undefined) category.isActive = isActive === true || isActive === "true";
 
     await category.save();
+    invalidateHomeCache();
 
     return res.status(200).json({
       success: true,
@@ -150,6 +129,7 @@ exports.deleteCategory = async (req, res) => {
         { $inc: { priority: -1 } }
       );
     }
+    invalidateHomeCache();
 
     return res.status(200).json({
       success: true,
@@ -166,28 +146,49 @@ exports.deleteCategory = async (req, res) => {
 // ========================================
 exports.saveCuratedContent = async (req, res) => {
   try {
-    const category = await Category.findById(req.params.id);
-    if (!category) {
-      return res.status(404).json({ success: false, message: "Category not found" });
+    const { id } = req.params;
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ success: false, message: "Invalid category ID" });
     }
 
-    const { items } = req.body; // [{ contentType: "Movie"|"Series", contentId: "..." }]
+    const { items } = req.body;
     if (!Array.isArray(items)) {
       return res.status(400).json({ success: false, message: "items must be an array" });
     }
 
-    category.curatedContent = items.map((i, index) => ({
-      contentType: i.contentType,
-      contentId: i.contentId,
-      position: index + 1
-    }));
+    const validCurated = [];
+    items.forEach((i, index) => {
+      const rawId = i.contentId?._id || i.contentId;
+      if (rawId && mongoose.Types.ObjectId.isValid(String(rawId))) {
+        const type = (i.contentType || "").toString().toLowerCase() === "movie" ? "Movie" : "Series";
+        const pos = i.position !== undefined && i.position !== null && !isNaN(parseInt(i.position, 10))
+          ? parseInt(i.position, 10)
+          : (index + 1);
+        validCurated.push({
+          contentType: type,
+          contentId: new mongoose.Types.ObjectId(String(rawId)),
+          position: pos
+        });
+      }
+    });
 
-    await category.save();
+    const category = await Category.findByIdAndUpdate(
+      id,
+      { $set: { curatedContent: validCurated } },
+      { new: true }
+    );
+
+    if (!category) {
+      return res.status(404).json({ success: false, message: "Category not found" });
+    }
+
+    invalidateHomeCache();
 
     return res.status(200).json({
       success: true,
       message: "Curated content saved successfully",
-      count: category.curatedContent.length
+      count: category.curatedContent.length,
+      data: category.curatedContent
     });
   } catch (error) {
     console.error("SAVE CURATED CONTENT ERROR:", error);
