@@ -269,20 +269,35 @@ export default function Category() {
     if (isNaN(targetNum) || targetNum < 1) targetNum = 1;
 
     setCuratedMap(prev => {
-      const currentList = [...(prev[catId] || [])];
+      // 1. Get current list sorted by current position
+      const currentList = [...(prev[catId] || [])].map((item, idx) => ({
+        contentType: (item.contentType || "").toLowerCase() === "movie" ? "Movie" : "Series",
+        contentId: String(item.contentId?._id || item.contentId),
+        position: item.position !== undefined && item.position !== null && !isNaN(Number(item.position))
+          ? Number(item.position)
+          : (idx + 1)
+      })).sort((a, b) => (a.position || 0) - (b.position || 0));
+
       const idStr = String(contentId);
-      const index = currentList.findIndex(i => String(i.contentId?._id || i.contentId) === idStr);
-      if (index === -1) return prev;
+      const currentIndex = currentList.findIndex(i => String(i.contentId?._id || i.contentId) === idStr);
+      if (currentIndex === -1) return prev;
 
-      const updated = currentList.map((item, idx) => {
-        if (idx === index) {
-          return { ...item, position: targetNum };
-        }
-        return item;
-      });
+      // 2. Remove the selected item from its current slot
+      const [movedItem] = currentList.splice(currentIndex, 1);
 
-      // Sort by position ascending so items arrange by custom numbers
-      updated.sort((a, b) => (a.position || 0) - (b.position || 0));
+      // 3. Determine target 0-based insertion index
+      let targetIndex = targetNum - 1;
+      if (targetIndex < 0) targetIndex = 0;
+      if (targetIndex > currentList.length) targetIndex = currentList.length;
+
+      // 4. Insert at targetIndex (this shifts whatever was at that index and all subsequent items forward)
+      currentList.splice(targetIndex, 0, movedItem);
+
+      // 5. Reassign 1-based sequential positions (1, 2, 3, 4...)
+      const updated = currentList.map((item, idx) => ({
+        ...item,
+        position: idx + 1
+      }));
 
       saveCuratedContent(catId, updated);
       return { ...prev, [catId]: updated };
@@ -297,16 +312,16 @@ export default function Category() {
         return prev;
       }
 
-      const maxPos = currentList.reduce((max, i) => Math.max(max, Number(i.position || 0)), 0);
-      const nextPos = maxPos + 1;
-
       const newItem = {
         contentType: item.contentType === "movie" ? "Movie" : "Series",
         contentId: idStr,
-        position: nextPos
+        position: currentList.length + 1
       };
 
-      const updated = [...currentList, newItem];
+      const updated = [...currentList, newItem].map((it, idx) => ({
+        ...it,
+        position: idx + 1
+      }));
       saveCuratedContent(catId, updated);
       return { ...prev, [catId]: updated };
     });
@@ -316,7 +331,12 @@ export default function Category() {
     setCuratedMap(prev => {
       const currentList = [...(prev[catId] || [])];
       const idStr = String(contentId);
-      const updated = currentList.filter(i => String(i.contentId?._id || i.contentId) !== idStr);
+      const updated = currentList
+        .filter(i => String(i.contentId?._id || i.contentId) !== idStr)
+        .map((it, idx) => ({
+          ...it,
+          position: idx + 1
+        }));
       saveCuratedContent(catId, updated);
       return { ...prev, [catId]: updated };
     });
@@ -455,7 +475,7 @@ export default function Category() {
           <div style={{ marginTop: "14px" }}>
             <div style={{ fontSize: "12px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-muted)", marginBottom: "8px", display: "flex", alignItems: "center", gap: "6px" }}>
               <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#10b981", display: "inline-block" }}></span>
-              Curated Display Order (Type any Position number or use &lt; / &gt; arrows to reorder):
+              Curated Display Order (Type position number and press Enter to reorder):
             </div>
             <div className="wl-grid">
               {selectedList.map((item, idx) => (
