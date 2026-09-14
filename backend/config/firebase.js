@@ -5,8 +5,9 @@ const fs = require("fs");
 let firebaseInitialized = false;
 
 try {
-  // Option 1: Initialize using environment variables if present
-  if (
+  if (admin.apps && admin.apps.length > 0) {
+    firebaseInitialized = true;
+  } else if (
     process.env.FIREBASE_PROJECT_ID &&
     process.env.FIREBASE_PRIVATE_KEY &&
     process.env.FIREBASE_CLIENT_EMAIL
