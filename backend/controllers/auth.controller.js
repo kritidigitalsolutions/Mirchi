@@ -661,17 +661,17 @@ exports.websiteSSOLogin = async (req, res) => {
 // ========================================
 exports.appleLogin = async (req, res) => {
   try {
-    const rawIdToken = req.body.identityToken || req.body.idToken || req.body.token;
-    const { fcmToken } = req.body;
+    const { idToken, identityToken, token, fcmToken, name: clientNameRaw, fullName: fullNameRaw } = req.body;
+    const rawToken = idToken || identityToken || token;
 
-    if (!rawIdToken) {
+    if (!rawToken) {
       return res.status(400).json({
         success: false,
-        message: "Apple identity token is required",
+        message: "Apple ID token is required",
       });
     }
 
-    // Configure audience if set in environment (can be comma-separated list of Bundle ID and Service ID)
+    // Audiences configured in environment (bundle ID / service ID)
     const configuredAudiences = [
       process.env.APPLE_CLIENT_ID,
       process.env.APPLE_BUNDLE_ID,
@@ -689,50 +689,98 @@ exports.appleLogin = async (req, res) => {
       verifyOptions.audience = configuredAudiences.length === 1 ? configuredAudiences[0] : configuredAudiences;
     }
 
-    let applePayload;
-    try {
-      applePayload = await appleSignin.verifyIdToken(rawIdToken, verifyOptions);
-    } catch (verifyError) {
-      console.error("Apple Token Verification Failed:", verifyError.message || verifyError);
-      return res.status(401).json({
-        success: false,
-        message: "Invalid or expired Apple token: " + (verifyError.message || "Verification failed"),
-      });
-    }
+    // Verify token using Apple public keys
+    const applePayload = await appleSignin.verifyIdToken(rawToken, verifyOptions);
 
     const uid = applePayload.sub;
-    if (!uid) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid Apple token payload: missing sub",
-      });
+    const email = applePayload.email || req.body.email;
+
+    // Extract user name directly from request
+    let clientName = clientNameRaw;
+    let fullName = fullNameRaw;
+
+    // Helper to safely parse stringified JSON if passed from client
+    const tryParseJson = (val) => {
+      if (typeof val === "string") {
+        const trimmed = val.trim();
+        if ((trimmed.startsWith("{") && trimmed.endsWith("}")) || (trimmed.startsWith("[") && trimmed.endsWith("]"))) {
+          try {
+            return JSON.parse(trimmed);
+          } catch (_) {
+            return val;
+          }
+        }
+      }
+      return val;
+    };
+
+    clientName = tryParseJson(clientName);
+    fullName = tryParseJson(fullName);
+
+    let name = "";
+
+    if (clientName && typeof clientName === "object") {
+      const firstName =
+        clientName.firstName ||
+        clientName.givenName ||
+        "";
+
+      const lastName =
+        clientName.lastName ||
+        clientName.familyName ||
+        "";
+
+      name = `${firstName} ${lastName}`.trim();
     }
 
-    // Extract email if available in token or request body
-    const rawEmail = applePayload.email || req.body.email || null;
-    const normalizedEmail = rawEmail ? rawEmail.toLowerCase().trim() : null;
+    if (!name && typeof clientName === "string") {
+      name = clientName.trim();
+    }
 
-    // Parse user name (Apple only provides user's name on first authorization)
-    let userName = "Apple User";
-    if (req.body.name) {
-      if (typeof req.body.name === "string" && req.body.name.trim()) {
-        userName = req.body.name.trim();
-      } else if (typeof req.body.name === "object") {
-        const { firstName, lastName } = req.body.name;
-        const combined = [firstName, lastName].filter(Boolean).join(" ").trim();
-        if (combined) userName = combined;
-      }
-    } else if (req.body.fullName) {
-      if (typeof req.body.fullName === "string" && req.body.fullName.trim()) {
-        userName = req.body.fullName.trim();
-      } else if (typeof req.body.fullName === "object") {
-        const { givenName, familyName, middleName } = req.body.fullName;
-        const combined = [givenName, middleName, familyName].filter(Boolean).join(" ").trim();
-        if (combined) userName = combined;
+    if (!name && fullName && typeof fullName === "object") {
+      const firstName =
+        fullName.firstName ||
+        fullName.givenName ||
+        "";
+
+      const lastName =
+        fullName.lastName ||
+        fullName.familyName ||
+        "";
+
+      name = `${firstName} ${lastName}`.trim();
+    }
+
+    if (!name && typeof fullName === "string") {
+      name = fullName.trim();
+    }
+
+    // Check req.body.user (Apple JS SDK / Flutter user object) if not yet resolved
+    if (!name && req.body.user) {
+      const parsedUser = tryParseJson(req.body.user);
+      if (parsedUser && typeof parsedUser === "object") {
+        const uName = parsedUser.name || parsedUser;
+        if (typeof uName === "object") {
+          const firstName = uName.firstName || uName.givenName || "";
+          const lastName = uName.lastName || uName.familyName || "";
+          name = `${firstName} ${lastName}`.trim();
+        } else if (typeof uName === "string") {
+          name = uName.trim();
+        }
       }
     }
 
-    // Find existing user by appleId or email
+    // Temporary debugging
+    console.log("APPLE LOGIN NAME INPUT:", {
+      clientName: req.body.name,
+      fullName: req.body.fullName,
+      email: req.body.email
+    });
+    console.log("APPLE EXTRACTED NAME:", name);
+
+    const normalizedEmail = email ? email.toLowerCase().trim() : null;
+
+    // Find existing user by Apple UID or by Email
     const searchConditions = [{ appleId: uid }];
     if (normalizedEmail) {
       searchConditions.push({ email: normalizedEmail });
@@ -741,14 +789,17 @@ exports.appleLogin = async (req, res) => {
     let user = await User.findOne({ $or: searchConditions });
     let isNewUser = false;
 
+    // Create new user if not exists
     if (!user) {
       isNewUser = true;
+
       const uniqueSuffix = Math.random().toString(36).substring(2, 8);
       const tempPhone = `apple_${uid.substring(0, 10)}_${uniqueSuffix}`;
 
       user = await User.create({
-        name: userName,
+        name: name || "User",
         email: normalizedEmail,
+        profileImage: "",
         appleId: uid,
         authProvider: "APPLE",
         profileComplete: true,
@@ -756,6 +807,7 @@ exports.appleLogin = async (req, res) => {
         lastLoginAt: new Date(),
       });
     } else {
+      // If user exists, link Apple credentials and update name if needed
       let updated = false;
       if (!user.appleId) {
         user.appleId = uid;
@@ -765,8 +817,14 @@ exports.appleLogin = async (req, res) => {
         user.authProvider = "APPLE";
         updated = true;
       }
-      if ((!user.name || user.name === "User" || user.name === "Apple User") && userName !== "Apple User") {
-        user.name = userName;
+      // If the existing user has a placeholder name and a real Apple name is received, update it
+      if (
+        name &&
+        (!user.name ||
+         user.name === "User" ||
+         user.name === "Apple User")
+      ) {
+        user.name = name;
         updated = true;
       }
       if (!user.email && normalizedEmail) {
@@ -775,6 +833,8 @@ exports.appleLogin = async (req, res) => {
       }
       user.lastLoginAt = new Date();
     }
+
+    user.lastLoginAt = new Date();
 
     // Save FCM Token & disassociate from any other user
     if (fcmToken && typeof fcmToken === "string") {
@@ -812,16 +872,16 @@ exports.appleLogin = async (req, res) => {
         id: user._id,
         name: user.name,
         email: user.email,
-        phone: user.phone,
         profileImage: user.profileImage,
         role: user.role,
       },
     });
+
   } catch (error) {
     console.error("APPLE LOGIN ERROR:", error);
     return res.status(500).json({
       success: false,
-      message: "Apple login failed: " + (error.message || "Internal server error"),
+      message: "Apple login failed",
     });
   }
 };
