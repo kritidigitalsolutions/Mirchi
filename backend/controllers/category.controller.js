@@ -64,7 +64,8 @@ exports.getCategoryContent = async (req, res) => {
       const movieMap = new Map(movies.map(m => [m._id.toString(), { ...m, contentType: "Movie" }]));
       const seriesMap = new Map(series.map(s => [s._id.toString(), { ...s, contentType: "Series" }]));
 
-      contents = category.curatedContent
+      contents = [...category.curatedContent]
+        .sort((a, b) => (a.position || 0) - (b.position || 0))
         .map((item, index) => {
           const idStr = item.contentId.toString();
           const contentData = item.contentType === "Movie" ? movieMap.get(idStr) : seriesMap.get(idStr);

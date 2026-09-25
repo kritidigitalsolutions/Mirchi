@@ -1,7 +1,7 @@
 const Notification = require("../../models/notification.model");
 const User = require("../../models/user.model");
 const Subscription = require("../../models/subscription.model");
-const { sendPushNotification } = require("../../utils/fcm.service");
+const { sendPushNotification, sendMulticastNotification } = require("../../utils/fcm.service");
 
 // ── Admin-level "read" tracking uses a separate readByAdmin flag ──────────
 
@@ -34,33 +34,37 @@ exports.sendNotification = async (req, res) => {
     let finalImageUrl = imageUrl || "";
 
     if (targetContentType && targetContentId) {
-      if (targetContentType === "movie") {
-        const Movie = require("../../models/movie.model");
-        const movie = await Movie.findById(targetContentId);
-        if (movie) {
-          finalImageUrl = imageUrl || movie.poster || movie.thumbnailUrl || "";
-          finalActionUrl = actionUrl || `mirchiapp://movies/id/${movie._id}`;
+      try {
+        if (targetContentType === "movie") {
+          const Movie = require("../../models/movie.model");
+          const movie = await Movie.findById(targetContentId);
+          if (movie) {
+            finalImageUrl = imageUrl || movie.poster || movie.thumbnailUrl || "";
+            finalActionUrl = actionUrl || `mirchiapp://movies/id/${movie._id}`;
+          }
+        } else if (targetContentType === "series") {
+          const Series = require("../../models/series.model");
+          const series = await Series.findById(targetContentId);
+          if (series) {
+            finalImageUrl = imageUrl || series.poster || series.thumbnailUrl || "";
+            finalActionUrl = actionUrl || `mirchiapp://series/id/${series._id}`;
+          }
+        } else if (targetContentType === "plan") {
+          const Plan = require("../../models/plan.model");
+          const plan = await Plan.findById(targetContentId);
+          if (plan) {
+            finalImageUrl = imageUrl || "";
+            finalActionUrl = actionUrl || `mirchiapp://plans/id/${plan._id}`;
+          }
         }
-      } else if (targetContentType === "series") {
-        const Series = require("../../models/series.model");
-        const series = await Series.findById(targetContentId);
-        if (series) {
-          finalImageUrl = imageUrl || series.poster || series.thumbnailUrl || "";
-          finalActionUrl = actionUrl || `mirchiapp://series/id/${series._id}`;
-        }
-      } else if (targetContentType === "plan") {
-        const Plan = require("../../models/plan.model");
-        const plan = await Plan.findById(targetContentId);
-        if (plan) {
-          finalImageUrl = imageUrl || "";
-          finalActionUrl = actionUrl || `mirchiapp://plans/id/${plan._id}`;
-        }
+      } catch (contentErr) {
+        console.warn("Could not populate content metadata:", contentErr.message);
       }
     }
 
     const payload = {
-      title,
-      message,
+      title: title.trim(),
+      message: message.trim(),
       type: type || "GENERAL",
       imageUrl: finalImageUrl,
       actionUrl: finalActionUrl,
@@ -71,20 +75,19 @@ exports.sendNotification = async (req, res) => {
         planId: planId || (targetContentType === "plan" ? targetContentId : undefined),
         imageUrl: finalImageUrl
       },
-      createdBy: req.user.id,
+      createdBy: req.user?.id,
       sentAt: new Date()
     };
 
-    let users = [];
+    let tokens = [];
 
     if (sendTo === "SPECIFIC_USER") {
       payload.targetUser = targetUser;
 
-      users = await User.find({
-        _id: targetUser,
-        fcmToken: { $type: "string", $ne: "" }
-      });
-
+      const user = await User.findById(targetUser).select("fcmToken").lean();
+      if (user && user.fcmToken && typeof user.fcmToken === "string") {
+        tokens = [user.fcmToken];
+      }
     } else if (sendTo === "SUBSCRIBERS") {
       payload.targetUser = null;
       payload.targetUserType = "SUBSCRIBERS";
@@ -94,67 +97,107 @@ exports.sendNotification = async (req, res) => {
         endDate: { $gte: new Date() }
       });
 
-      users = await User.find({
+      tokens = await User.distinct("fcmToken", {
         _id: { $in: subscribedUserIds },
         fcmToken: { $type: "string", $ne: "" }
       });
-
     } else {
       payload.targetUser = null;
       payload.targetUserType = "ALL";
 
-      users = await User.find({
+      tokens = await User.distinct("fcmToken", {
         fcmToken: { $type: "string", $ne: "" }
       });
     }
 
+    // Save notification to database first
     const notification = await Notification.create(payload);
 
-    let sent = 0;
-    let failed = 0;
+    const fcmData = {
+      notificationId: notification._id.toString(),
+      type: type || "GENERAL",
+      actionUrl: finalActionUrl || "",
+      contentType: contentType || "",
+      contentId: contentId || ""
+    };
 
-    // Send in parallel batches to prevent gateway timeouts
-    const batchSize = 100;
-    for (let i = 0; i < users.length; i += batchSize) {
-      const chunk = users.slice(i, i + batchSize);
-      await Promise.all(
-        chunk.map((user) =>
-          sendPushNotification({
-            token: user.fcmToken,
-            title,
-            body: message,
-            imageUrl: finalImageUrl,
-            data: {
-              notificationId: notification._id.toString(),
-              type: type || "GENERAL",
-              actionUrl: finalActionUrl || "",
-              contentType: contentType || "",
-              contentId: contentId || ""
-            }
-          }).then((res) => {
-            console.log("Push to:", user._id, res);
-            if (res.success) sent++;
-            else failed++;
-          }).catch((err) => {
-            console.log("Push Error to user:", user._id, err.message);
-            failed++;
-          })
-        )
-      );
+    // If sending to a specific user, handle single push with a fast timeout
+    if (sendTo === "SPECIFIC_USER") {
+      let sent = 0;
+      let failed = 0;
+
+      if (tokens.length > 0) {
+        try {
+          const pushRes = await Promise.race([
+            sendPushNotification({
+              token: tokens[0],
+              title: title.trim(),
+              body: message.trim(),
+              imageUrl: finalImageUrl,
+              data: fcmData
+            }),
+            new Promise((_, reject) => setTimeout(() => reject(new Error("Push timeout")), 4000))
+          ]);
+
+          if (pushRes && pushRes.success) {
+            sent = 1;
+          } else {
+            failed = 1;
+          }
+        } catch (pushErr) {
+          console.warn("Specific user push error:", pushErr.message);
+          failed = 1;
+        }
+      }
+
+      return res.status(201).json({
+        success: true,
+        message: "Notification sent successfully",
+        data: notification,
+        pushReport: {
+          totalUsers: tokens.length,
+          sent,
+          failed
+        }
+      });
     }
 
+    // For broadcast / subscribers: Respond immediately to admin panel to prevent gateway timeout
     res.status(201).json({
       success: true,
       message: "Notification sent successfully",
       data: notification,
       pushReport: {
-        totalUsers: users.length,
-        sent,
-        failed
+        totalUsers: tokens.length,
+        status: "queued"
+      }
+    });
+
+    // Deliver push notifications asynchronously in background using high-performance multicast
+    setImmediate(async () => {
+      try {
+        const report = await sendMulticastNotification({
+          tokens,
+          title: title.trim(),
+          body: message.trim(),
+          imageUrl: finalImageUrl,
+          data: fcmData
+        });
+
+        // Prune any dead/unregistered tokens reported by FCM in background
+        if (report && report.invalidTokens && report.invalidTokens.length > 0) {
+          User.updateMany(
+            { fcmToken: { $in: report.invalidTokens } },
+            { $unset: { fcmToken: "", fcmTokenUpdatedAt: "" } }
+          ).catch((err) => console.warn("Failed to prune invalid tokens:", err.message));
+        }
+      } catch (bgError) {
+        console.error("Background FCM multicast error:", bgError);
       }
     });
 
   } catch (error) {
+    console.error("Send notification error:", error);
     res.status(500).json({
       success: false,
       message: error.message
