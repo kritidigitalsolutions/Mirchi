@@ -20,9 +20,14 @@ googleId: {
     sparse: true,
 },
 
+appleId: {
+    type: String,
+    sparse: true,
+},
+
 authProvider: {
     type: String,
-    enum: ["PHONE", "GOOGLE"],
+    enum: ["PHONE", "GOOGLE", "APPLE"],
     default: "PHONE",
 },
 

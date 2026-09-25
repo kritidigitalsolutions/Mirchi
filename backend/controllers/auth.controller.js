@@ -5,6 +5,7 @@ const User = require("../models/user.model");
 
 const { admin } = require("../config/firebase");
 const { OAuth2Client } = require("google-auth-library");
+const appleSignin = require("apple-signin-auth");
 
 
 const { sendOtpSms } = require("../services/pinnacleSmsService");
@@ -651,6 +652,176 @@ exports.websiteSSOLogin = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Server error",
+    });
+  }
+};
+
+// ========================================
+// APPLE LOGIN
+// ========================================
+exports.appleLogin = async (req, res) => {
+  try {
+    const rawIdToken = req.body.identityToken || req.body.idToken || req.body.token;
+    const { fcmToken } = req.body;
+
+    if (!rawIdToken) {
+      return res.status(400).json({
+        success: false,
+        message: "Apple identity token is required",
+      });
+    }
+
+    // Configure audience if set in environment (can be comma-separated list of Bundle ID and Service ID)
+    const configuredAudiences = [
+      process.env.APPLE_CLIENT_ID,
+      process.env.APPLE_BUNDLE_ID,
+      process.env.APPLE_SERVICE_ID,
+    ]
+      .filter(Boolean)
+      .flatMap((val) => val.split(",").map((s) => s.trim()))
+      .filter(Boolean);
+
+    const verifyOptions = {
+      ignoreExpiration: false,
+    };
+
+    if (configuredAudiences.length > 0) {
+      verifyOptions.audience = configuredAudiences.length === 1 ? configuredAudiences[0] : configuredAudiences;
+    }
+
+    let applePayload;
+    try {
+      applePayload = await appleSignin.verifyIdToken(rawIdToken, verifyOptions);
+    } catch (verifyError) {
+      console.error("Apple Token Verification Failed:", verifyError.message || verifyError);
+      return res.status(401).json({
+        success: false,
+        message: "Invalid or expired Apple token: " + (verifyError.message || "Verification failed"),
+      });
+    }
+
+    const uid = applePayload.sub;
+    if (!uid) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid Apple token payload: missing sub",
+      });
+    }
+
+    // Extract email if available in token or request body
+    const rawEmail = applePayload.email || req.body.email || null;
+    const normalizedEmail = rawEmail ? rawEmail.toLowerCase().trim() : null;
+
+    // Parse user name (Apple only provides user's name on first authorization)
+    let userName = "Apple User";
+    if (req.body.name) {
+      if (typeof req.body.name === "string" && req.body.name.trim()) {
+        userName = req.body.name.trim();
+      } else if (typeof req.body.name === "object") {
+        const { firstName, lastName } = req.body.name;
+        const combined = [firstName, lastName].filter(Boolean).join(" ").trim();
+        if (combined) userName = combined;
+      }
+    } else if (req.body.fullName) {
+      if (typeof req.body.fullName === "string" && req.body.fullName.trim()) {
+        userName = req.body.fullName.trim();
+      } else if (typeof req.body.fullName === "object") {
+        const { givenName, familyName, middleName } = req.body.fullName;
+        const combined = [givenName, middleName, familyName].filter(Boolean).join(" ").trim();
+        if (combined) userName = combined;
+      }
+    }
+
+    // Find existing user by appleId or email
+    const searchConditions = [{ appleId: uid }];
+    if (normalizedEmail) {
+      searchConditions.push({ email: normalizedEmail });
+    }
+
+    let user = await User.findOne({ $or: searchConditions });
+    let isNewUser = false;
+
+    if (!user) {
+      isNewUser = true;
+      const uniqueSuffix = Math.random().toString(36).substring(2, 8);
+      const tempPhone = `apple_${uid.substring(0, 10)}_${uniqueSuffix}`;
+
+      user = await User.create({
+        name: userName,
+        email: normalizedEmail,
+        appleId: uid,
+        authProvider: "APPLE",
+        profileComplete: true,
+        phone: tempPhone,
+        lastLoginAt: new Date(),
+      });
+    } else {
+      let updated = false;
+      if (!user.appleId) {
+        user.appleId = uid;
+        updated = true;
+      }
+      if (user.authProvider !== "APPLE" && !user.googleId) {
+        user.authProvider = "APPLE";
+        updated = true;
+      }
+      if ((!user.name || user.name === "User" || user.name === "Apple User") && userName !== "Apple User") {
+        user.name = userName;
+        updated = true;
+      }
+      if (!user.email && normalizedEmail) {
+        user.email = normalizedEmail;
+        updated = true;
+      }
+      user.lastLoginAt = new Date();
+    }
+
+    // Save FCM Token & disassociate from any other user
+    if (fcmToken && typeof fcmToken === "string") {
+      const normalizedFcmToken = fcmToken.trim();
+      if (normalizedFcmToken) {
+        await User.updateMany(
+          {
+            _id: { $ne: user._id },
+            fcmToken: normalizedFcmToken,
+          },
+          {
+            $unset: {
+              fcmToken: "",
+              fcmTokenUpdatedAt: "",
+            },
+          }
+        );
+
+        user.fcmToken = normalizedFcmToken;
+        user.fcmTokenUpdatedAt = new Date();
+      }
+    }
+
+    await user.save();
+
+    // Generate JWT
+    const appToken = generateUserToken(user);
+
+    return res.status(200).json({
+      success: true,
+      message: "Apple login successful",
+      token: appToken,
+      isNewUser,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        profileImage: user.profileImage,
+        role: user.role,
+      },
+    });
+  } catch (error) {
+    console.error("APPLE LOGIN ERROR:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Apple login failed: " + (error.message || "Internal server error"),
     });
   }
 };

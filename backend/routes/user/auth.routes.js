@@ -6,6 +6,7 @@ const {
   sendOTP,
   verifyOtp,
   googleLogin,
+  appleLogin,
   websiteSSOLogin,
 } = require("../../controllers/auth.controller");
 
@@ -33,6 +34,14 @@ router.post(
 router.post(
   "/google-login",
   googleLogin
+);
+
+// ========================================
+// APPLE LOGIN
+// ========================================
+router.post(
+  "/apple-login",
+  appleLogin
 );
 
 // ========================================

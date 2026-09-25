@@ -5,6 +5,7 @@
     "node": ">=18.0.0"
   },
   "dependencies": {
+    "apple-signin-auth": "^2.1.0",
     "axios": "^1.18.1",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
