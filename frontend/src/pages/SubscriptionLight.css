@@ -235,3 +235,30 @@ body.light .subscription-user-phone {
   color: #64748b;
 }
 
+
+body.light .subscription-claimed-range {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  color: #64748b;
+}
+
+body.light .subscription-claimed-range input {
+  color: #0f172a;
+  color-scheme: light;
+}
+
+body.light .subscription-days-left { color: #64748b; }
+body.light .subscription-days-left.urgent { color: #b91c1c; }
+
+body.light .subscription-source { background: #f1f5f9; color: #475569; }
+body.light .subscription-source.payment { background: #d1fae5; color: #047857; }
+body.light .subscription-source.voucher { background: #f3e8ff; color: #7e22ce; }
+body.light .subscription-source.promo { background: #dbeafe; color: #1d4ed8; }
+
+body.light .sub-main { color: #0f172a; }
+body.light .sub-meta { color: #64748b; }
+body.light .sub-plan-name { color: #7e22ce; }
+body.light .sub-source.payment { color: #059669; font-weight: 600; }
+body.light .sub-source.voucher { color: #7e22ce; }
+body.light .sub-source.promo { color: #1d4ed8; }
+body.light .sub-urgent { color: #b91c1c; }

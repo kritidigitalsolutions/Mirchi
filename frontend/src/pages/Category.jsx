@@ -424,7 +424,7 @@ export default function Category() {
               {unselected.length > 0 && (
                 <button
                   type="button"
-                  className="wl-btn-action"
+                  className="btn btn-ghost btn-sm"
                   onClick={() => handleAddAll(catId, connected)}
                   title="Add all tagged series to this curated order"
                 >
@@ -434,7 +434,7 @@ export default function Category() {
               {selectedList.length > 0 && (
                 <button
                   type="button"
-                  className="wl-btn-action wl-btn-action--danger"
+                  className="btn btn-danger btn-sm"
                   onClick={() => handleClearAll(catId)}
                   title="Remove all items from row"
                 >
@@ -630,11 +630,10 @@ export default function Category() {
               <tr>
                 <th style={{ width: '60px' }}>#</th>
                 <th>CATEGORY</th>
-                <th>SLUG</th>
-                <th>PRIORITY</th>
+                <th className="center">PRIORITY</th>
                 <th>STATUS</th>
                 <th>CREATED</th>
-                <th style={{ textAlign: 'center' }}>ACTIONS</th>
+                <th>ACTIONS</th>
               </tr>
             </thead>
             <tbody>
@@ -652,15 +651,13 @@ export default function Category() {
                       }}>
                         {c.name.charAt(0).toUpperCase()}
                       </div>
-                      {c.name}
+                      <div>
+                        <div className="cell-main">{c.name}</div>
+                        <div className="cell-sub">/{c.slug}</div>
+                      </div>
                     </div>
                   </td>
-                  <td>
-                    <span style={{ background: "var(--surface-hover)", border: "1px solid var(--border)", padding: "4px 10px", borderRadius: "12px", fontSize: "12px", color: "var(--text-muted)" }}>
-                      {c.slug}
-                    </span>
-                  </td>
-                  <td>
+                  <td className="center">
                     <input
                       key={`priority-${c._id}-${c.priority}`}
                       type="number"
@@ -691,9 +688,14 @@ export default function Category() {
                       {c.isActive !== false ? "Active" : "Inactive"}
                     </span>
                   </td>
-                  <td style={{ color: 'var(--text-muted)', fontSize: '13px' }}>{formatDate(c.createdAt)}</td>
-                  <td style={{ textAlign: 'center' }}>
-                    <div className="tbl-actions" style={{ justifyContent: "center" }}>
+                  <td>
+                    <div className="cell-main">{formatDate(c.createdAt)}</div>
+                    <div className="cell-sub">
+                      {c.createdAt ? new Date(c.createdAt).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" }) : ""}
+                    </div>
+                  </td>
+                  <td>
+                    <div className="tbl-actions">
                       <div style={{ display: "flex", alignItems: "center", marginRight: "8px" }} title={c.isActive !== false ? "Deactivate" : "Activate"}>
                         <label style={{ position: "relative", display: "inline-flex", alignItems: "center", cursor: "pointer" }}>
                           <input
@@ -727,7 +729,7 @@ export default function Category() {
                 </tr>
                 {expandedCategory === c.slug && (
                   <tr className="expanded-row" style={{ background: "var(--surface)" }}>
-                    <td colSpan={7} style={{ padding: 0 }}>
+                    <td colSpan={6} style={{ padding: 0 }}>
                       <div style={{ borderLeft: "3px solid var(--primary)", borderBottom: "1px solid var(--border)", background: "var(--background)" }}>
                         {renderInlineCarousel(c._id, c.slug)}
                       </div>
@@ -738,7 +740,7 @@ export default function Category() {
               ))}
               {filteredCategories.length === 0 && (
                 <tr>
-                  <td colSpan="7" style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-muted)' }}>
+                  <td colSpan={6} className="tbl-empty">
                     No categories found.
                   </td>
                 </tr>

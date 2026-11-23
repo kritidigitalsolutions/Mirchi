@@ -40,6 +40,7 @@ const activateSubscription = async (transaction, gatewayPayload = {}) => {
     user: transaction.user,
     plan: plan._id,
     status: 'active',
+    source: 'payment',
     paymentId: transaction.paymentId,
     subscriptionId: transaction.merchantTxnId,
     amount: transaction.amount,

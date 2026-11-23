@@ -41,6 +41,9 @@ const Settings = lazyLoad(() => import("./pages/Settings"));
 const SubAdminsPage = lazyLoad(() => import("./pages/SubAdmins"));
 const CategoryPage = lazyLoad(() => import("./pages/Category"));
 const WebpageLayout = lazyLoad(() => import("./pages/WebpageLayout"));
+const AppBanners = lazyLoad(() => import("./pages/AppBanners"));
+const AnalyticsPage = lazyLoad(() => import("./pages/Analytics"));
+const SeriesAnalytics = lazyLoad(() => import("./pages/SeriesAnalytics"));
 
 // ── Toast Context ──
 const ToastContext = createContext();
@@ -128,6 +131,9 @@ function App() {
             <Route path="subadmins" element={<SubAdminsPage />} />
             <Route path="categories" element={<CategoryPage />} />
             <Route path="webpage" element={<WebpageLayout />} />
+            <Route path="app-banners" element={<AppBanners />} />
+            <Route path="analytics" element={<AnalyticsPage />} />
+            <Route path="analytics/series/:id" element={<SeriesAnalytics />} />
           </Route>
         </Routes>
       </Suspense>

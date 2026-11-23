@@ -566,7 +566,7 @@ const handleSubmit = async (e) => {
         >
           <button
             type="submit"
-            className="btn-lg"
+            className="btn btn-primary btn-lg"
             disabled={loading}
             style={{
               minWidth: "240px",

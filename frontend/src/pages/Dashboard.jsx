@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import API from "../api/axios";
+import { fmtDate, fmtTime } from "../utils/tableFormat";
 import "./Dashboard.css";
 import {
   BarChart3,
@@ -529,7 +530,7 @@ export default function Dashboard() {
           ) : (
             <div className="tbl-wrap">
               <table className="tbl">
-                <thead><tr><th>#</th><th>User</th><th>Email</th><th>Joined</th></tr></thead>
+                <thead><tr><th>#</th><th>User</th><th>Phone</th><th>Joined</th></tr></thead>
                 <tbody>
                   {users.slice(0, 5).map((u, i) => (
                     <tr key={u._id || i}>
@@ -537,11 +538,17 @@ export default function Dashboard() {
                       <td>
                         <div className="user-cell">
                           <div className="u-avatar">{u.name?.[0]?.toUpperCase() || "U"}</div>
-                          <span className="u-name">{u.name || "User"}</span>
+                          <div>
+                            <div className="cell-main">{u.name || "User"}</div>
+                            <div className="cell-sub">{u.email || "—"}</div>
+                          </div>
                         </div>
                       </td>
-                      <td style={{ color: "var(--text-soft)" }}>{u.email}</td>
-                      <td style={{ color: "var(--text-muted)" }}>{new Date(u.createdAt).toLocaleDateString("en-IN")}</td>
+                      <td className="cell-muted">{u.phone || "—"}</td>
+                      <td>
+                        <div className="cell-main">{fmtDate(u.createdAt)}</div>
+                        <div className="cell-sub">{fmtTime(u.createdAt)}</div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>

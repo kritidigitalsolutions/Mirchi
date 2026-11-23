@@ -3,10 +3,16 @@ import { Outlet } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
 import Topbar from "../components/Topbar";
 import API from "../api/axios";
+import { getStoredTheme, storeTheme, switchThemeWithTransition } from "../utils/themeTransition";
 import "./AdminLayout.css";
 
 export default function AdminLayout() {
-  const [theme, setTheme] = useState("dark"); // "dark" | "light"
+  const [theme, setTheme] = useState(getStoredTheme); // "dark" | "light"
+
+  // Keep <body> in sync (also restores the saved theme on page load)
+  useEffect(() => {
+    document.body.classList.toggle("light", theme === "light");
+  }, [theme]);
   const [showSidebar, setShowSidebar] = useState(false);
   const [adminRole, setAdminRole] = useState(() => localStorage.getItem("adminRole") || "ADMIN");
   const [adminPermissions, setAdminPermissions] = useState(() => {
@@ -45,10 +51,17 @@ export default function AdminLayout() {
     fetchAdminProfile();
   }, []);
 
-  const toggleTheme = () => {
+  const toggleTheme = (event) => {
     const next = theme === "dark" ? "light" : "dark";
-    setTheme(next);
-    document.body.classList.toggle("light", next === "light");
+    storeTheme(next);
+    switchThemeWithTransition(
+      () => {
+        setTheme(next);
+        document.body.classList.toggle("light", next === "light");
+      },
+      event,
+      next === "light"
+    );
   };
 
   const toggleSidebar = () => setShowSidebar(!showSidebar);

@@ -1,5 +1,7 @@
 const User = require("../../models/user.model");
 const Subscription = require("../../models/subscription.model");
+const Plan = require("../../models/plan.model");
+const { resolveSubscriptionSource } = require("../../utils/subscriptionSource");
 
 // MongoDB stores timestamps in UTC. Dashboard registration reporting is based
 // on the India calendar day, regardless of where the API process is hosted.
@@ -55,15 +57,49 @@ exports.getAllUsers = async (
         const totalPages = Math.max(Math.ceil(totalUsers / limit), 1);
         const currentPage = Math.min(page, totalPages);
 
-        const [users, activeUsers, blockedUsers] = await Promise.all([
+        const [userDocs, activeUsers, blockedUsers] = await Promise.all([
             User.find(filter)
                 .select("-__v")
                 .sort({ createdAt: -1 })
                 .skip((currentPage - 1) * limit)
-                .limit(limit),
+                .limit(limit)
+                .lean(),
             User.countDocuments({ ...searchFilter, isBlocked: { $ne: true } }),
             User.countDocuments({ ...searchFilter, isBlocked: true }),
         ]);
+
+        // Attach each user's latest subscription (claim date, plan, expiry)
+        const latestSubs = await Subscription.aggregate([
+            { $match: { user: { $in: userDocs.map((u) => u._id) } } },
+            { $sort: { startDate: -1 } },
+            { $group: { _id: "$user", sub: { $first: "$$ROOT" } } },
+            {
+                $lookup: {
+                    from: Plan.collection.name,
+                    localField: "sub.plan",
+                    foreignField: "_id",
+                    as: "plan",
+                },
+            },
+        ]);
+        const latestByUser = new Map(
+            latestSubs.map(({ _id, sub, plan }) => [
+                String(_id),
+                {
+                    _id: sub._id,
+                    planName: plan[0]?.name || null,
+                    status: sub.status === "active" && sub.endDate < new Date() ? "expired" : sub.status,
+                    amount: sub.amount,
+                    source: resolveSubscriptionSource(sub),
+                    startDate: sub.startDate,
+                    endDate: sub.endDate,
+                },
+            ])
+        );
+        const users = userDocs.map((u) => ({
+            ...u,
+            latestSubscription: latestByUser.get(String(u._id)) || null,
+        }));
 
         res.status(200).json({
             success: true,
@@ -114,9 +150,20 @@ exports.getSingleUser = async (
             });
         }
 
+        const subscriptionDocs = await Subscription.find({ user: user._id })
+            .populate("plan", "name price duration")
+            .sort({ startDate: -1 })
+            .lean();
+        const subscriptions = subscriptionDocs.map((sub) => ({
+            ...sub,
+            source: resolveSubscriptionSource(sub),
+            status: sub.status === "active" && sub.endDate < new Date() ? "expired" : sub.status,
+        }));
+
         res.status(200).json({
             success: true,
             user,
+            subscriptions,
         });
 
     } catch (error) {

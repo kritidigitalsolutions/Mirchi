@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Pencil, Trash2, Eye, X } from "lucide-react";
 import API from "../api/axios";
+import { fmtMoney, plural } from "../utils/tableFormat";
 import "./Dashboard.css";
 
 export default function PlansPage() {
@@ -200,7 +201,7 @@ export default function PlansPage() {
           </div>
 
           <button
-            className="btn-lg"
+            className="btn btn-primary btn-lg"
             type="submit"
             style={{ marginTop: 16 }}
             disabled={loading}
@@ -222,12 +223,11 @@ export default function PlansPage() {
           <table className="tbl">
             <thead>
               <tr>
-                <th>Name</th>
-                <th>Price</th>
-                <th>Duration</th>
-                <th>Type</th>
+                <th>Plan</th>
+                <th className="num">Price</th>
+                <th className="center">Duration</th>
                 <th>Status</th>
-                <th>Recommended</th>
+                <th className="center">Recommended</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -235,21 +235,33 @@ export default function PlansPage() {
             <tbody>
               {plans.length === 0 ? (
                 <tr>
-                  <td colSpan="5">No plans found</td>
+                  <td colSpan={6} className="tbl-empty">No plans found</td>
                 </tr>
               ) : (
                 plans.map((p) => (
                   <tr key={p._id}>
-                    <td>{p.name}</td>
-                    <td>₹{p.price}</td>
-                    <td>{p.duration} days</td>
-                    <td style={{ textTransform: 'capitalize' }}>{p.planType || "Monthly"}</td>
+                    <td>
+                      <div className="cell-main cell-plan">{p.name}</div>
+                      <div className="cell-sub" style={{ textTransform: "capitalize" }}>{p.planType || "Monthly"} plan</div>
+                    </td>
+                    <td className="num">
+                      <div className="cell-main">{fmtMoney(p.price)}</div>
+                      <div className="cell-sub">
+                        {p.duration ? `₹${(Number(p.price || 0) / p.duration).toFixed(1)} / day` : "—"}
+                      </div>
+                    </td>
+                    <td className="center">
+                      <div className="cell-main">{plural(p.duration || 0, "day")}</div>
+                      <div className="cell-sub">{p.duration >= 30 ? `~${Math.round(p.duration / 30)} month${Math.round(p.duration / 30) === 1 ? "" : "s"}` : `${Math.round(p.duration / 7) || 1} week${Math.round(p.duration / 7) > 1 ? "s" : ""}`}</div>
+                    </td>
                     <td>
                       <span className={p.isActive !== false ? "status active" : "status expired"}>
                         {p.isActive !== false ? "Active" : "Inactive"}
                       </span>
                     </td>
-                    <td>{p.isRecommended ? "Yes" : "No"}</td>
+                    <td className="center">
+                      {p.isRecommended ? <span className="badge badge-active">Yes</span> : <span className="cell-muted">No</span>}
+                    </td>
 
                     {/* <td style={{ display: "flex", gap: 8 }}>
                       <button

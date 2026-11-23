@@ -120,6 +120,18 @@ const subscriptionSchema =
       },
 
       // ========================================
+      // SOURCE (how the subscription was claimed)
+      // ========================================
+
+      source: {
+        type: String,
+
+        enum: ["payment", "promo", "voucher", "direct", "admin"],
+
+        index: true,
+      },
+
+      // ========================================
       // START DATE
       // ========================================
 

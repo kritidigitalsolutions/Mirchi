@@ -384,7 +384,7 @@ export default function SupportDetails({ ticketId }) {
           <MessageSquare size={30} />
           <h2>Support Ticket</h2>
           <p>{error || "Ticket not found"}</p>
-          <button className="support-btn primary" onClick={fetchTicket}>
+          <button className="btn btn-primary" onClick={fetchTicket}>
             <RefreshCw size={16} />
             Retry
           </button>
@@ -397,7 +397,7 @@ export default function SupportDetails({ ticketId }) {
     <div className="support-details-page">
       <div className="support-details-header">
         <button
-          className="support-icon-btn"
+          className="icon-btn"
           type="button"
           onClick={() => navigate(-1)}
           title="Back"
@@ -416,7 +416,7 @@ export default function SupportDetails({ ticketId }) {
 
         <div className="support-header-actions">
           <button
-            className="support-btn ghost"
+            className="btn btn-ghost"
             type="button"
             onClick={fetchTicket}
             disabled={loading}
@@ -673,7 +673,7 @@ export default function SupportDetails({ ticketId }) {
                 />
                 <button
                   type="button"
-                  className="support-btn ghost"
+                  className="btn btn-ghost"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={sendingReply || status === "CLOSED"}
                   title="Add attachments (Max 5)"
@@ -689,7 +689,7 @@ export default function SupportDetails({ ticketId }) {
               </div>
               <button
                 id="sendReplySubmitBtn"
-                className="support-btn primary"
+                className="btn btn-primary"
                 type="submit"
                 disabled={
                   sendingReply || status === "CLOSED" || (!reply.trim() && replyFiles.length === 0)

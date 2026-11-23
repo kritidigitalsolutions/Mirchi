@@ -1,0 +1,313 @@
+/* ==========================================================================
+   ADMIN TABLES: one shared look for every `.tbl` table in the panel.
+
+   Several page stylesheets (Dashboard.css, Content.css, ...) each define their
+   own `.tbl` rules, and since Vite keeps every visited page's CSS loaded, the
+   look used to change depending on navigation order. Every rule here is scoped
+   to `table.tbl` so it is more specific than those page rules and always wins.
+
+   Helpers for markup:
+     .center / .num          centre / right-align a column (put on th AND td)
+     .cell-main / .cell-sub  two-line cell: bold value + muted detail line
+     .cell-wrap              let a cell wrap (cells don't wrap by default)
+   The actions column (a cell containing .tbl-actions, or td.actions) is
+   right-aligned automatically.
+   ========================================================================== */
+
+.tbl-wrap {
+  overflow-x: auto;
+  border-radius: 10px;
+}
+
+table.tbl {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 720px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- Header ---- */
+table.tbl thead tr {
+  background: var(--bg3);
+}
+
+body.light table.tbl thead tr {
+  background: #f1f5f9;
+}
+
+table.tbl th {
+  padding: 11px 14px;
+  text-align: left;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+/* ---- Body ---- */
+table.tbl td {
+  padding: 12px 14px;
+  font-size: 0.875rem;
+  line-height: 1.35;
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+table.tbl tbody tr {
+  box-shadow: none;
+  transition: background-color 0.15s ease;
+  animation: tblRowIn 0.25s ease-out both;
+}
+
+@keyframes tblRowIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+table.tbl tbody tr:hover {
+  background: rgba(148, 163, 184, 0.06);
+  box-shadow: none;
+}
+
+body.light table.tbl tbody tr:hover {
+  background: #f8fafc;
+}
+
+table.tbl tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* ---- Alignment helpers ---- */
+table.tbl th.center,
+table.tbl td.center {
+  text-align: center;
+}
+
+table.tbl th.num,
+table.tbl td.num {
+  text-align: right;
+}
+
+table.tbl td.cell-wrap {
+  white-space: normal;
+}
+
+table.tbl .cell-main {
+  font-weight: 600;
+  color: var(--text);
+}
+
+table.tbl .cell-sub {
+  margin-top: 3px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+table.tbl .cell-muted {
+  color: var(--text-muted);
+}
+
+/* ---- Actions column: always right-aligned, never wraps ---- */
+table.tbl:has(td .tbl-actions) th:last-child,
+table.tbl:has(td.actions) th:last-child,
+table.tbl td:has(> .tbl-actions),
+table.tbl td.actions {
+  text-align: right;
+  width: 1%;
+}
+
+table.tbl .tbl-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  flex-wrap: nowrap;
+}
+
+table.tbl td.actions {
+  /* an older global ".actions { display: flex }" turned the cell into a flex box */
+  display: table-cell;
+  white-space: nowrap;
+}
+
+/* text buttons inside the actions column (e.g. "Seasons") match icon-button height */
+table.tbl .tbl-actions .btn {
+  height: 32px;
+  padding: 0 12px;
+  gap: 6px;
+  font-size: 0.8rem;
+  border-radius: 8px;
+  white-space: nowrap;
+}
+
+table.tbl td.actions > * + * {
+  margin-left: 6px;
+}
+
+/* ---- Icon buttons ---- */
+
+/* ---- Badges / status pills ---- */
+table.tbl .badge,
+table.tbl .status {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border: 0;
+  border-left: 0;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.5;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  background: rgba(148, 163, 184, 0.14);
+  color: var(--text-soft);
+}
+
+table.tbl .badge-active,
+table.tbl .badge-pub,
+table.tbl .status.active {
+  background: rgba(16, 185, 129, 0.14);
+  color: #34d399;
+}
+
+table.tbl .badge-blocked,
+table.tbl .status.expired {
+  background: rgba(239, 68, 68, 0.14);
+  color: #f87171;
+}
+
+table.tbl .badge-draft {
+  background: rgba(148, 163, 184, 0.14);
+  color: var(--text-soft);
+}
+
+table.tbl .badge-coming,
+table.tbl .status.cancelled {
+  background: rgba(245, 158, 11, 0.14);
+  color: #fbbf24;
+}
+
+body.light table.tbl .badge-active,
+body.light table.tbl .badge-pub,
+body.light table.tbl .status.active {
+  background: #d1fae5;
+  color: #047857;
+}
+
+body.light table.tbl .badge-blocked,
+body.light table.tbl .status.expired {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+body.light table.tbl .badge-draft {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+body.light table.tbl .badge-coming,
+body.light table.tbl .status.cancelled {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+/* ---- Code-style values (promo / voucher codes, slugs) ---- */
+table.tbl .cell-code {
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--primary);
+}
+
+/* ---- Empty / loading rows ---- */
+table.tbl td.tbl-empty {
+  padding: 36px 16px;
+  text-align: center;
+  color: var(--text-muted);
+  white-space: normal;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  table.tbl tbody tr {
+    animation: none;
+  }
+}
+
+/* ==========================================================================
+   Two-line cells (same pattern as the Subscriptions table)
+   <div class="cell-main">value</div><div class="cell-sub">detail</div>
+   ========================================================================== */
+table.tbl .cell-main {
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--text);
+}
+
+table.tbl .cell-main.cell-normal {
+  font-weight: 500;
+}
+
+table.tbl .cell-main.cell-muted,
+table.tbl .cell-muted {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+table.tbl .cell-sub {
+  margin-top: 3px;
+  font-size: 0.75rem;
+  line-height: 1.2;
+  font-weight: 500;
+  color: #64748b;
+}
+
+table.tbl .cell-ellipsis {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* plan names: same purple as the Subscriptions table */
+table.tbl .cell-plan {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #d8b4fe;
+}
+
+body.light table.tbl .cell-plan {
+  color: #7e22ce;
+}
+
+table.tbl .cell-main.cell-code {
+  color: var(--primary);
+  letter-spacing: 0.03em;
+}
+
+/* small status dot next to a value */
+table.tbl .cell-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #64748b;
+  flex: none;
+}
+
+table.tbl .cell-dot.active { background: #10b981; }
+table.tbl .cell-dot.expired { background: #ef4444; }
+table.tbl .cell-dot.cancelled { background: #f59e0b; }
+
+/* avatar + two-line text */
+table.tbl .user-cell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}

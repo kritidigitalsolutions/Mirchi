@@ -198,13 +198,15 @@ const handleSelect = (item) => {
           {/* ── Notification Bell ── */}
           <div className="notif-bell-wrap" ref={notifRef}>
             <button
-              className={`action-btn notif-btn ${notifOpen ? "notif-btn-active" : ""}`}
+              className={`action-btn notif-btn ${notifOpen ? "notif-btn-active" : ""} ${notifCount > 0 ? "has-unread" : ""}`}
               title="Notifications"
+              aria-label={notifCount > 0 ? `Notifications, ${notifCount} unread` : "Notifications"}
               onClick={() => setNotifOpen((o) => !o)}
             >
-              <Bell size={20} />
+              <Bell size={20} className="notif-bell-icon" />
               {notifCount > 0 && (
-                <span className="notif-badge">
+                // key = count, so the pop animation replays when the number changes
+                <span key={notifCount} className="notif-badge" aria-hidden="true">
                   {notifCount > 99 ? "99+" : notifCount}
                 </span>
               )}
@@ -296,14 +298,15 @@ const handleSelect = (item) => {
             className={`theme-toggle ${theme}`}
             onClick={toggleTheme}
             title={`Switch to ${theme === "dark" ? "Light" : "Dark"} mode`}
+            aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
           >
-            <span className="toggle-track">
-              <span className="toggle-thumb">
-                {theme === "dark" ? <Moon size={16} /> : <Sun size={16} />}
-              </span>
+            <span className="toggle-track" aria-hidden="true">
+              <Moon size={16} className="toggle-icon icon-moon" />
+              <Sun size={16} className="toggle-icon icon-sun" />
             </span>
-            <span className="toggle-label">
-              {theme === "dark" ? "Dark" : "Light"}
+            <span className="toggle-label" aria-hidden="true">
+              <span className="label-dark">Dark</span>
+              <span className="label-light">Light</span>
             </span>
           </button>
 

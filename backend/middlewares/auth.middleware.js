@@ -65,4 +65,22 @@ req.user = user;
   }
 };
 
-module.exports = { isAuth };
+// Attaches req.user when a valid user token is sent, but never blocks the
+// request. Used by endpoints that also accept guests (e.g. watch tracking).
+const optionalAuth = async (req, res, next) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      const decoded = jwt.verify(authHeader.split(" ")[1], process.env.JWT_SECRET);
+      if (decoded.role === "USER") {
+        const user = await User.findById(decoded.id);
+        if (user) req.user = user;
+      }
+    }
+  } catch {
+    // invalid / expired token: continue as guest
+  }
+  next();
+};
+
+module.exports = { isAuth, optionalAuth };

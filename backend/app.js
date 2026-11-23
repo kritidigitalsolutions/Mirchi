@@ -208,6 +208,10 @@ app.use("/api/content", updateUpcomingStatus, contentUserRoutes);
 const webpageUserRoutes = require("./routes/user/webpage.routes");
 app.use("/api/webpage", webpageUserRoutes);
 
+// App banners (sliding carousel in the mobile app)
+app.use("/api/admin/app-banners", require("./routes/admin/appBanner.routes"));
+app.use("/api/app-banners", require("./routes/user/appBanner.routes"));
+
 //legal routes for admin
 const adminLegal = require("./routes/admin/legal.routes");
 app.use("/api/admin/legal", adminLegal);
@@ -284,6 +288,12 @@ const userSupportRoutes = require("./routes/user/support.routes");
 const adminSupportRoutes = require("./routes/admin/support.routes");
 app.use("/api/support", userSupportRoutes);
 app.use("/api/admin/support", adminSupportRoutes);
+
+// WATCH TRACKING + CONTENT ANALYTICS
+const watchRoutes = require("./routes/user/watch.routes");
+const adminAnalyticsRoutes = require("./routes/admin/analytics.routes");
+app.use("/api/watch", watchRoutes);
+app.use("/api/admin/analytics", adminAnalyticsRoutes);
 
 // SUB-ADMIN / STAFF ROUTES
 const adminSubAdminRoutes = require("./routes/admin/subadmin.routes");

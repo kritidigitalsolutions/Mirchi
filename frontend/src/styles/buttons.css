@@ -1,0 +1,249 @@
+/* ======================================
+   BUTTONS — single source of truth
+   Every action button in the admin panel uses these classes.
+   Do NOT redefine .btn / .icon-btn / .modal-close in page CSS;
+   page files may only add layout (margin, width, alignment).
+
+   Text buttons:  .btn + one variant + optional size
+     variants: .btn-primary  main action (save, add, publish)
+               .btn-ghost    secondary action (cancel, refresh, filter)
+               .btn-danger   destructive action (delete, clear)
+     sizes:    .btn-sm (32px)  default (38px)  .btn-lg (44px)
+     width:    .btn-block (full width)
+
+   Icon buttons:  .icon-btn + optional intent
+     intents:  .view  .edit  .del / .delete  .upload
+     size:     .icon-btn-sm (28px)
+
+   Modal close:   .modal-close
+====================================== */
+
+:root {
+  --btn-h: 38px;
+  --btn-h-sm: 32px;
+  --btn-h-lg: 44px;
+  --btn-radius: 8px;
+  --btn-primary-hover: #c1071a;
+  --btn-ghost-bg: var(--bg3);
+  --btn-ghost-hover: var(--border2);
+}
+
+body.light {
+  --btn-ghost-bg: #ffffff;
+  --btn-ghost-hover: #f1f5f9;
+}
+
+/* ---------- Base ---------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: var(--btn-h);
+  padding: 0 16px;
+  border: 1px solid transparent;
+  border-radius: var(--btn-radius);
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0;
+  text-transform: none;
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s;
+}
+
+.btn svg {
+  flex-shrink: 0;
+}
+
+.btn:focus-visible,
+.icon-btn:focus-visible,
+.modal-close:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.btn:disabled,
+.btn[aria-disabled="true"] {
+  opacity: 0.55;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* ---------- Variants ---------- */
+.btn-primary {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #ffffff;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--btn-primary-hover);
+  border-color: var(--btn-primary-hover);
+}
+
+.btn-ghost {
+  background: var(--btn-ghost-bg);
+  border-color: var(--border2);
+  color: var(--text-soft);
+}
+
+.btn-ghost:hover:not(:disabled) {
+  background: var(--btn-ghost-hover);
+  color: var(--text);
+}
+
+.btn-danger {
+  background: var(--primary-dim);
+  border-color: rgba(229, 9, 20, 0.35);
+  color: var(--primary);
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #ffffff;
+}
+
+/* ---------- Sizes ---------- */
+.btn-sm {
+  height: var(--btn-h-sm);
+  padding: 0 12px;
+  gap: 6px;
+  font-size: 0.8rem;
+}
+
+.btn-lg {
+  height: var(--btn-h-lg);
+  padding: 0 22px;
+  font-size: 0.95rem;
+}
+
+.btn-block {
+  display: flex;
+  width: 100%;
+}
+
+/* ---------- Icon buttons ---------- */
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--border2);
+  border-radius: var(--btn-radius);
+  background: transparent;
+  color: var(--text-soft);
+  font-size: 0.85rem;
+  cursor: pointer;
+  vertical-align: middle;
+  transition: background-color 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.icon-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.icon-btn-sm {
+  width: 28px;
+  height: 28px;
+}
+
+.icon-btn-sm svg {
+  width: 14px;
+  height: 14px;
+}
+
+.icon-btn:hover:not(:disabled) {
+  background: var(--bg3);
+  color: var(--text);
+}
+
+.icon-btn.view:hover:not(:disabled) {
+  background: rgba(59, 130, 246, 0.12);
+  border-color: rgba(59, 130, 246, 0.35);
+  color: #3b82f6;
+}
+
+.icon-btn.edit:hover:not(:disabled) {
+  background: rgba(234, 179, 8, 0.12);
+  border-color: rgba(234, 179, 8, 0.35);
+  color: #ca8a04;
+}
+
+.icon-btn.del:hover:not(:disabled),
+.icon-btn.delete:hover:not(:disabled) {
+  background: var(--primary-dim);
+  border-color: rgba(229, 9, 20, 0.35);
+  color: var(--primary);
+}
+
+.icon-btn.upload:hover:not(:disabled) {
+  background: var(--green-dim);
+  border-color: rgba(16, 185, 129, 0.35);
+  color: var(--green);
+}
+
+.icon-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ---------- Modal close ---------- */
+.modal-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--border2);
+  border-radius: var(--btn-radius);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.modal-close svg {
+  width: 18px;
+  height: 18px;
+}
+
+.modal-close:hover {
+  background: var(--primary-dim);
+  border-color: rgba(229, 9, 20, 0.35);
+  color: var(--primary);
+}
+
+/* ---------- Square remove button (forms) ---------- */
+.btn-sq {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: var(--btn-h);
+  height: var(--btn-h);
+  padding: 0;
+  border: 1px solid var(--border2);
+  border-radius: var(--btn-radius);
+  background: var(--btn-ghost-bg);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.btn-sq:hover {
+  background: var(--primary-dim);
+  border-color: rgba(229, 9, 20, 0.35);
+  color: var(--primary);
+}

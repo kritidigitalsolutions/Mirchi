@@ -1,13 +1,17 @@
 import { useEffect, useState } from "react";
 import API, { API_BASE_URL } from "../api/axios";
 import { Users, RefreshCw, User, CheckCircle, AlertCircle, Search, Loader, Eye, Trash2, X, ChevronLeft, ChevronRight, Lock, Unlock } from "lucide-react";
+import { daysLeft, formatDate, formatDateTime, sourceLabel } from "../utils/subscriptionFormat";
 import "./Dashboard.css";
+import { fmtDate, fmtTime } from "../utils/tableFormat";
 
 export default function UsersPage() {
   const [users, setUsers] = useState([]);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [selected, setSelected] = useState(null);
+  const [subHistory, setSubHistory] = useState([]);
+  const [subHistoryLoading, setSubHistoryLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState({ currentPage: 1, totalPages: 1, totalUsers: 0, limit: 10 });
@@ -57,10 +61,27 @@ export default function UsersPage() {
   const handleToggleBlock = async (id) => {
     try {
       const res = await API.patch(`/admin/users/${id}/block`);
-      setUsers(p => p.map(u => u._id === id ? res.data.user : u));
-      if (selected?._id === id) setSelected(res.data.user);
+      setUsers(p => p.map(u => u._id === id ? { ...res.data.user, latestSubscription: u.latestSubscription } : u));
+      if (selected?._id === id) setSelected((current) => ({ ...res.data.user, latestSubscription: current?.latestSubscription }));
     } catch { alert("Failed to update status"); }
   };
+
+  const openUser = async (user) => {
+    setSelected(user);
+    setSubHistory([]);
+    setSubHistoryLoading(true);
+    try {
+      const res = await API.get(`/admin/users/${user._id}`);
+      setSubHistory(res.data.subscriptions || []);
+    } catch {
+      setSubHistory([]);
+    } finally {
+      setSubHistoryLoading(false);
+    }
+  };
+
+  const subStatusBadge = (status) =>
+    status === "active" ? "badge-active" : "badge-blocked";
 
   return (
     <div className="page-section">
@@ -132,17 +153,16 @@ export default function UsersPage() {
                 <tr>
                   <th>#</th>
                   <th>User</th>
-                  <th>Email</th>
+                  <th>Contact</th>
                   <th>Joined</th>
+                  <th>Subscription</th>
                   <th>Status</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {users.length === 0 ? (
-                  <tr><td colSpan={6}>
-                    <div className="empty-state"><p>No users found 😕</p></div>
-                  </td></tr>
+                  <tr><td colSpan={7} className="tbl-empty">No users found</td></tr>
                 ) : users.map((u, i) => (
                   <tr key={u._id || i}>
                     <td style={{ color: "var(--text-muted)", fontWeight: 600 }}>{(pagination.currentPage - 1) * pagination.limit + i + 1}</td>
@@ -155,11 +175,38 @@ export default function UsersPage() {
                             u.name ? u.name[0].toUpperCase() : "U"
                           )}
                         </div>
-                        <span className="u-name">{u.name || "Unknown"}</span>
+                        <div>
+                          <div className="cell-main cell-ellipsis">{u.name || "Unknown"}</div>
+                          <div className="cell-sub">{u.phone || "—"}</div>
+                        </div>
                       </div>
                     </td>
-                    <td style={{ color: "var(--text-soft)" }}>{u.email}</td>
-                    <td style={{ color: "var(--text-muted)" }}>{new Date(u.createdAt).toLocaleDateString("en-IN")}</td>
+                    <td>
+                      <div className="cell-main cell-normal cell-ellipsis">{u.email || "—"}</div>
+                      <div className="cell-sub">
+                        {u.authProvider === "GOOGLE" ? "Google login" : u.authProvider === "APPLE" ? "Apple login" : "Phone login"}
+                      </div>
+                    </td>
+                    <td>
+                      <div className="cell-main">{fmtDate(u.createdAt)}</div>
+                      <div className="cell-sub">{fmtTime(u.createdAt)}</div>
+                    </td>
+                    <td>
+                      {u.latestSubscription ? (
+                        <>
+                          <div className="cell-main cell-plan">
+                            {u.latestSubscription.planName || "Plan"}
+                            <span className={`cell-dot ${u.latestSubscription.status}`} title={u.latestSubscription.status} />
+                          </div>
+                          <div className="cell-sub">Claimed {formatDate(u.latestSubscription.startDate)}</div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="cell-main cell-muted">No plan</div>
+                          <div className="cell-sub">Never subscribed</div>
+                        </>
+                      )}
+                    </td>
                     <td>
                       <span className={`badge ${u.isBlocked ? "badge-blocked" : "badge-active"}`}>
                         {u.isBlocked ? "Blocked" : "Active"}
@@ -167,7 +214,7 @@ export default function UsersPage() {
                     </td>
                     <td>
                       <div className="tbl-actions">
-                        <button className="icon-btn view" onClick={() => setSelected(u)} title="View"><Eye size={16} /></button>
+                        <button className="icon-btn view" onClick={() => openUser(u)} title="View"><Eye size={16} /></button>
                         <button className="icon-btn" onClick={() => handleToggleBlock(u._id)} title={u.isBlocked ? "Unblock" : "Block"} style={{ color: u.isBlocked ? "var(--success)" : "var(--danger)" }}>
                           {u.isBlocked ? <Unlock size={16} /> : <Lock size={16} />}
                         </button>
@@ -268,6 +315,53 @@ export default function UsersPage() {
                         : "—"}
                   </span>
                 </div>
+              </div>
+
+              {/* Subscription History */}
+              <div className="user-sub-history">
+                <h4>Subscription History</h4>
+                {subHistoryLoading ? (
+                  <p className="user-sub-empty"><Loader size={16} style={{ display: "inline-block", marginRight: 6 }} /> Loading...</p>
+                ) : subHistory.length === 0 ? (
+                  <p className="user-sub-empty">No subscriptions yet.</p>
+                ) : (
+                  <div className="tbl-wrap">
+                    <table className="tbl">
+                      <thead>
+                        <tr>
+                          <th>Plan</th>
+                          <th>Paid</th>
+                          <th>Claimed On</th>
+                          <th>Expires</th>
+                          <th>Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {subHistory.map((sub) => {
+                          const remaining = sub.status === "active" ? daysLeft(sub.endDate) : null;
+                          return (
+                            <tr key={sub._id}>
+                              <td>{sub.plan?.name || "—"}</td>
+                              <td>
+                                ₹{sub.amount || 0}
+                                <div className="user-sub-date">{sourceLabel(sub.source)}</div>
+                              </td>
+                              <td style={{ whiteSpace: "nowrap" }}>
+                                {formatDate(sub.startDate)}
+                                <div className="user-sub-date">{formatDateTime(sub.startDate).split(", ").pop()}</div>
+                              </td>
+                              <td style={{ whiteSpace: "nowrap" }}>
+                                {formatDate(sub.endDate)}
+                                {remaining !== null && <div className="user-sub-date">{remaining} days left</div>}
+                              </td>
+                              <td><span className={`badge ${subStatusBadge(sub.status)}`}>{sub.status}</span></td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
             </div>
 

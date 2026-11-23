@@ -171,6 +171,7 @@ exports.verifySubscription = async (req, res) => {
         user: userId,
         plan: plan._id,
         amount: finalAmount,
+        source: promoCode ? "promo" : "direct",
         startDate,
         endDate,
         status: "active",

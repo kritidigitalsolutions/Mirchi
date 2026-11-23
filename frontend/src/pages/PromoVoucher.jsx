@@ -14,6 +14,7 @@ import {
   User
 } from "lucide-react";
 import API from "../api/axios";
+import { fmtDate } from "../utils/tableFormat";
 import "./PromoVoucher.css";
 import "../pages/Content.css"; // Reuse Content.css styles
 
@@ -195,18 +196,26 @@ export default function PromoVoucher() {
               <table className="tbl">
                 <thead>
                   <tr>
-                    <th>Code</th><th>Type</th><th>Discount</th><th>Usage</th><th>Plan</th><th>Actions</th>
+                    <th>Code</th><th className="center">Discount</th><th className="center">Usage</th><th>Plan</th><th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {promos.length === 0 ? (
-                    <tr><td colSpan={6}>No promos found</td></tr>
+                    <tr><td colSpan={5} className="tbl-empty">No promos found</td></tr>
                   ) : promos.map((p) => (
                     <tr key={p._id}>
-                      <td style={{ fontWeight: 700, color: 'var(--primary)' }}>{p.code}</td>
-                      <td style={{ textTransform: 'capitalize' }}>{p.discountType}</td>
-                      <td>{p.discountType === 'percentage' ? `${p.discountValue}%` : `$${p.discountValue}`}</td>
-                      <td>{p.usedCount} / {p.maxUses}</td>
+                      <td>
+                        <div className="cell-main cell-code">{p.code}</div>
+                        <div className="cell-sub">{p.expiryDate ? `Expires ${fmtDate(p.expiryDate)}` : "No expiry"}</div>
+                      </td>
+                      <td className="center">
+                        <div className="cell-main">{p.discountType === 'percentage' ? `${p.discountValue}% off` : `₹${p.discountValue} off`}</div>
+                        <div className="cell-sub" style={{ textTransform: 'capitalize' }}>{p.discountType === 'percentage' ? 'Percentage' : 'Flat amount'}</div>
+                      </td>
+                      <td className="center">
+                        <div className="cell-main">{p.usedCount || 0} / {p.maxUses}</div>
+                        <div className="cell-sub">{Math.max((p.maxUses || 0) - (p.usedCount || 0), 0)} left</div>
+                      </td>
                       <td>
                         <span className={`badge ${p.applicablePlans?.length ? 'badge-pub' : 'badge-draft'}`}>
                           {p.applicablePlans?.length ? plans.find(pl => pl._id === p.applicablePlans[0])?.name || 'Selected Plan' : 'All Plans'}
@@ -244,17 +253,22 @@ export default function PromoVoucher() {
               <table className="tbl">
                 <thead>
                   <tr>
-                    <th>Code</th><th>Linked Plan</th><th>Validity</th><th>Status</th><th>Actions</th>
+                    <th>Code</th><th>Plan</th><th>Status</th><th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {vouchers.length === 0 ? (
-                    <tr><td colSpan={5}>No vouchers found</td></tr>
+                    <tr><td colSpan={4} className="tbl-empty">No vouchers found</td></tr>
                   ) : vouchers.map((v) => (
                     <tr key={v._id}>
-                      <td style={{ fontWeight: 700, color: 'var(--primary)' }}>{v.code}</td>
-                      <td>{v.plan?.name || "N/A"}</td>
-                      <td>{v.validityDays} Days</td>
+                      <td>
+                        <div className="cell-main cell-code">{v.code}</div>
+                        <div className="cell-sub">Created {fmtDate(v.createdAt)}</div>
+                      </td>
+                      <td>
+                        <div className="cell-main cell-plan">{v.plan?.name || "—"}</div>
+                        <div className="cell-sub">{v.validityDays} {v.validityDays === 1 ? "day" : "days"} access</div>
+                      </td>
                       <td>
                         <span className={`badge ${v.isUsed ? 'badge-draft' : 'badge-pub'}`}>
                           {v.isUsed ? 'Used' : 'Available'}
@@ -462,7 +476,7 @@ export default function PromoVoucher() {
             </div>
 
             <div className="modal-footer" style={{ borderTop: 'none' }}>
-              <button className="btn btn-ghost" onClick={closeModals} style={{ width: '100%', borderRadius: '12px' }}>Close Window</button>
+              <button className="btn btn-ghost" onClick={closeModals} style={{ width: "100%" }}>Close Window</button>
             </div>
           </div>
         </div>

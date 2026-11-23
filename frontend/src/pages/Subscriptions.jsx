@@ -17,16 +17,27 @@ import {
   Users,
   X,
 } from "lucide-react";
+import { daysLeft, formatDate, formatDateTime, sourceLabel } from "../utils/subscriptionFormat";
 import "./Subscription.css";
 import "./SubscriptionLight.css";
 
 const PAGE_SIZE = 10;
+
+// "Ended today" / "Ended 3 days ago"
+const endedAgo = (endDate) => {
+  if (!endDate) return "";
+  const days = Math.floor((Date.now() - new Date(endDate).getTime()) / 86400000);
+  if (days <= 0) return "Ended today";
+  return `Ended ${days} day${days === 1 ? "" : "s"} ago`;
+};
 
 export default function SubscriptionPage() {
   const [subs, setSubs] = useState([]);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");
   const [timeframe, setTimeframe] = useState("all");
+  const [claimedFrom, setClaimedFrom] = useState("");
+  const [claimedTo, setClaimedTo] = useState("");
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [actionId, setActionId] = useState("");
@@ -59,6 +70,8 @@ export default function SubscriptionPage() {
           search: search.trim(),
           status: status === "all" ? "" : status,
           timeframe: timeframe === "all" ? "" : timeframe,
+          from: claimedFrom,
+          to: claimedTo,
         },
       });
       setSubs(res.data.subscriptions || []);
@@ -81,7 +94,7 @@ export default function SubscriptionPage() {
 
   useEffect(() => {
     fetchSubs();
-  }, [page, search, status, timeframe]);
+  }, [page, search, status, timeframe, claimedFrom, claimedTo]);
 
   const handleCancel = async (subscription) => {
     if (!window.confirm(`Cancel the ${subscription.plan?.name || "selected"} subscription for ${subscription.user?.name || "this user"}?`)) {
@@ -161,7 +174,7 @@ export default function SubscriptionPage() {
           <h2><CreditCard size={30} /> Subscriptions</h2>
           <p>Search, manage, and review subscriber access.</p>
         </div>
-        <button className="subscription-refresh" onClick={fetchSubs} disabled={loading}>
+        <button className="btn btn-ghost" onClick={fetchSubs} disabled={loading}>
           <RefreshCw size={16} className={loading ? "spin" : ""} /> Refresh
         </button>
       </div>
@@ -268,6 +281,33 @@ export default function SubscriptionPage() {
           <option value="cancelled">Cancelled</option>
           <option value="expired">Expired</option>
         </select>
+        <div className="subscription-claimed-range" title="Filter by the date the subscription was claimed (IST)">
+          <span>Claimed</span>
+          <input
+            type="date"
+            value={claimedFrom}
+            max={claimedTo || undefined}
+            onChange={updateFilter(setClaimedFrom)}
+            aria-label="Claimed from date"
+          />
+          <span>to</span>
+          <input
+            type="date"
+            value={claimedTo}
+            min={claimedFrom || undefined}
+            onChange={updateFilter(setClaimedTo)}
+            aria-label="Claimed to date"
+          />
+          {(claimedFrom || claimedTo) && (
+            <button
+              type="button"
+              onClick={() => { setClaimedFrom(""); setClaimedTo(""); setPage(1); }}
+              aria-label="Clear claimed date filter"
+            >
+              <X size={14} />
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="subscription-table-wrap">
@@ -277,58 +317,83 @@ export default function SubscriptionPage() {
               <th>User</th>
               <th>Plan</th>
               <th>Status</th>
-              <th>Amount</th>
-              <th>Expiry</th>
-              <th>Actions</th>
+              <th className="sub-num">Amount</th>
+              <th>Claimed On</th>
+              <th>Expires</th>
+              <th className="sub-actions-th">Actions</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={6} className="subscription-empty"><Loader size={20} className="spin" /> Loading subscriptions...</td></tr>
+              <tr><td colSpan={7} className="subscription-empty"><Loader size={20} className="spin" /> Loading subscriptions...</td></tr>
             ) : subs.length === 0 ? (
-              <tr><td colSpan={6} className="subscription-empty">No subscriptions found.</td></tr>
+              <tr><td colSpan={7} className="subscription-empty">No subscriptions found.</td></tr>
             ) : subs.map((sub) => {
               const isActive = sub.status === "active" && new Date(sub.endDate) > new Date();
               const displayStatus = isActive ? "Active" : sub.status === "cancelled" ? "Cancelled" : "Expired";
               const busy = actionId === sub._id;
+              const remaining = isActive ? daysLeft(sub.endDate) : null;
+
+              const claimed = sub.startDate ? new Date(sub.startDate) : null;
+              const duration = sub.plan?.duration;
 
               return (
                 <tr key={sub._id}>
-                  <td className="subscription-user">
-                    <div>{sub.user?.name || "Deleted user"}</div>
-                    {sub.user?.phone && (
-                      <div className="subscription-user-phone">
-                        {sub.user.phone}
-                      </div>
-                    )}
+                  <td>
+                    <div className="sub-main sub-user-name" title={sub.user?.name || ""}>{sub.user?.name || "Deleted user"}</div>
+                    <div className="sub-meta">{sub.user?.phone || sub.user?.email || "—"}</div>
                   </td>
-                  <td className="plan">{sub.plan?.name || "—"}</td>
+                  <td>
+                    <div className="sub-main sub-plan-name">{sub.plan?.name || "—"}</div>
+                    <div className="sub-meta">{duration ? `${duration} day${duration === 1 ? "" : "s"}` : "—"}</div>
+                  </td>
                   <td><span className={`status ${displayStatus.toLowerCase()}`}>{displayStatus}</span></td>
-                  <td>₹{sub.amount || 0}</td>
-                  <td>{sub.endDate ? new Date(sub.endDate).toLocaleDateString("en-IN") : "—"}</td>
+                  <td className="sub-num">
+                    <div className="sub-main">₹{(sub.amount || 0).toLocaleString("en-IN")}</div>
+                    <div className={`sub-meta sub-source ${sub.source || ""}`}>{sourceLabel(sub.source)}</div>
+                  </td>
+                  <td>
+                    <div className="sub-main">{formatDate(claimed)}</div>
+                    <div className="sub-meta">
+                      {claimed ? claimed.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" }) : ""}
+                    </div>
+                  </td>
+                  <td>
+                    <div className="sub-main">{formatDate(sub.endDate)}</div>
+                    <div className={`sub-meta ${remaining !== null && remaining <= 3 ? "sub-urgent" : ""}`}>
+                      {remaining !== null
+                        ? `${remaining} day${remaining === 1 ? "" : "s"} left`
+                        : sub.status === "cancelled"
+                          ? "Cancelled early"
+                          : endedAgo(sub.endDate)}
+                    </div>
+                  </td>
                   <td>
                     <div className="subscription-actions">
                       <button
-                        className="subscription-action view"
+                        className="icon-btn view"
                         onClick={() => handleViewUser(sub)}
                         disabled={!sub.user?._id || busy}
                         title="View user details"
+                        aria-label="View user details"
                       >
-                        <Eye size={15} /> 
+                        <Eye size={15} />
                       </button>
                       <button
-                        className="subscription-action cancel"
+                        className="icon-btn edit"
                         onClick={() => handleCancel(sub)}
                         disabled={!isActive || busy}
                         title={isActive ? "Cancel subscription" : "Only active subscriptions can be cancelled"}
+                        aria-label="Cancel subscription"
                       >
-                        <Ban size={15} /> Cancel
+                        <Ban size={15} />
                       </button>
                       <button
-                        className="subscription-action delete"
+                        className="icon-btn del"
                         onClick={() => handleDeleteUser(sub)}
                         disabled={!sub.user?._id || busy}
                         title="Delete user and their subscriptions"
+                        aria-label="Delete user"
                       >
                         <Trash2 size={15} />
                       </button>
@@ -373,6 +438,9 @@ export default function SubscriptionPage() {
                   <div><dt>Phone</dt><dd>{selectedUser.phone || "—"}</dd></div>
                   <div><dt>Plan</dt><dd>{selectedUser.subscription?.plan?.name || "—"}</dd></div>
                   <div><dt>Subscription status</dt><dd>{selectedUser.subscription?.status || "—"}</dd></div>
+                  <div><dt>Claimed on</dt><dd>{formatDateTime(selectedUser.subscription?.startDate)}</dd></div>
+                  <div><dt>Expires on</dt><dd>{formatDate(selectedUser.subscription?.endDate)}</dd></div>
+                  <div><dt>Amount paid</dt><dd>₹{selectedUser.subscription?.amount || 0} · {sourceLabel(selectedUser.subscription?.source)}</dd></div>
                   <div><dt>Member since</dt><dd>{selectedUser.createdAt ? new Date(selectedUser.createdAt).toLocaleDateString("en-IN") : "—"}</dd></div>
                 </dl>
               </div>

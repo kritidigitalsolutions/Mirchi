@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { Link } from "react-router-dom";
 import API, { BASE_URL } from "../api/axios";
 import { uploadToBunny, fetchBunnyConfig } from "../features/services/bunnyUpload";
 
@@ -7,7 +8,7 @@ import "./ContentLight.css";
 import {
   Eye, Edit2, Trash2, X, Play, Film, Tv,
   Search, Plus, ChevronRight, ChevronLeft, ChevronDown, ChevronUp, User, Calendar, Video,
-  Activity, Upload, Layers, Check
+  Activity, Upload, Layers, Check, BarChart2
 } from "lucide-react";
 
 /* ===================== HELPER FOR LOCAL DATE/TIME INPUT ===================== */
@@ -967,6 +968,104 @@ export default function Content() {
 
 
   /* ===================== RENDER ===================== */
+  // ================= LIBRARY TABLE ROW (shared by movies / series / all) =================
+  const renderLibraryRow = (item, isSeries) => {
+    const locked = isLocked(item);
+    const published = item.isPublished !== false;
+    const cats = Array.isArray(item.category) ? item.category : [];
+    const seasons = item.totalSeasons || 0;
+    const detail = isSeries
+      ? `${seasons} ${seasons === 1 ? "season" : "seasons"}`
+      : item.duration || "—";
+
+    return (
+      <tr key={item._id}>
+        <td>
+          <div className="lib-title-cell">
+            <div className="lib-poster">
+              {item.poster ? <img src={getFullUrl(item.poster)} alt="" /> : <Film size={16} />}
+              {item.isHide && <span className="lib-poster-hidden">HIDDEN</span>}
+            </div>
+            <div className="lib-title-text">
+              <div className="cell-main cell-ellipsis lib-title" title={item.title}>
+                {item.title}
+                {item.is18plus && <span className="lib-chip-18">18+</span>}
+              </div>
+              <div className="cell-sub">
+                <span className={`lib-kind ${isSeries ? "series" : "movie"}`}>{isSeries ? "Series" : "Movie"}</span>
+                {" · "}{detail}
+                {" · "}<span className={item.isPremium ? "lib-premium" : ""}>{item.isPremium ? "Premium" : "Free"}</span>
+              </div>
+            </div>
+          </div>
+        </td>
+        <td className="cell-wrap">
+          {cats.length ? (
+            <div className="lib-cats">
+              <span className="lib-cat">{getCategoryName(cats[0])}</span>
+              {cats.length > 1 && (
+                <span className="lib-cat lib-cat-more" title={cats.slice(1).map(getCategoryName).join(", ")}>
+                  +{cats.length - 1}
+                </span>
+              )}
+            </div>
+          ) : (
+            <span className="cell-muted">—</span>
+          )}
+        </td>
+        <td>
+          <div className="cell-main">{item.releaseYear || "—"}</div>
+          <div className={`cell-sub ${locked ? "lib-releasing" : ""}`}>
+            {locked && item.releaseDate
+              ? `Releases ${new Date(item.releaseDate).toLocaleString("en-IN", { day: "numeric", month: "short", year: "numeric" })}`
+              : item.rating
+                ? `Rating ${item.rating}`
+                : "No rating"}
+          </div>
+        </td>
+        <td className="center">
+          <div className="cell-main">{item.priority || 0}</div>
+        </td>
+        <td>
+          <div className="lib-status">
+            <span className={`badge ${locked ? "badge-coming" : published ? "badge-pub" : "badge-draft"}`}>
+              {locked ? "Coming soon" : published ? "Published" : "Draft"}
+            </span>
+            <label className="switch" style={{ margin: 0 }} title={published ? "Unpublish" : "Publish"}>
+              <input type="checkbox" checked={published} onChange={() => handleTogglePublish(item, isSeries)} />
+              <span className="slider round"></span>
+            </label>
+          </div>
+        </td>
+        <td>
+          <div className="tbl-actions">
+            {isSeries && (
+              <button className="icon-btn seasons" onClick={() => handleSeriesClick(item)} title="Seasons & episodes">
+                <Tv size={16} />
+              </button>
+            )}
+            <button className="icon-btn view" onClick={() => openView(item)} title="View"><Eye size={16} /></button>
+            <button className="icon-btn edit" onClick={() => openEdit(item)} title="Edit"><Edit2 size={16} /></button>
+            <button className="icon-btn del" onClick={() => handleDelete(item)} title="Delete"><Trash2 size={16} /></button>
+          </div>
+        </td>
+      </tr>
+    );
+  };
+
+  const libraryHead = (
+    <thead>
+      <tr>
+        <th>Title</th>
+        <th>Category</th>
+        <th>Release</th>
+        <th className="center">Priority</th>
+        <th>Status</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+  );
+
   return (
     <div className="page-section">
       {/* Header */}
@@ -1114,86 +1213,12 @@ export default function Content() {
             </div>
             {loading ? <p>Loading…</p> : (
               <div className="tbl-wrap">
-                <table className="tbl">
-                  <thead>
-                    <tr>
-                      <th>Title</th><th>Category</th><th>Year</th><th>Rating</th><th>Priority</th><th>Premium</th><th>Status</th><th>Actions</th>
-                    </tr>
-                  </thead>
+                <table className="tbl tbl-library">
+                  {libraryHead}
                   <tbody>
                     {filteredDisplayData.length === 0 ? (
-                      <tr><td colSpan={8}>No movies found</td></tr>
-                    ) : filteredDisplayData.map(movie => (
-                      <tr key={movie._id}>
-                        <td>
-                          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                            <div style={{ position: "relative", width: 40, height: 60, flexShrink: 0 }}>
-                              <img src={getFullUrl(movie.poster)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 4 }} />
-                              {movie.isHide && <span style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", background: "rgba(0,0,0,0.72)", color: "#fff", borderRadius: 4, fontSize: "0.55rem", fontWeight: 800, letterSpacing: "0.5px" }}>HIDDEN</span>}
-                            </div>
-                            <div>
-                              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                                <div style={{ fontWeight: 600 }}>{movie.title}</div>
-                                {movie.is18plus && <span style={{ background: "orange", color: "white", padding: "1px 4px", borderRadius: 4, fontSize: "0.7rem", fontWeight: "bold" }}>18+</span>}
-                              </div>
-                              <div style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>{movie.duration}</div>
-                              {isLocked(movie) && (
-                                <div style={{ fontSize: "0.75rem", color: "var(--orange)" }}>
-                                  <Calendar size={11} style={{ marginRight: 3, verticalAlign: "middle" }} />
-                                  {new Date(movie.releaseDate).toLocaleString([], { dateStyle: "short", timeStyle: "short" })}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </td>
-                        <td>
-                          {Array.isArray(movie.category) && movie.category.length > 0 ? (
-                            <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-                              {movie.category.map((c, idx) => (
-                                <span key={idx} style={{ background: "rgba(108,99,255,0.2)", color: "#9f99ff", padding: "2px 6px", borderRadius: 10, fontSize: "0.75rem", fontWeight: 500 }}>
-                                  {getCategoryName(c)}
-                                </span>
-                              ))}
-                            </div>
-                          ) : (
-                            <span style={{ color: "var(--text-muted)", fontSize: "0.8rem" }}>—</span>
-                          )}
-                        </td>
-                        <td>{movie.releaseYear}</td>
-                        <td>{movie.rating}</td>
-                        <td><strong>{movie.priority || 0}</strong></td>
-                        <td><span className={`badge ${movie.isPremium ? "badge-active" : "badge-draft"}`}>{movie.isPremium ? "Premium" : "Free"}</span></td>
-                        <td>
-                          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                            <span className={`badge ${isLocked(movie) ? "badge-coming" : (movie.isPublished !== false ? "badge-pub" : "badge-draft")}`}>
-                              {isLocked(movie) ? "Coming Soon" : (movie.isPublished !== false ? "Published" : "Draft")}
-                            </span>
-                            <label className="switch" style={{ margin: 0 }}>
-                              <input
-                                type="checkbox"
-                                checked={movie.isPublished !== false}
-                                onChange={() => handleTogglePublish(movie, false)}
-                              />
-                              <span className="slider round"></span>
-                            </label>
-                          </div>
-                        </td>
-                        <td>
-                          <div className="tbl-actions">
-                            {/* View always allowed — coming-soon shows details + release date */}
-                            <button className="icon-btn view" onClick={() => openView(movie)} title="View">
-                              <Eye size={18} />
-                            </button>
-                            <button className="icon-btn edit" onClick={() => openEdit(movie)} title="Edit">
-                              <Edit2 size={18} />
-                            </button>
-                            <button className="icon-btn del" onClick={() => handleDelete(movie)} title="Delete">
-                              <Trash2 size={18} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                      <tr><td colSpan={6} className="tbl-empty">No movies found</td></tr>
+                    ) : filteredDisplayData.map((movie) => renderLibraryRow(movie, false))}
                   </tbody>
                 </table>
               </div>
@@ -1217,88 +1242,12 @@ export default function Content() {
             </div>
             {loading ? <p>Loading…</p> : (
               <div className="tbl-wrap">
-                <table className="tbl">
-                  <thead>
-                    <tr>
-                      <th>Title</th><th>Category</th><th>Year</th><th>Rating</th><th>Priority</th><th>Seasons</th><th>Status</th><th>Actions</th>
-                    </tr>
-                  </thead>
+                <table className="tbl tbl-library">
+                  {libraryHead}
                   <tbody>
                     {filteredDisplayData.length === 0 ? (
-                      <tr><td colSpan={8}>No series found</td></tr>
-                    ) : filteredDisplayData.map(series => (
-                      <tr key={series._id}>
-                        <td>
-                          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                            <div style={{ position: "relative", width: 40, height: 60, flexShrink: 0 }}>
-                              <img src={getFullUrl(series.poster)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 4 }} />
-                              {series.isHide && <span style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", background: "rgba(0,0,0,0.72)", color: "#fff", borderRadius: 4, fontSize: "0.55rem", fontWeight: 800, letterSpacing: "0.5px" }}>HIDDEN</span>}
-                            </div>
-                            <div>
-                              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                                <div style={{ fontWeight: 600 }}>{series.title}</div>
-                                {series.is18plus && <span style={{ background: "orange", color: "white", padding: "1px 4px", borderRadius: 4, fontSize: "0.7rem", fontWeight: "bold" }}>18+</span>}
-                              </div>
-                              {isLocked(series) && (
-                                <div style={{ fontSize: "0.75rem", color: "var(--orange)" }}>
-                                  <Calendar size={11} style={{ marginRight: 3, verticalAlign: "middle" }} />
-                                  {new Date(series.releaseDate).toLocaleString([], { dateStyle: "short", timeStyle: "short" })}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </td>
-                        <td>
-                          {Array.isArray(series.category) && series.category.length > 0 ? (
-                            <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-                              {series.category.map((c, idx) => (
-                                <span key={idx} style={{ background: "rgba(108,99,255,0.2)", color: "#9f99ff", padding: "2px 6px", borderRadius: 10, fontSize: "0.75rem", fontWeight: 500 }}>
-                                  {getCategoryName(c)}
-                                </span>
-                              ))}
-                            </div>
-                          ) : (
-                            <span style={{ color: "var(--text-muted)", fontSize: "0.8rem" }}>—</span>
-                          )}
-                        </td>
-                        <td>{series.releaseYear}</td>
-                        <td>{series.rating}</td>
-                        <td><strong>{series.priority || 0}</strong></td>
-                        <td>{series.totalSeasons}</td>
-                        <td>
-                          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                            <span className={`badge ${isLocked(series) ? "badge-coming" : (series.isPublished !== false ? "badge-pub" : "badge-draft")}`}>
-                              {isLocked(series) ? "Coming Soon" : (series.isPublished !== false ? "Published" : "Draft")}
-                            </span>
-                            <label className="switch" style={{ margin: 0 }}>
-                              <input
-                                type="checkbox"
-                                checked={series.isPublished !== false}
-                                onChange={() => handleTogglePublish(series, true)}
-                              />
-                              <span className="slider round"></span>
-                            </label>
-                          </div>
-                        </td>
-                        <td>
-                          <div className="tbl-actions">
-                            <button className="icon-btn view" onClick={() => openView(series)} title="View">
-                              <Eye size={18} />
-                            </button>
-                            <button className="icon-btn edit" onClick={() => openEdit(series)} title="Edit">
-                              <Edit2 size={18} />
-                            </button>
-                            <button className="icon-btn del" onClick={() => handleDelete(series)} title="Delete">
-                              <Trash2 size={18} />
-                            </button>
-                            <button className="btn btn-ghost eps-btn" onClick={() => handleSeriesClick(series)}>
-                              <Tv size={14} /> Seasons
-                            </button>
-
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                      <tr><td colSpan={6} className="tbl-empty">No series found</td></tr>
+                    ) : filteredDisplayData.map((series) => renderLibraryRow(series, true))}
                   </tbody>
                 </table>
               </div>
@@ -1322,98 +1271,12 @@ export default function Content() {
             </div>
             {loading ? <p>Loading…</p> : (
               <div className="tbl-wrap">
-                <table className="tbl">
-                  <thead>
-                    <tr>
-                      <th>Title</th><th>Type</th><th>Category</th><th>Year</th><th>Rating</th><th>Priority</th><th>Status</th><th>Actions</th>
-                    </tr>
-                  </thead>
+                <table className="tbl tbl-library">
+                  {libraryHead}
                   <tbody>
                     {filteredDisplayData.length === 0 ? (
-                      <tr><td colSpan={8}>No items found</td></tr>
-                    ) : filteredDisplayData.map(item => {
-                      const isItemSeries = item.contentType === "series";
-                      return (
-                        <tr key={item._id}>
-                          <td>
-                            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                              <div style={{ position: "relative", width: 40, height: 60, flexShrink: 0 }}>
-                                <img src={getFullUrl(item.poster)} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 4 }} />
-                                {item.isHide && <span style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", background: "rgba(0,0,0,0.72)", color: "#fff", borderRadius: 4, fontSize: "0.55rem", fontWeight: 800, letterSpacing: "0.5px" }}>HIDDEN</span>}
-                              </div>
-                              <div>
-                                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                                  <div style={{ fontWeight: 600 }}>{item.title}</div>
-                                  {item.is18plus && <span style={{ background: "orange", color: "white", padding: "1px 4px", borderRadius: 4, fontSize: "0.7rem", fontWeight: "bold" }}>18+</span>}
-                                </div>
-                                {!isItemSeries && <div style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>{item.duration}</div>}
-                                {isItemSeries && <div style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>{item.totalSeasons || 0} Seasons</div>}
-                                {isLocked(item) && (
-                                  <div style={{ fontSize: "0.75rem", color: "var(--orange)" }}>
-                                    <Calendar size={11} style={{ marginRight: 3, verticalAlign: "middle" }} />
-                                    {new Date(item.releaseDate).toLocaleString([], { dateStyle: "short", timeStyle: "short" })}
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          </td>
-                          <td>
-                            <span className={`badge ${isItemSeries ? "badge-coming" : "badge-pub"}`} style={{ textTransform: "uppercase", padding: "2px 8px" }}>
-                              {isItemSeries ? "Series" : "Movie"}
-                            </span>
-                          </td>
-                          <td>
-                            {Array.isArray(item.category) && item.category.length > 0 ? (
-                              <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-                                {item.category.map((c, idx) => (
-                                  <span key={idx} style={{ background: "rgba(108,99,255,0.2)", color: "#9f99ff", padding: "2px 6px", borderRadius: 10, fontSize: "0.75rem", fontWeight: 500 }}>
-                                    {getCategoryName(c)}
-                                  </span>
-                                ))}
-                              </div>
-                            ) : (
-                              <span style={{ color: "var(--text-muted)", fontSize: "0.8rem" }}>—</span>
-                            )}
-                          </td>
-                          <td>{item.releaseYear}</td>
-                          <td>{item.rating}</td>
-                          <td><strong>{item.priority || 0}</strong></td>
-                          <td>
-                            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                              <span className={`badge ${isLocked(item) ? "badge-coming" : (item.isPublished !== false ? "badge-pub" : "badge-draft")}`}>
-                                {isLocked(item) ? "Coming Soon" : (item.isPublished !== false ? "Published" : "Draft")}
-                              </span>
-                              <label className="switch" style={{ margin: 0 }}>
-                                <input
-                                  type="checkbox"
-                                  checked={item.isPublished !== false}
-                                  onChange={() => handleTogglePublish(item, isItemSeries)}
-                                />
-                                <span className="slider round"></span>
-                              </label>
-                            </div>
-                          </td>
-                          <td>
-                            <div className="tbl-actions">
-                              <button className="icon-btn view" onClick={() => openView(item)} title="View">
-                                <Eye size={18} />
-                              </button>
-                              <button className="icon-btn edit" onClick={() => openEdit(item)} title="Edit">
-                                <Edit2 size={18} />
-                              </button>
-                              <button className="icon-btn del" onClick={() => handleDelete(item)} title="Delete">
-                                <Trash2 size={18} />
-                              </button>
-                              {isItemSeries && (
-                                <button className="btn btn-ghost eps-btn" onClick={() => handleSeriesClick(item)}>
-                                  <Tv size={14} /> Seasons
-                                </button>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
+                      <tr><td colSpan={6} className="tbl-empty">No items found</td></tr>
+                    ) : filteredDisplayData.map((item) => renderLibraryRow(item, item.contentType === "series"))}
                   </tbody>
                 </table>
               </div>
@@ -1607,15 +1470,13 @@ export default function Content() {
                   </button>
                   <div style={{ display: "flex", gap: 8, marginLeft: "auto" }}>
                     <button
-                      className="btn btn-ghost"
-                      style={{ padding: "5px 10px", fontSize: "0.8rem" }}
+                      className="btn btn-ghost btn-sm"
                       onClick={() => { setShowAddEpisodeForm(seasonNum); setShowAddSeasonForm(false); setNewEpisode(p => ({ ...p, seasonNumber: seasonNum })); }}
                     >
                       <Plus size={14} /> Add Episode
                     </button>
                     <button
-                      className="btn btn-ghost del-season-btn"
-                      style={{ padding: "5px 10px", fontSize: "0.8rem" }}
+                      className="btn btn-danger btn-sm"
                       onClick={() => handleDeleteSeason(seasonNum)}
                     >
                       <Trash2 size={14} /> Delete Season
@@ -1777,7 +1638,19 @@ export default function Content() {
                     modalMode === "episode-edit" ? "Edit Episode & Video" :
                       "Episode Details"}
               </h3>
-              <button className="modal-close" onClick={closeModal}><X size={24} /></button>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                {modalMode === "view" && (selectedItem.contentType === "series" || (selectedItem.contentType !== "movie" && contentType === "series")) && (
+                  <Link className="btn btn-ghost" to={`/dashboard/analytics/series/${selectedItem._id}`}>
+                    <BarChart2 size={16} style={{ marginRight: 6 }} /> Analytics
+                  </Link>
+                )}
+                {modalMode === "episode-view" && selectedSeries?._id && selectedEpisode?._id && (
+                  <Link className="btn btn-ghost" to={`/dashboard/analytics/series/${selectedSeries._id}?episode=${selectedEpisode._id}`}>
+                    <BarChart2 size={16} style={{ marginRight: 6 }} /> Analytics
+                  </Link>
+                )}
+                <button className="modal-close" onClick={closeModal}><X size={24} /></button>
+              </div>
             </div>
 
             <div className="modal-body">
@@ -2253,7 +2126,7 @@ export default function Content() {
                       <label className="form-label" style={{ marginBottom: 0 }}>
                         <User size={15} style={{ marginRight: 6, verticalAlign: "middle" }} /> Cast Members
                       </label>
-                      <button className="btn btn-ghost" style={{ padding: "5px 10px", fontSize: "0.8rem" }} onClick={addCastMember}>
+                      <button className="btn btn-ghost btn-sm" onClick={addCastMember}>
                         <Plus size={14} /> Add Member
                       </button>
                     </div>
