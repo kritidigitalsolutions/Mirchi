@@ -311,7 +311,7 @@ export default function BasicInfoSection({
       {form.isComingSoon && (
         <div className="form-row" style={{ marginTop: 20, animation: "pageIn 0.3s ease" }}>
           <label className="form-label">
-            SCHEDULED RELEASE DATE & TIME <span style={{ color: "#ff4d4d" }}>*</span>
+            SCHEDULED RELEASE DATE & TIME (OPTIONAL)
           </label>
           <input
             className="form-input-styled"
@@ -322,7 +322,7 @@ export default function BasicInfoSection({
             min={new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16)}
           />
           <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginTop: "4px", display: "block" }}>
-            Must be a future date within the next 10 years
+            Leave empty if the release date is not decided yet. If set, it must be a future date within the next 10 years
           </span>
         </div>
       )}

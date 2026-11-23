@@ -674,11 +674,8 @@ export default function Content() {
     }
 
     const isComingSoon = editData.isComingSoon === true || editData.isComingSoon === "true" || editData.isComingSoon === "yes";
-    if (isComingSoon) {
-      if (!editData.releaseDate) {
-        alert("Please set a complete Scheduled Release Date & Time when 'Coming Soon' is Yes.");
-        return;
-      }
+    // Release date is optional for Coming Soon; validate only when provided
+    if (isComingSoon && editData.releaseDate) {
       const date = new Date(editData.releaseDate);
       if (isNaN(date.getTime())) {
         alert("Please set a complete Scheduled Release Date & Time when 'Coming Soon' is Yes.");
@@ -781,10 +778,13 @@ export default function Content() {
           return;
         }
 
-        if (
-          k === "releaseDate" &&
-          (value === "" || value === "null" || Number.isNaN(Date.parse(value)))
-        ) {
+        if (k === "releaseDate" && (value === "" || value === "null")) {
+          // Send empty so the backend clears any previously set date
+          formData.append(k, "");
+          return;
+        }
+
+        if (k === "releaseDate" && Number.isNaN(Date.parse(value))) {
           return;
         }
 
@@ -2088,7 +2088,7 @@ export default function Content() {
                     {editData.isComingSoon && (
                       <div className="form-row">
                         <label className="form-label">
-                          SCHEDULED RELEASE DATE & TIME <span style={{ color: "#ff4d4d" }}>*</span>
+                          SCHEDULED RELEASE DATE & TIME (OPTIONAL)
                         </label>
                         <input
                           className="form-input"
@@ -2108,7 +2108,7 @@ export default function Content() {
                           }}
                         />
                         <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginTop: "4px", display: "block" }}>
-                          Must be a future date within the next 10 years
+                          Leave empty if the release date is not decided yet. If set, it must be a future date within the next 10 years
                         </span>
                       </div>
                     )}
