@@ -12,6 +12,7 @@ const getUploadInfo = (req, file) => {
   if (req.originalUrl.includes("/episodes")) type = "episodes";
   if (req.originalUrl.includes("/user")) type = "profile";
   if (req.originalUrl.includes("/support")) type = "support";
+  if (req.originalUrl.includes("/app-banners")) type = "app-banners";
 
   let subfolder = "others";
 

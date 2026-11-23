@@ -106,23 +106,6 @@
   color: #22c55e;
 }
 
-.btn-sq {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #1e293b;
-  border: 1px solid #334155;
-  border-radius: 8px;
-  height: 40px;
-  width: 40px;
-  cursor: pointer;
-}
-
-.btn-sq:hover {
-  background: #ef4444;
-  color: white;
-}
-
 .form-card {
   padding: 20px;
 }
@@ -155,29 +138,6 @@
 }
 
 /* ---- Buttons ---- */
-.btn-lg {
-  background: var(--grad-primary);
-  color: white;
-  border: none;
-  padding: 18px 40px;
-  border-radius: 16px;
-  font-weight: 800;
-  font-size: 1.1rem;
-  letter-spacing: 0.5px;
-  box-shadow: 0 10px 30px rgba(var(--primary-rgb), 0.3);
-  cursor: pointer;
-  transition: var(--transition);
-}
-
-.btn-lg:hover:not(:disabled) {
-  transform: scale(1.02) translateY(-4px);
-  box-shadow: 0 15px 40px rgba(var(--primary-rgb), 0.45);
-}
-
-.btn-lg:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
-}
 
 /* Animations */
 @keyframes page-fade-in {

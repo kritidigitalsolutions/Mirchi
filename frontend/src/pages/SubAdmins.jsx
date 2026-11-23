@@ -27,6 +27,7 @@ const MODULE_GROUPS = [
       { id: "movies", title: "Movies", availableActions: ["view", "create", "edit", "delete"] },
       { id: "series", title: "Web Series & Episodes", availableActions: ["view", "create", "edit", "delete"] },
       { id: "categories", title: "Categories", availableActions: ["view", "create", "edit", "delete"] },
+      { id: "analytics", title: "Content Analytics (views & watch time)", availableActions: ["view"] },
       // { id: "ratings", title: "Ratings & Reviews", availableActions: ["view", "delete"] },
     ],
   },
@@ -383,7 +384,7 @@ export default function SubAdmins() {
           <p style={{ color: "#94a3b8", fontSize: "0.95rem", lineHeight: 1.5, margin: "0 0 24px" }}>
             The Sub-admin & Staff Management dashboard is exclusively reserved for the <strong>Super Admin (`isSuperAdmin`)</strong>. Your staff role (`{adminRole}`) has access limited to your assigned modules.
           </p>
-          <button className="btn-add-subadmin" style={{ margin: "0 auto" }} onClick={() => navigate("/dashboard")}>
+          <button className="btn btn-primary" style={{ margin: "0 auto" }} onClick={() => navigate("/dashboard")}>
             Return to Dashboard
           </button>
         </div>
@@ -399,7 +400,7 @@ export default function SubAdmins() {
           <h1>Sub-admins & Staff Management</h1>
           <p>Create and manage role-based staff accounts with exact page control matrix</p>
         </div>
-        <button className="btn-add-subadmin" onClick={openAddModal}>
+        <button className="btn btn-primary" onClick={openAddModal}>
           <Plus size={18} />
           <span>Add Sub-admin</span>
         </button>
@@ -544,14 +545,16 @@ export default function SubAdmins() {
                         </button>
                       </td>
 
-                      <td style={{ color: "#94a3b8", fontSize: "0.85rem" }}>
-                        {staff.createdAt ? new Date(staff.createdAt).toLocaleDateString() : "—"}
+                      <td className="subadmins-date">
+                        {staff.createdAt
+                          ? new Date(staff.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
+                          : "—"}
                       </td>
 
                       <td>
                         <div className="table-actions" style={{ justifyContent: "flex-end" }}>
                           <button
-                            className="btn-action"
+                            className="icon-btn edit"
                             title="Edit Staff Account & Permissions"
                             onClick={() => openEditModal(staff)}
                           >
@@ -560,7 +563,7 @@ export default function SubAdmins() {
 
                           {staff.role !== "ADMIN" && (
                             <button
-                              className="btn-action delete"
+                              className="icon-btn del"
                               title="Delete Staff Account"
                               onClick={() => handleDeleteStaff(staff)}
                             >
@@ -587,7 +590,7 @@ export default function SubAdmins() {
                 <h2>{editingStaff ? `Edit Sub Admin` : "Create Sub Admin"}</h2>
                 <p>Assign only the permissions this admin should use.</p>
               </div>
-              <button className="btn-modal-close" onClick={() => setShowModal(false)}>
+              <button className="modal-close" onClick={() => setShowModal(false)}>
                 <X size={20} />
               </button>
             </div>
@@ -677,10 +680,10 @@ export default function SubAdmins() {
                         onChange={(e) => setModuleSearch(e.target.value)}
                       />
                     </div>
-                    <button type="button" className="btn-grant-all" onClick={handleGrantAll}>
+                    <button type="button" className="btn btn-ghost btn-sm" onClick={handleGrantAll}>
                       Grant All
                     </button>
-                    <button type="button" className="btn-clear-all" onClick={handleClearAll}>
+                    <button type="button" className="btn btn-ghost btn-sm" onClick={handleClearAll}>
                       Clear
                     </button>
                   </div>
@@ -829,12 +832,12 @@ export default function SubAdmins() {
               <div className="modal-footer">
                 <button
                   type="button"
-                  className="btn-modal-cancel"
+                  className="btn btn-ghost"
                   onClick={() => setShowModal(false)}
                 >
                   Cancel
                 </button>
-                <button type="submit" className="btn-modal-submit" disabled={submitting}>
+                <button type="submit" className="btn btn-primary" disabled={submitting}>
                   {submitting
                     ? "Saving..."
                     : editingStaff

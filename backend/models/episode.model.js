@@ -84,7 +84,22 @@ const episodeSchema = new mongoose.Schema(
     duration: {
       type: String,
       default: ""
-    }
+    },
+
+    // Exact length in seconds (from the player or Bunny), used for completion %
+    durationSec: {
+      type: Number,
+      default: 0,
+      min: 0
+    },
+
+    // All-time engagement counters (kept in sync by /api/watch)
+    stats: {
+      views: { type: Number, default: 0 },
+      watchTimeSec: { type: Number, default: 0 },
+      completions: { type: Number, default: 0 },
+      shares: { type: Number, default: 0 },
+    },
   },
   {
     timestamps: true

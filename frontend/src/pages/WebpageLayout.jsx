@@ -340,7 +340,7 @@ export default function WebpageLayout() {
               {unselected.length > 0 && (
                 <button
                   type="button"
-                  className="wl-btn-action"
+                  className="btn btn-ghost btn-sm"
                   onClick={() => addAllToSection(secIdx, connected)}
                   title="Add all tagged series to this row"
                 >
@@ -350,7 +350,7 @@ export default function WebpageLayout() {
               {selectedList.length > 0 && (
                 <button
                   type="button"
-                  className="wl-btn-action wl-btn-action--danger"
+                  className="btn btn-danger btn-sm"
                   onClick={() => clearSectionItems(secIdx)}
                   title="Clear all items from this row"
                 >
@@ -485,7 +485,7 @@ export default function WebpageLayout() {
           </h1>
           <p className="pg-sub">Configure the hero slider and carousel rows shown on the website.</p>
         </div>
-        <button className="btn btn-primary wl-save-btn" onClick={saveLayout} disabled={saving}>
+        <button className="btn btn-primary" onClick={saveLayout} disabled={saving}>
           {saving ? <><div className="wl-spinner-sm" /> Saving…</> : <><Save size={16} /> Publish Layout</>}
         </button>
       </div>

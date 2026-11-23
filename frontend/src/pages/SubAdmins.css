@@ -719,3 +719,27 @@
   opacity: 0.6;
   cursor: not-allowed;
 }
+
+/* Match the shared admin table look (styles/tables.css) */
+.subadmins-table th {
+  padding: 11px 16px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+.subadmins-table td {
+  padding: 12px 16px;
+  font-size: 0.875rem;
+}
+
+.subadmins-date {
+  color: #94a3b8;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+body.light .subadmins-date {
+  color: #64748b;
+}

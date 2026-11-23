@@ -296,3 +296,64 @@ body.light .search-clear:hover {
   background: rgba(0, 0, 0, 0.1);
   color: var(--text);
 }
+/* ========================================
+   THEME SWITCH TRANSITION
+   Circular reveal via the View Transitions API (see utils/themeTransition.js)
+   ======================================== */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+::view-transition-old(root) {
+  z-index: 1;
+  transform-origin: center;
+}
+
+::view-transition-new(root) {
+  z-index: 2;
+}
+
+/* Freeze page transitions while the snapshots are taken / animated */
+html.theme-switching *,
+html.theme-switching *::before,
+html.theme-switching *::after {
+  transition: none !important;
+}
+
+/* Fallback (no View Transitions): smooth colour cross-fade */
+html.theme-fade *,
+html.theme-fade *::before,
+html.theme-fade *::after {
+  transition:
+    background-color 0.5s ease,
+    color 0.5s ease,
+    border-color 0.5s ease,
+    fill 0.5s ease,
+    stroke 0.5s ease,
+    box-shadow 0.5s ease !important;
+}
+
+/* Glowing ring riding the edge of the reveal */
+.theme-shockwave {
+  position: fixed;
+  z-index: 2147483647;
+  pointer-events: none;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.theme-shockwave.to-light {
+  border: 2px solid rgba(253, 224, 71, 0.9);
+  box-shadow:
+    0 0 24px 6px rgba(253, 224, 71, 0.55),
+    inset 0 0 40px 8px rgba(255, 255, 255, 0.45);
+}
+
+.theme-shockwave.to-dark {
+  border: 2px solid rgba(129, 140, 248, 0.9);
+  box-shadow:
+    0 0 24px 6px rgba(99, 102, 241, 0.5),
+    inset 0 0 40px 8px rgba(229, 9, 20, 0.25);
+}

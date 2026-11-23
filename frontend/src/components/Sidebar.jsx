@@ -1,17 +1,19 @@
 import "./Sidebar.css";
 import { NavLink } from "react-router-dom";
 // import { BarChart3, Users, Plus, Film, FileText, HelpCircle, CreditCard, Settings, LogOut } from "lucide-react";
-import { X, BarChart3, Users, Plus, Film, FileText, HelpCircle, CreditCard, Settings, LogOut, Star, Bell, MessageSquare, Clapperboard, ShieldCheck, Tags, LayoutGrid } from "lucide-react";
+import { X, BarChart2, BarChart3, Users, Plus, Film, FileText, HelpCircle, CreditCard, Settings, LogOut, Star, Bell, MessageSquare, Clapperboard, ShieldCheck, Tags, LayoutGrid, GalleryHorizontal } from "lucide-react";
 
 const NAV = [
   { id: "dashboard", label: "Dashboard", icon: BarChart3, color: "#e50914", permissionId: null },
   { id: "subadmins", label: "Sub-admins & Staff", icon: ShieldCheck, color: "#a855f7", requiresSuperAdmin: true },
+  { id: "analytics", label: "Content Analytics", icon: BarChart2, color: "#3987e5", permissionId: "analytics" },
   { id: "users", label: "Users", icon: Users, color: "#3b82f6", permissionId: "users" },
   { id: "pricing", label: "Subscribed Users", icon: CreditCard, color: "#ec4899", permissionId: "pricing" },
   { id: "add-content", label: "Add Content", icon: Plus, color: "#10b981", permissionId: "content" },
   { id: "content", label: "Content Library", icon: Film, color: "#f59e0b", permissionId: "content" },
   { id: "categories", label: "Categories", icon: Tags, color: "#eab308", permissionId: "content" },
   { id: "webpage", label: "Webpage Layout", icon: LayoutGrid, color: "#ff8c00", permissionId: "content" },
+  { id: "app-banners", label: "App Banners", icon: GalleryHorizontal, color: "#f43f5e", permissionId: "content" },
   // { id: "add-drama", label: "Add Short Drama", icon: Plus, color: "#a78bfa", permissionId: "content" },
   // { id: "dramas", label: "Short Dramas", icon: Clapperboard, color: "#8b5cf6", permissionId: "content" },
   // { id: "ratings", label: "Ratings", icon: Star, color: "#facc15", permissionId: "ratings" },

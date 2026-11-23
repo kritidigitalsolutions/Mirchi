@@ -385,7 +385,7 @@ const Settings = () => {
             </div>
 
             {!pwdOtpSent ? (
-              <button type="button" onClick={handleSendPwdOtp} className="btn-lg">
+              <button type="button" onClick={handleSendPwdOtp} className="btn btn-primary btn-lg btn-block">
                 {loading ? "Sending..." : "Send OTP"}
               </button>
             ) : (
@@ -417,7 +417,7 @@ const Settings = () => {
                   </button>
                 </div>
 
-                <button className="btn-lg settings-submit">
+                <button className="btn btn-primary btn-lg btn-block">
                   {loading ? "Updating..." : "Update Password"}
                 </button>
               </>
@@ -458,7 +458,7 @@ const Settings = () => {
             </div>
 
             {!otpSent && (
-              <button type="button" onClick={handleSendOtp} className="btn-lg">
+              <button type="button" onClick={handleSendOtp} className="btn btn-primary btn-lg btn-block">
                 {emailLoading ? "Sending..." : "Send OTP"}
               </button>
             )}
@@ -492,7 +492,7 @@ const Settings = () => {
                   </button>
                 </div>
 
-                <button className="btn-lg settings-submit">
+                <button className="btn btn-primary btn-lg btn-block">
                   {emailLoading ? "Updating..." : "Update Email"}
                 </button>
               </>

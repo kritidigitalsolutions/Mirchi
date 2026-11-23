@@ -108,6 +108,8 @@ exports.redeemVoucher = async (
 
         amount: 0,
 
+        source: "voucher",
+
         startDate,
         endDate,
 

@@ -95,6 +95,14 @@ const seriesSchema = new mongoose.Schema(
       min: 0
     },
 
+    // All-time engagement counters (kept in sync by /api/watch)
+    stats: {
+      views: { type: Number, default: 0 },
+      watchTimeSec: { type: Number, default: 0 },
+      completions: { type: Number, default: 0 },
+      shares: { type: Number, default: 0 },
+    },
+
 
 
 

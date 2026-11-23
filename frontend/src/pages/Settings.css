@@ -181,17 +181,6 @@ body.light .form-input-styled {
 }
 
 /* ========== Submit Button ========== */
-.btn-lg {
-  padding: 14px 24px;
-  border-radius: var(--radius-sm);
-  border: none;
-  font-size: 0.95rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
 
 .settings-submit {
   background: linear-gradient(135deg, var(--primary), #c1071a);
@@ -300,10 +289,6 @@ body.light .password-toggle:hover {
 }
 
 /* 🔥 BUTTON SIZE */
-.btn-lg {
-  padding: 16px;
-  font-size: 1rem;
-}
 
 /* 🔥 MOBILE RESPONSIVE */
 @media (max-width: 900px) {

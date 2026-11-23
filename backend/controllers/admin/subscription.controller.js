@@ -1,5 +1,11 @@
 const Subscription = require("../../models/subscription.model");
 const User = require("../../models/user.model");
+const { resolveSubscriptionSource } = require("../../utils/subscriptionSource");
+const {
+  getIndiaDayBounds,
+  parseIndiaDate,
+  IST_OFFSET_MS: INDIA_TIMEZONE_OFFSET_MS,
+} = require("../../utils/dateRange");
 
 // =====================================================
 // AUTO EXPIRE OLD SUBSCRIPTIONS
@@ -108,23 +114,6 @@ exports.getSubscriptionStats = async (req, res) => {
       message: err.message,
     });
   }
-};
-
-// India timezone offset for 12:00 AM - 11:59:59 PM IST calculations
-const INDIA_TIMEZONE_OFFSET_MS = 5.5 * 60 * 60 * 1000;
-
-const getIndiaDayBounds = (date = new Date(), daysOffset = 0) => {
-  const indiaNow = new Date(date.getTime() + INDIA_TIMEZONE_OFFSET_MS);
-  const startOfIndiaDayAsUtc = Date.UTC(
-    indiaNow.getUTCFullYear(),
-    indiaNow.getUTCMonth(),
-    indiaNow.getUTCDate() + daysOffset
-  );
-
-  const start = new Date(startOfIndiaDayAsUtc - INDIA_TIMEZONE_OFFSET_MS);
-  const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
-
-  return { start, end };
 };
 
 // =====================================================
@@ -272,6 +261,15 @@ exports.getAllSubscriptions = async (req, res) => {
       filter.status = status;
     }
 
+    // Claimed-date range filter (YYYY-MM-DD, inclusive, IST days)
+    const claimedFrom = parseIndiaDate(req.query.from);
+    const claimedTo = parseIndiaDate(req.query.to);
+    if (claimedFrom || claimedTo) {
+      filter.startDate = {};
+      if (claimedFrom) filter.startDate.$gte = claimedFrom;
+      if (claimedTo) filter.startDate.$lt = new Date(claimedTo.getTime() + 24 * 60 * 60 * 1000);
+    }
+
     if (timeframe === "today") {
       filter.createdAt = { $gte: todayStart, $lt: todayEnd };
     } else if (timeframe === "yesterday") {
@@ -336,12 +334,18 @@ exports.getAllSubscriptions = async (req, res) => {
     const totalPages = Math.max(Math.ceil(totalSubscriptions / limit), 1);
     const currentPage = Math.min(page, totalPages);
 
-    const subscriptions = await Subscription.find(filter)
+    const subscriptionDocs = await Subscription.find(filter)
       .populate("user", "name email phone")
       .populate("plan")
       .sort({ createdAt: -1 })
       .skip((currentPage - 1) * limit)
-      .limit(limit);
+      .limit(limit)
+      .lean();
+
+    const subscriptions = subscriptionDocs.map((sub) => ({
+      ...sub,
+      source: resolveSubscriptionSource(sub),
+    }));
 
     const todayCount = todayStatsResult[0]?.count || 0;
     const todayUsers = todayStatsResult[0]?.distinctUsers?.length || 0;

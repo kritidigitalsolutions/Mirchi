@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Bell, Send, X, Trash2, Eye, RefreshCw } from "lucide-react";
 import API from "../api/axios";
+import { fmtDate, fmtTime } from "../utils/tableFormat";
 import "./Dashboard.css";
 import "./Notifications.css";
 import "./NotificationsLight.css";
@@ -634,7 +635,7 @@ export default function NotificationsPage() {
           <div className="notif-btn-row">
             <button
               type="submit"
-              className="btn-lg notif-send-btn"
+              className="btn btn-primary btn-lg"
               disabled={loading}
             >
               {loading ? <span className="notif-spinner" /> : <Send size={16} />}
@@ -703,18 +704,13 @@ export default function NotificationsPage() {
                   <th>Target</th>
                   <th>Date</th>
                   <th>Status</th>
-                  <th style={{ textAlign: "center" }}>Actions</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {notifications.length === 0 ? (
                   <tr>
-                    <td colSpan={7}>
-                      <div className="empty-state">
-                        <div style={{ fontSize: "2rem" }}>🔔</div>
-                        <p>No notifications sent yet</p>
-                      </div>
-                    </td>
+                    <td colSpan={7} className="tbl-empty">No notifications sent yet</td>
                   </tr>
                 ) : (
                   notifications.map((n) => {
@@ -734,8 +730,9 @@ export default function NotificationsPage() {
                           )}
                         </td>
 
-                        <td>
-                          <span className="notif-row-title" style={{ fontWeight: !n.isRead ? "bold" : "normal" }}>{n.title}</span>
+                        <td className="cell-wrap" style={{ maxWidth: 340 }}>
+                          <div className="cell-main cell-ellipsis" style={{ maxWidth: 320 }}>{n.title}</div>
+                          <div className="cell-sub cell-ellipsis" style={{ maxWidth: 320 }}>{n.message || n.body || "—"}</div>
                         </td>
 
                         <td>
@@ -755,11 +752,8 @@ export default function NotificationsPage() {
                         </td>
 
                         <td>
-                          <span className="notif-date">
-                            {new Date(n.createdAt || n.sentAt).toLocaleDateString("en-IN", {
-                              day: "2-digit", month: "short", year: "numeric",
-                            })}
-                          </span>
+                          <div className="cell-main">{fmtDate(n.createdAt || n.sentAt)}</div>
+                          <div className="cell-sub">{fmtTime(n.createdAt || n.sentAt)}</div>
                         </td>
 
                         <td>
@@ -772,7 +766,7 @@ export default function NotificationsPage() {
                         </td>
 
                         <td>
-                          <div className="tbl-actions" style={{ justifyContent: "center" }}>
+                          <div className="tbl-actions">
                             <button
                               className="icon-btn view"
                               title="View Details"
@@ -839,7 +833,7 @@ export default function NotificationsPage() {
                 <span className="nd-header-title">Notification Details</span>
                 <span className="nd-header-sub">Admin Panel</span>
               </div>
-              <button className="nd-close" onClick={() => setViewNotif(null)}>
+              <button className="modal-close" onClick={() => setViewNotif(null)}>
                 <X size={16} />
               </button>
             </div>
@@ -942,7 +936,7 @@ export default function NotificationsPage() {
 
             {/* Footer */}
             <div className="nd-footer">
-              <button className="nd-close-btn" onClick={() => setViewNotif(null)}>Close</button>
+              <button className="btn btn-ghost" onClick={() => setViewNotif(null)}>Close</button>
             </div>
           </div>
         </div>
@@ -958,7 +952,7 @@ export default function NotificationsPage() {
                 <span className="nd-header-title">Confirm Deletion</span>
                 <span className="nd-header-sub">Action cannot be undone</span>
               </div>
-              <button className="nd-close" onClick={() => setDeleteConfirm(null)}>
+              <button className="modal-close" onClick={() => setDeleteConfirm(null)}>
                 <X size={16} />
               </button>
             </div>
@@ -975,13 +969,12 @@ export default function NotificationsPage() {
             </div>
 
             <div className="nd-footer" style={{ justifyContent: "flex-end", gap: "10px" }}>
-              <button type="button" className="nd-close-btn" onClick={() => setDeleteConfirm(null)}>
+              <button type="button" className="btn btn-ghost" onClick={() => setDeleteConfirm(null)}>
                 Cancel
               </button>
               <button
                 type="button"
-                className="nd-close-btn"
-                style={{ background: "#ef4444", color: "#ffffff", borderColor: "#dc2626", fontWeight: "700" }}
+                className="btn btn-danger"
                 onClick={() => {
                   if (deleteConfirm.type === "all") {
                     handleDeleteAll();
