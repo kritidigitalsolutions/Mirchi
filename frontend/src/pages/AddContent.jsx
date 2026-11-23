@@ -215,11 +215,8 @@ const handleSubmit = async (e) => {
   }
 
   const isComingSoon = form.isComingSoon === true || form.isComingSoon === "true" || form.isComingSoon === "yes";
-  if (isComingSoon) {
-    if (!form.releaseDate) {
-      alert("Please set a complete Scheduled Release Date & Time when 'Coming Soon' is Yes.");
-      return;
-    }
+  // Release date is optional for Coming Soon; validate only when provided
+  if (isComingSoon && form.releaseDate) {
     const date = new Date(form.releaseDate);
     if (isNaN(date.getTime())) {
       alert("Please set a complete Scheduled Release Date & Time when 'Coming Soon' is Yes.");

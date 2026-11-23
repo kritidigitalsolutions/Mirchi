@@ -74,13 +74,9 @@ const addSeries = async (req, res) => {
     }
 
     const isComingSoonAdd = req.body.isComingSoon === "true" || req.body.isComingSoon === true;
-    if (isComingSoonAdd) {
-      if (!req.body.releaseDate || req.body.releaseDate === "null" || req.body.releaseDate === "") {
-        return res.status(400).json({
-          success: false,
-          message: "Please set a complete Scheduled Release Date & Time when 'Coming Soon' is Yes.",
-        });
-      }
+    const hasReleaseDateAdd = req.body.releaseDate && req.body.releaseDate !== "null" && req.body.releaseDate !== "";
+    // Release date is optional for Coming Soon; validate only when provided
+    if (isComingSoonAdd && hasReleaseDateAdd) {
       const date = new Date(req.body.releaseDate);
       const year = date.getFullYear();
       const maxYear = new Date().getFullYear() + 10;
@@ -286,13 +282,9 @@ const updateSeries = async (req, res) => {
     }
 
     const isComingSoonUpdate = req.body.isComingSoon === "true" || req.body.isComingSoon === true;
-    if (isComingSoonUpdate) {
-      if (!req.body.releaseDate || req.body.releaseDate === "null" || req.body.releaseDate === "") {
-        return res.status(400).json({
-          success: false,
-          message: "Please set a complete Scheduled Release Date & Time when 'Coming Soon' is Yes.",
-        });
-      }
+    const hasReleaseDateUpdate = req.body.releaseDate && req.body.releaseDate !== "null" && req.body.releaseDate !== "";
+    // Release date is optional for Coming Soon; validate only when provided
+    if (isComingSoonUpdate && hasReleaseDateUpdate) {
       const date = new Date(req.body.releaseDate);
       const year = date.getFullYear();
       const maxYear = new Date().getFullYear() + 10;

@@ -67,13 +67,9 @@ const addMovie = async (req, res) => {
     }
 
     const isComingSoonAdd = req.body.isComingSoon === "true" || req.body.isComingSoon === true;
-    if (isComingSoonAdd) {
-      if (!req.body.releaseDate || req.body.releaseDate === "null" || req.body.releaseDate === "") {
-        return res.status(400).json({
-          success: false,
-          message: "Please set a complete Scheduled Release Date & Time when 'Coming Soon' is Yes.",
-        });
-      }
+    const hasReleaseDateAdd = req.body.releaseDate && req.body.releaseDate !== "null" && req.body.releaseDate !== "";
+    // Release date is optional for Coming Soon; validate only when provided
+    if (isComingSoonAdd && hasReleaseDateAdd) {
       const date = new Date(req.body.releaseDate);
       const year = date.getFullYear();
       const maxYear = new Date().getFullYear() + 10;
@@ -409,13 +405,9 @@ const updateMovie = async (req, res) => {
     }
 
     const isComingSoonUpdate = req.body.isComingSoon === "true" || req.body.isComingSoon === true;
-    if (isComingSoonUpdate) {
-      if (!req.body.releaseDate || req.body.releaseDate === "null" || req.body.releaseDate === "") {
-        return res.status(400).json({
-          success: false,
-          message: "Please set a complete Scheduled Release Date & Time when 'Coming Soon' is Yes.",
-        });
-      }
+    const hasReleaseDateUpdate = req.body.releaseDate && req.body.releaseDate !== "null" && req.body.releaseDate !== "";
+    // Release date is optional for Coming Soon; validate only when provided
+    if (isComingSoonUpdate && hasReleaseDateUpdate) {
       const date = new Date(req.body.releaseDate);
       const year = date.getFullYear();
       const maxYear = new Date().getFullYear() + 10;
@@ -491,12 +483,12 @@ const updateMovie = async (req, res) => {
       movie.language =
         req.body.language;
 
-    if (
-      req.body.releaseDate !== undefined &&
-      req.body.releaseDate !== "null" &&
-      req.body.releaseDate !== ""
-    ) {
-      movie.releaseDate = req.body.releaseDate;
+    if (req.body.releaseDate !== undefined) {
+      // Empty / "null" clears the date (Coming Soon without a decided date)
+      movie.releaseDate =
+        req.body.releaseDate === "null" || req.body.releaseDate === ""
+          ? null
+          : req.body.releaseDate;
     }
 
     if (req.body.rating)
