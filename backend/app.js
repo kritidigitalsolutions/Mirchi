@@ -37,6 +37,7 @@ const adminUrls = process.env.ADMIN_URL
 const defaultAllowed = [
   "http://localhost:5173",
   "http://localhost:5174",
+  "https://mirchiadminpanel.vercel.app",
   "https://mirchi-admin-panel.vercel.app",
   "https://mirchi-sigma.vercel.app",
   "https://jazzy-sunflower-4b9b98.netlify.app",
