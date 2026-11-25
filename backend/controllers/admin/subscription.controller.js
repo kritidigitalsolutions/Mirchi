@@ -5,6 +5,10 @@ const {
   getIndiaDayBounds,
   parseIndiaDate,
   IST_OFFSET_MS: INDIA_TIMEZONE_OFFSET_MS,
+  getRange,
+  bucketKey,
+  buildBucketKeys,
+  IST_TZ,
 } = require("../../utils/dateRange");
 
 // =====================================================
@@ -383,6 +387,86 @@ exports.getAllSubscriptions = async (req, res) => {
       success: false,
       message: error.message,
     });
+  }
+};
+
+// =====================================================
+// 📈 GET SUBSCRIBER GROWTH CHART DATA
+// =====================================================
+exports.getSubscriberGrowthChart = async (req, res) => {
+  try {
+    await expireOldSubscriptions();
+
+    const { range, start, end, bucket, format } = getRange(
+      req.query.range,
+      req.query.from,
+      req.query.to
+    );
+
+    const matchStage = { createdAt: {} };
+    if (start) matchStage.createdAt.$gte = start;
+    if (end) matchStage.createdAt.$lt = end;
+    if (!start && !end) delete matchStage.createdAt;
+
+    // Aggregate new subscribers and revenue per bucket
+    const pipeline = [
+      { $match: matchStage },
+      {
+        $group: {
+          _id: {
+            $dateToString: {
+              format,
+              date: "$createdAt",
+              timezone: IST_TZ,
+            },
+          },
+          subscribers: { $sum: 1 },
+          revenue: { $sum: { $ifNull: ["$amount", 0] } },
+          uniqueUsers: { $addToSet: "$user" },
+        },
+      },
+      { $sort: { _id: 1 } },
+    ];
+
+    const rawRows = await Subscription.aggregate(pipeline);
+
+    // Build a map keyed by bucket string
+    const dataMap = {};
+    for (const row of rawRows) {
+      dataMap[row._id] = {
+        subscribers: row.subscribers,
+        revenue: row.revenue,
+        uniqueUsers: row.uniqueUsers.length,
+      };
+    }
+
+    // Fill all keys so the chart has no gaps
+    const allKeys = start ? buildBucketKeys(start, end, bucket) : rawRows.map((r) => r._id);
+
+    const chartData = allKeys.map((key) => ({
+      label: key,
+      subscribers: dataMap[key]?.subscribers || 0,
+      revenue: dataMap[key]?.revenue || 0,
+      uniqueUsers: dataMap[key]?.uniqueUsers || 0,
+    }));
+
+    // Summary totals for the period
+    const totalSubscribers = chartData.reduce((s, d) => s + d.subscribers, 0);
+    const totalRevenue = chartData.reduce((s, d) => s + d.revenue, 0);
+
+    res.status(200).json({
+      success: true,
+      range,
+      bucket,
+      chartData,
+      summary: {
+        totalSubscribers,
+        totalRevenue,
+      },
+    });
+  } catch (err) {
+    console.error("Subscriber Growth Chart Error:", err);
+    res.status(500).json({ success: false, message: err.message });
   }
 };
 
