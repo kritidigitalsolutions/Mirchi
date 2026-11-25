@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Outlet } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
 import Topbar from "../components/Topbar";
@@ -14,6 +14,45 @@ export default function AdminLayout() {
     document.body.classList.toggle("light", theme === "light");
   }, [theme]);
   const [showSidebar, setShowSidebar] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem("sidebarCollapsed") === "true";
+    } catch {
+      return false;
+    }
+  });
+
+  const toggleCollapse = useCallback(() => {
+    setIsCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem("sidebarCollapsed", String(next));
+      } catch (err) {
+        console.error("Failed to store sidebarCollapsed state:", err);
+      }
+      return next;
+    });
+  }, []);
+
+  const toggleSidebar = useCallback(() => {
+    if (window.innerWidth <= 1024) {
+      setShowSidebar((prev) => !prev);
+    } else {
+      toggleCollapse();
+    }
+  }, [toggleCollapse]);
+
+  // Keyboard shortcut Ctrl+B / Cmd+B to toggle sidebar collapse
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "b") {
+        e.preventDefault();
+        toggleSidebar();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [toggleSidebar]);
   const [adminRole, setAdminRole] = useState(() => localStorage.getItem("adminRole") || "ADMIN");
   const [adminPermissions, setAdminPermissions] = useState(() => {
     try {
@@ -64,15 +103,22 @@ export default function AdminLayout() {
     );
   };
 
-  const toggleSidebar = () => setShowSidebar(!showSidebar);
-
   return (
     <div className={`app-shell ${theme}`}>
+      {/* Mobile backdrop overlay */}
+      <div
+        className={`sidebar-mobile-backdrop ${showSidebar ? "active" : ""}`}
+        onClick={() => setShowSidebar(false)}
+        aria-hidden="true"
+      />
+
       <Sidebar
         theme={theme}
         showSidebar={showSidebar}
         toggleSidebar={toggleSidebar}
         closeSidebar={() => setShowSidebar(false)}
+        isCollapsed={isCollapsed}
+        toggleCollapse={toggleCollapse}
         adminRole={adminRole}
         adminPermissions={adminPermissions}
       />
@@ -82,6 +128,7 @@ export default function AdminLayout() {
           theme={theme}
           toggleTheme={toggleTheme}
           toggleSidebar={toggleSidebar}
+          isCollapsed={isCollapsed}
         />
 
         <main className="page-body">

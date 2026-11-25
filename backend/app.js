@@ -132,6 +132,9 @@ const contentUserRoutes = require("./routes/user/content.routes");
 const webpageAdminRoutes = require("./routes/admin/webpage.routes");
 
 const updateUpcomingStatus = require("./middlewares/updateUpcomingStatus.middleware");
+const { trackUserPresence } = require("./utils/presence.helper");
+
+app.use("/api", trackUserPresence);
 
 app.use(
   "/api/admin/auth",

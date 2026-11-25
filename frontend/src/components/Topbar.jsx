@@ -12,7 +12,7 @@ const TYPE_COLORS = {
   PROMOTIONAL: { bg: "rgba(245,158,11,0.2)",  color: "#f59e0b" },
 };
 
-export default function Topbar({ theme, toggleTheme, toggleSidebar }) {
+export default function Topbar({ theme, toggleTheme, toggleSidebar, isCollapsed = false }) {
   const navigate = useNavigate();
   const [adminName, setAdminName] = useState("Admin");
   const [adminData, setAdminData] = useState(null);
@@ -138,8 +138,13 @@ const handleSelect = (item) => {
       <header className="topbar">
         {/* LEFT — Greeting */}
         <div className="topbar-left">
-          <button className="mobile-menu-btn" onClick={toggleSidebar}>
-            <Menu size={24} />
+          <button
+            className="sidebar-toggle-btn mobile-menu-btn"
+            onClick={toggleSidebar}
+            aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            title={isCollapsed ? "Expand sidebar (Ctrl+B)" : "Collapse sidebar (Ctrl+B)"}
+          >
+            <Menu size={22} />
           </button>
           <div className="topbar-info">
             <h2 className="topbar-greeting">

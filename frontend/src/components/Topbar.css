@@ -26,23 +26,39 @@
   min-width: 0;
 }
 
+.sidebar-toggle-btn,
 .mobile-menu-btn {
-  display: none;
+  display: flex;
   width: 40px;
   height: 40px;
   border-radius: 10px;
   border: 1px solid var(--border);
-  background: var(--bg);
-  color: var(--text);
+  background: var(--bg2);
+  color: var(--text-soft);
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
   flex-shrink: 0;
+  outline: none;
 }
 
+.sidebar-toggle-btn:hover,
 .mobile-menu-btn:hover {
-  background: var(--border);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text);
+  border-color: var(--border2);
+  transform: scale(1.04);
+}
+
+body.light .sidebar-toggle-btn:hover,
+body.light .mobile-menu-btn:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.sidebar-toggle-btn:active,
+.mobile-menu-btn:active {
+  transform: scale(0.96);
 }
 
 .topbar-info {

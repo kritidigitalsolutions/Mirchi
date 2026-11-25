@@ -11,6 +11,13 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  min-width: 0;
+  position: relative;
+}
+
+/* Mobile backdrop */
+.sidebar-mobile-backdrop {
+  display: none;
 }
 
 .page-body {
@@ -21,6 +28,24 @@
 
 /* ── Responsive ── */
 @media (max-width: 1024px) {
+  .sidebar-mobile-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    z-index: 999;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  .sidebar-mobile-backdrop.active {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
   .page-body {
     padding: 20px;
   }

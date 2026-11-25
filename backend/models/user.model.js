@@ -69,6 +69,11 @@ authProvider: {
             default: Date.now,
         },
 
+        lastActiveAt: {
+            type: Date,
+            default: null,
+        },
+
         isBlocked: {
             type: Boolean,
             default: false,
@@ -89,5 +94,6 @@ authProvider: {
 // Indexes for performance (especially for dashboard analytics)
 userSchema.index({ createdAt: -1 });
 userSchema.index({ isBlocked: 1 });
+userSchema.index({ lastActiveAt: -1 });
 
 module.exports = mongoose.models.User || mongoose.model("User", userSchema);

@@ -1,6 +1,7 @@
 const jwt = require("jsonwebtoken");
 //added this below
 const User = require("../models/user.model");
+const { touchUserActivity } = require("../utils/presence.helper");
 
 const isAuth = async (
   req,
@@ -50,6 +51,7 @@ if (!user) {
 }
 
 req.user = user;
+touchUserActivity(user);
 
     next();
 
@@ -74,7 +76,10 @@ const optionalAuth = async (req, res, next) => {
       const decoded = jwt.verify(authHeader.split(" ")[1], process.env.JWT_SECRET);
       if (decoded.role === "USER") {
         const user = await User.findById(decoded.id);
-        if (user) req.user = user;
+        if (user) {
+          req.user = user;
+          touchUserActivity(user);
+        }
       }
     }
   } catch {
