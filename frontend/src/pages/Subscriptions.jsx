@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import API from "../api/axios";
 import {
   Ban,
+  BarChart2,
   Calendar,
   ChevronLeft,
   ChevronRight,
@@ -17,11 +18,94 @@ import {
   Users,
   X,
 } from "lucide-react";
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  ReferenceLine,
+} from "recharts";
 import { daysLeft, formatDate, formatDateTime, sourceLabel } from "../utils/subscriptionFormat";
 import "./Subscription.css";
 import "./SubscriptionLight.css";
 
 const PAGE_SIZE = 10;
+
+// Chart range options
+const CHART_RANGES = [
+  { value: "today", label: "Day" },
+  { value: "week", label: "Week" },
+  { value: "month", label: "Month" },
+  { value: "year", label: "Year" },
+];
+
+// ── Custom Tooltip ────────────────────────────────────────────────
+const ChartTooltip = ({ active, payload, label, metric, chartRange }) => {
+  if (!active || !payload || !payload.length) return null;
+
+  const data = payload[0]?.payload || {};
+  const isRevenue = metric === "revenue";
+
+  // Format the label nicely
+  const formatLabel = (l) => {
+    if (!l) return "";
+    if (chartRange === "today") {
+      // "2026-11-25 14:00" → "2:00 PM"
+      const timePart = l.split(" ")[1] || l;
+      const [h, m] = timePart.split(":").map(Number);
+      const ampm = h >= 12 ? "PM" : "AM";
+      const h12 = h % 12 || 12;
+      return `${h12}:${String(m).padStart(2, "0")} ${ampm}`;
+    }
+    if (chartRange === "year") {
+      // "2026-09" → "Sep 2026"
+      const [y, mo] = l.split("-");
+      const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+      return `${months[parseInt(mo, 10) - 1]} ${y}`;
+    }
+    // "2026-11-25" → "25 Nov"
+    const parts = l.split("-");
+    if (parts.length === 3) {
+      const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+      return `${parseInt(parts[2], 10)} ${months[parseInt(parts[1], 10) - 1]}`;
+    }
+    return l;
+  };
+
+  return (
+    <div className="sub-chart-tooltip">
+      <div className="sub-chart-tooltip-label">{formatLabel(label)}</div>
+      <div className="sub-chart-tooltip-rows">
+        <div className="sub-chart-tooltip-row">
+          <span className="sub-chart-tooltip-dot" style={{ background: isRevenue ? "#10b981" : "#a855f7" }} />
+          <span className="sub-chart-tooltip-key">{isRevenue ? "Revenue" : "Subscribers"}</span>
+          <span className="sub-chart-tooltip-val">
+            {isRevenue
+              ? `₹${(data.revenue || 0).toLocaleString("en-IN")}`
+              : (data.subscribers || 0).toLocaleString("en-IN")}
+          </span>
+        </div>
+        {!isRevenue && data.revenue > 0 && (
+          <div className="sub-chart-tooltip-row sub-chart-tooltip-row--secondary">
+            <span className="sub-chart-tooltip-dot" style={{ background: "#10b981" }} />
+            <span className="sub-chart-tooltip-key">Revenue</span>
+            <span className="sub-chart-tooltip-val">₹{(data.revenue || 0).toLocaleString("en-IN")}</span>
+          </div>
+        )}
+        {data.uniqueUsers > 0 && !isRevenue && (
+          <div className="sub-chart-tooltip-row sub-chart-tooltip-row--secondary">
+            <span className="sub-chart-tooltip-dot" style={{ background: "#60a5fa" }} />
+            <span className="sub-chart-tooltip-key">Unique users</span>
+            <span className="sub-chart-tooltip-val">{data.uniqueUsers}</span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
 
 // "Ended today" / "Ended 3 days ago"
 const endedAgo = (endDate) => {
@@ -59,6 +143,30 @@ export default function SubscriptionPage() {
     totalSubscriptions: 0,
     limit: PAGE_SIZE,
   });
+
+  // --- Chart state ---
+  const [chartRange, setChartRange] = useState("week");
+  const [chartData, setChartData] = useState([]);
+  const [chartSummary, setChartSummary] = useState({ totalSubscribers: 0, totalRevenue: 0 });
+  const [chartLoading, setChartLoading] = useState(true);
+  const [chartMetric, setChartMetric] = useState("subscribers"); // "subscribers" | "revenue"
+
+  const fetchChart = useCallback(async (range) => {
+    setChartLoading(true);
+    try {
+      const res = await API.get("/admin/subscription/chart", { params: { range } });
+      setChartData(res.data.chartData || []);
+      setChartSummary(res.data.summary || { totalSubscribers: 0, totalRevenue: 0 });
+    } catch {
+      setChartData([]);
+    } finally {
+      setChartLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchChart(chartRange);
+  }, [chartRange, fetchChart]);
 
   const fetchSubs = async () => {
     setLoading(true);
@@ -248,6 +356,221 @@ export default function SubscriptionPage() {
               </span>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* ── Subscriber Growth Chart ───────────────────────────── */}
+      <div className="sub-chart-card">
+        {/* Header */}
+        <div className="sub-chart-header">
+          <div className="sub-chart-title-group">
+            <div className="sub-chart-icon">
+              <BarChart2 size={18} />
+            </div>
+            <div>
+              <div className="sub-chart-title">Subscriber Growth</div>
+              <div className="sub-chart-subtitle">
+                {CHART_RANGES.find((r) => r.value === chartRange)?.label} overview
+              </div>
+            </div>
+          </div>
+
+          {/* KPI pills */}
+          <div className="sub-chart-kpis">
+            <div className={`sub-chart-kpi ${chartMetric === "subscribers" ? "sub-chart-kpi--active-purple" : ""}`}
+              onClick={() => setChartMetric("subscribers")} role="button" tabIndex={0}
+              onKeyDown={(e) => e.key === "Enter" && setChartMetric("subscribers")}>
+              <span className="sub-chart-kpi-dot sub-chart-kpi-dot--purple" />
+              <span className="sub-chart-kpi-label">Subscribers</span>
+              <span className="sub-chart-kpi-val">
+                {chartLoading ? "—" : chartSummary.totalSubscribers.toLocaleString("en-IN")}
+              </span>
+            </div>
+            <div className={`sub-chart-kpi ${chartMetric === "revenue" ? "sub-chart-kpi--active-green" : ""}`}
+              onClick={() => setChartMetric("revenue")} role="button" tabIndex={0}
+              onKeyDown={(e) => e.key === "Enter" && setChartMetric("revenue")}>
+              <span className="sub-chart-kpi-dot sub-chart-kpi-dot--green" />
+              <span className="sub-chart-kpi-label">Revenue</span>
+              <span className="sub-chart-kpi-val">
+                {chartLoading ? "—" : `₹${chartSummary.totalRevenue.toLocaleString("en-IN")}`}
+              </span>
+            </div>
+          </div>
+
+          {/* Range pills */}
+          <div className="sub-chart-range-toggle">
+            {CHART_RANGES.map((r) => (
+              <button
+                key={r.value}
+                className={chartRange === r.value ? "active" : ""}
+                onClick={() => setChartRange(r.value)}
+              >
+                {r.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Chart body */}
+        <div className="sub-chart-body">
+          {chartLoading ? (
+            <div className="sub-chart-loading">
+              <div className="sub-chart-skeleton">
+                {[65, 40, 80, 55, 90, 70, 85, 60, 75, 50, 95, 65].map((h, i) => (
+                  <div key={i} className="sub-chart-skeleton-bar" style={{ height: `${h}%` }} />
+                ))}
+              </div>
+              <div className="sub-chart-loading-label">
+                <Loader size={16} className="spin" /> Loading…
+              </div>
+            </div>
+          ) : chartData.length === 0 ? (
+            <div className="sub-chart-empty">
+              <BarChart2 size={36} strokeWidth={1.5} />
+              <div>
+                <div style={{ fontWeight: 600, marginBottom: 4 }}>No data for this period</div>
+                <div style={{ fontSize: "0.8rem", opacity: 0.6 }}>Try a different time range</div>
+              </div>
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={280}>
+              <AreaChart
+                data={chartData}
+                margin={{ top: 16, right: 24, left: 0, bottom: 4 }}
+              >
+                <defs>
+                  <linearGradient id="subGradFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#a855f7" stopOpacity={0.25} />
+                    <stop offset="60%" stopColor="#a855f7" stopOpacity={0.08} />
+                    <stop offset="100%" stopColor="#a855f7" stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="revGradFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#10b981" stopOpacity={0.25} />
+                    <stop offset="60%" stopColor="#10b981" stopOpacity={0.08} />
+                    <stop offset="100%" stopColor="#10b981" stopOpacity={0} />
+                  </linearGradient>
+                  {/* Glow filter for the stroke line */}
+                  <filter id="lineGlowPurple" x="-20%" y="-80%" width="140%" height="260%">
+                    <feGaussianBlur stdDeviation="3" result="blur" />
+                    <feMerge>
+                      <feMergeNode in="blur" />
+                      <feMergeNode in="SourceGraphic" />
+                    </feMerge>
+                  </filter>
+                  <filter id="lineGlowGreen" x="-20%" y="-80%" width="140%" height="260%">
+                    <feGaussianBlur stdDeviation="3" result="blur" />
+                    <feMerge>
+                      <feMergeNode in="blur" />
+                      <feMergeNode in="SourceGraphic" />
+                    </feMerge>
+                  </filter>
+                </defs>
+
+                <CartesianGrid
+                  strokeDasharray="4 4"
+                  stroke="rgba(148,163,184,0.07)"
+                  vertical={false}
+                />
+
+                <XAxis
+                  dataKey="label"
+                  tick={{ fill: "#475569", fontSize: 11, fontFamily: "inherit" }}
+                  tickLine={false}
+                  axisLine={false}
+                  dy={8}
+                  interval="preserveStartEnd"
+                  tickFormatter={(v) => {
+                    if (!v) return "";
+                    if (chartRange === "today") {
+                      const timePart = v.split(" ")[1] || v;
+                      const [h] = timePart.split(":").map(Number);
+                      const ampm = h >= 12 ? "pm" : "am";
+                      return `${h % 12 || 12}${ampm}`;
+                    }
+                    if (chartRange === "year") {
+                      const [, mo] = v.split("-");
+                      const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+                      return months[parseInt(mo, 10) - 1] || v;
+                    }
+                    const parts = v.split("-");
+                    if (parts.length === 3) return `${parseInt(parts[2], 10)}/${parseInt(parts[1], 10)}`;
+                    return v;
+                  }}
+                />
+
+                <YAxis
+                  tick={{ fill: "#475569", fontSize: 11, fontFamily: "inherit" }}
+                  tickLine={false}
+                  axisLine={false}
+                  dx={-4}
+                  tickFormatter={(v) => {
+                    if (chartMetric === "revenue") {
+                      if (v >= 100000) return `₹${(v / 100000).toFixed(1)}L`;
+                      if (v >= 1000) return `₹${(v / 1000).toFixed(1)}k`;
+                      return `₹${v}`;
+                    }
+                    if (v >= 1000) return `${(v / 1000).toFixed(1)}k`;
+                    return v;
+                  }}
+                  width={chartMetric === "revenue" ? 62 : 38}
+                />
+
+                <Tooltip
+                  content={
+                    <ChartTooltip metric={chartMetric} chartRange={chartRange} />
+                  }
+                  cursor={{
+                    stroke: chartMetric === "revenue" ? "#10b981" : "#a855f7",
+                    strokeWidth: 1,
+                    strokeDasharray: "4 3",
+                    strokeOpacity: 0.5,
+                  }}
+                  animationDuration={150}
+                  isAnimationActive={true}
+                />
+
+                {chartMetric === "subscribers" ? (
+                  <Area
+                    type="monotoneX"
+                    dataKey="subscribers"
+                    stroke="#a855f7"
+                    strokeWidth={2.5}
+                    fill="url(#subGradFill)"
+                    dot={false}
+                    activeDot={{
+                      r: 6,
+                      fill: "#a855f7",
+                      stroke: "#1e1040",
+                      strokeWidth: 2.5,
+                      filter: "url(#lineGlowPurple)",
+                    }}
+                    isAnimationActive={true}
+                    animationDuration={700}
+                    animationEasing="ease-out"
+                  />
+                ) : (
+                  <Area
+                    type="monotoneX"
+                    dataKey="revenue"
+                    stroke="#10b981"
+                    strokeWidth={2.5}
+                    fill="url(#revGradFill)"
+                    dot={false}
+                    activeDot={{
+                      r: 6,
+                      fill: "#10b981",
+                      stroke: "#062a1c",
+                      strokeWidth: 2.5,
+                      filter: "url(#lineGlowGreen)",
+                    }}
+                    isAnimationActive={true}
+                    animationDuration={700}
+                    animationEasing="ease-out"
+                  />
+                )}
+              </AreaChart>
+            </ResponsiveContainer>
+          )}
         </div>
       </div>
 
