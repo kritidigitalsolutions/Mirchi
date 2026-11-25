@@ -29,6 +29,7 @@ import {
   ReferenceLine,
 } from "recharts";
 import { daysLeft, formatDate, formatDateTime, sourceLabel } from "../utils/subscriptionFormat";
+import "./Dashboard.css";
 import "./Subscription.css";
 import "./SubscriptionLight.css";
 
@@ -127,6 +128,8 @@ export default function SubscriptionPage() {
   const [actionId, setActionId] = useState("");
   const [selectedUser, setSelectedUser] = useState(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
+  const [subHistory, setSubHistory] = useState([]);
+  const [subHistoryLoading, setSubHistoryLoading] = useState(false);
   const [stats, setStats] = useState({
     todayCount: 0,
     todayUsers: 0,
@@ -253,17 +256,23 @@ export default function SubscriptionPage() {
     }
 
     setDetailsLoading(true);
+    setSubHistory([]);
+    setSubHistoryLoading(true);
     setSelectedUser({ ...subscription.user, subscription });
     try {
       const res = await API.get(`/admin/users/${subscription.user._id}`);
       setSelectedUser({ ...res.data.user, subscription });
+      setSubHistory(res.data.subscriptions || []);
     } catch (error) {
       setSelectedUser(null);
       alert(error.response?.data?.message || "Unable to load user details");
     } finally {
       setDetailsLoading(false);
+      setSubHistoryLoading(false);
     }
   };
+
+  const subStatusBadge = (s) => (s === "active" ? "badge-active" : "badge-blocked");
 
   const updateFilter = (setter) => (event) => {
     setter(event.target.value);
@@ -744,11 +753,11 @@ export default function SubscriptionPage() {
       )}
 
       {selectedUser && (
-        <div className="subscription-details-overlay" onClick={() => setSelectedUser(null)}>
+        <div className="subscription-details-overlay" onClick={() => { setSelectedUser(null); setSubHistory([]); }}>
           <div className="subscription-details-modal" onClick={(event) => event.stopPropagation()}>
             <div className="subscription-details-header">
               <h3><User size={20} /> User Details</h3>
-              <button onClick={() => setSelectedUser(null)} aria-label="Close user details"><X size={20} /></button>
+              <button onClick={() => { setSelectedUser(null); setSubHistory([]); }} aria-label="Close user details"><X size={20} /></button>
             </div>
             {detailsLoading ? (
               <div className="subscription-details-loading"><Loader size={22} className="spin" /> Loading details...</div>
@@ -766,6 +775,53 @@ export default function SubscriptionPage() {
                   <div><dt>Amount paid</dt><dd>₹{selectedUser.subscription?.amount || 0} · {sourceLabel(selectedUser.subscription?.source)}</dd></div>
                   <div><dt>Member since</dt><dd>{selectedUser.createdAt ? new Date(selectedUser.createdAt).toLocaleDateString("en-IN") : "—"}</dd></div>
                 </dl>
+
+                {/* Subscription History */}
+                <div className="user-sub-history">
+                  <h4>Subscription History</h4>
+                  {subHistoryLoading ? (
+                    <p className="user-sub-empty"><Loader size={16} style={{ display: "inline-block", marginRight: 6 }} /> Loading...</p>
+                  ) : subHistory.length === 0 ? (
+                    <p className="user-sub-empty">No subscriptions yet.</p>
+                  ) : (
+                    <div className="tbl-wrap">
+                      <table className="tbl">
+                        <thead>
+                          <tr>
+                            <th>Plan</th>
+                            <th>Paid</th>
+                            <th>Claimed On</th>
+                            <th>Expires</th>
+                            <th>Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {subHistory.map((sub) => {
+                            const remaining = sub.status === "active" ? daysLeft(sub.endDate) : null;
+                            return (
+                              <tr key={sub._id}>
+                                <td>{sub.plan?.name || "—"}</td>
+                                <td>
+                                  ₹{sub.amount || 0}
+                                  <div className="user-sub-date">{sourceLabel(sub.source)}</div>
+                                </td>
+                                <td style={{ whiteSpace: "nowrap" }}>
+                                  {formatDate(sub.startDate)}
+                                  <div className="user-sub-date">{formatDateTime(sub.startDate).split(", ").pop()}</div>
+                                </td>
+                                <td style={{ whiteSpace: "nowrap" }}>
+                                  {formatDate(sub.endDate)}
+                                  {remaining !== null && <div className="user-sub-date">{remaining} days left</div>}
+                                </td>
+                                <td><span className={`badge ${subStatusBadge(sub.status)}`}>{sub.status}</span></td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>
