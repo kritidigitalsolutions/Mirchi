@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import API, { API_BASE_URL } from "../api/axios";
-import { Users, RefreshCw, User, CheckCircle, AlertCircle, Search, Loader, Eye, Trash2, X, ChevronLeft, ChevronRight, Lock, Unlock } from "lucide-react";
+import { Users, RefreshCw, User, CheckCircle, AlertCircle, Search, Loader, Eye, Trash2, X, ChevronLeft, ChevronRight, Lock, Unlock, Radio } from "lucide-react";
 import { daysLeft, formatDate, formatDateTime, sourceLabel } from "../utils/subscriptionFormat";
 import "./Dashboard.css";
+import "./UsersPage.css";
 import { fmtDate, fmtTime } from "../utils/tableFormat";
 
 export default function UsersPage() {
@@ -15,7 +16,7 @@ export default function UsersPage() {
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState({ currentPage: 1, totalPages: 1, totalUsers: 0, limit: 10 });
-  const [stats, setStats] = useState({ activeUsers: 0, blockedUsers: 0 });
+  const [stats, setStats] = useState({ activeUsers: 0, blockedUsers: 0, onlineUsers: 0 });
 
   const getImageUrl = (path) => {
     if (!path) return null;
@@ -25,25 +26,142 @@ export default function UsersPage() {
     return `${serverUrl}/${cleanPath}`;
   };
 
-  const fetchUsers = async () => {
-    setLoading(true);
+  const formatRelativeTime = (dateStr) => {
+    if (!dateStr) return "";
+    const d = new Date(dateStr);
+    const ts = d.getTime();
+    if (!Number.isFinite(ts)) return "";
+    const diffSec = Math.floor((Date.now() - ts) / 1000);
+    if (diffSec < 60) return "Just now";
+    const diffMin = Math.floor(diffSec / 60);
+    if (diffMin < 60) return `${diffMin}m ago`;
+    const diffHrs = Math.floor(diffMin / 60);
+    if (diffHrs < 24) return `${diffHrs}h ago`;
+    const diffDays = Math.floor(diffHrs / 24);
+    return `${diffDays}d ago`;
+  };
+
+  const fetchUsers = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const res = await API.get("/admin/users", {
         params: { page, limit: 10, search: search.trim(), status: statusFilter },
       });
       setUsers(res.data.users || []);
       setPagination(res.data.pagination || { currentPage: 1, totalPages: 1, totalUsers: 0, limit: 10 });
-      setStats(res.data.stats || { activeUsers: 0, blockedUsers: 0 });
+      setStats((prev) => ({
+        ...prev,
+        ...(res.data.stats || { activeUsers: 0, blockedUsers: 0 }),
+      }));
     } catch {
-      setUsers([]);
-      setPagination({ currentPage: 1, totalPages: 1, totalUsers: 0, limit: 10 });
-      setStats({ activeUsers: 0, blockedUsers: 0 });
+      if (!silent) {
+        setUsers([]);
+        setPagination({ currentPage: 1, totalPages: 1, totalUsers: 0, limit: 10 });
+        setStats((prev) => ({ ...prev, activeUsers: 0, blockedUsers: 0 }));
+      }
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
-  };
+  }, [page, search, statusFilter]);
 
-  useEffect(() => { fetchUsers(); }, [page, search, statusFilter]);
+  useEffect(() => { fetchUsers(); }, [fetchUsers]);
+
+  const lastOnlineCountRef = useRef(null);
+
+  // Real-time online users subscription (SSE + silent table refresh every 5s)
+  useEffect(() => {
+    let cancelled = false;
+    let pollTimer = null;
+    let abortController = null;
+
+    const refreshTableSilently = () => {
+      if (!document.hidden && !cancelled) {
+        fetchUsers(true);
+      }
+    };
+
+    const tableRefreshTimer = setInterval(refreshTableSilently, 5000);
+
+    const fetchOnlineCount = async () => {
+      if (document.hidden || cancelled) return;
+      try {
+        const res = await API.get("/admin/users/online-count");
+        if (!cancelled && typeof res.data?.onlineUsers === "number") {
+          setStats((prev) => ({ ...prev, onlineUsers: res.data.onlineUsers }));
+        }
+      } catch {
+        // Ignore transient polling errors
+      }
+    };
+
+    const startPolling = () => {
+      if (pollTimer || cancelled) return;
+      fetchOnlineCount();
+      pollTimer = setInterval(fetchOnlineCount, 5000);
+    };
+
+    const connectStream = async () => {
+      const token = localStorage.getItem("token");
+      if (!token || typeof ReadableStream === "undefined") {
+        startPolling();
+        return;
+      }
+
+      abortController = new AbortController();
+      try {
+        const response = await fetch(`${API_BASE_URL}/admin/users/online-stream`, {
+          headers: { Authorization: `Bearer ${token}` },
+          signal: abortController.signal,
+        });
+
+        if (!response.ok || !response.body) {
+          startPolling();
+          return;
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+
+        while (!cancelled) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const events = buffer.split("\n\n");
+          buffer = events.pop() || "";
+          for (const evt of events) {
+            const line = evt.split("\n").find((l) => l.startsWith("data:"));
+            if (!line) continue;
+            try {
+              const payload = JSON.parse(line.slice(5).trim());
+              if (typeof payload.onlineUsers === "number") {
+                setStats((prev) => ({ ...prev, onlineUsers: payload.onlineUsers }));
+                if (lastOnlineCountRef.current !== null && lastOnlineCountRef.current !== payload.onlineUsers) {
+                  refreshTableSilently();
+                }
+                lastOnlineCountRef.current = payload.onlineUsers;
+              }
+            } catch {
+              // Ignore malformed SSE chunk
+            }
+          }
+        }
+
+        if (!cancelled) startPolling();
+      } catch {
+        if (!cancelled) startPolling();
+      }
+    };
+
+    connectStream();
+
+    return () => {
+      cancelled = true;
+      abortController?.abort();
+      clearInterval(tableRefreshTimer);
+      if (pollTimer) clearInterval(pollTimer);
+    };
+  }, [fetchUsers]);
 
   const handleDelete = async (id) => {
     if (!window.confirm("Delete this user permanently?")) return;
@@ -96,7 +214,7 @@ export default function UsersPage() {
 
       {/* Stats */}
       <div className="stat-grid">
-        <div 
+        <div
           className={`stat-card s-green ${statusFilter === "all" ? "active-filter" : ""}`}
           onClick={() => { setStatusFilter("all"); setPage(1); }}
           style={{ cursor: "pointer" }}
@@ -105,7 +223,7 @@ export default function UsersPage() {
           <div className="stat-label">Total Users</div>
           <div className="stat-value">{stats.activeUsers + stats.blockedUsers || pagination.totalUsers}</div>
         </div>
-        <div 
+        <div
           className={`stat-card s-blue ${statusFilter === "active" ? "active-filter" : ""}`}
           onClick={() => { setStatusFilter("active"); setPage(1); }}
           style={{ cursor: "pointer" }}
@@ -114,7 +232,7 @@ export default function UsersPage() {
           <div className="stat-label">Active</div>
           <div className="stat-value">{stats.activeUsers}</div>
         </div>
-        <div 
+        <div
           className={`stat-card s-red ${statusFilter === "blocked" ? "active-filter" : ""}`}
           onClick={() => { setStatusFilter("blocked"); setPage(1); }}
           style={{ cursor: "pointer" }}
@@ -122,6 +240,28 @@ export default function UsersPage() {
           <div className="stat-icon"><AlertCircle size={24} /></div>
           <div className="stat-label">Blocked</div>
           <div className="stat-value">{stats.blockedUsers}</div>
+        </div>
+        <div
+          className={`stat-card s-orange ${statusFilter === "online" ? "active-filter" : ""}`}
+          onClick={() => { setStatusFilter("online"); setPage(1); }}
+          style={{ cursor: "pointer" }}
+          title="Users active on the app within the last 2 minutes"
+        >
+          <div className="stat-icon"><Radio size={24} /></div>
+          <div className="stat-label" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            Online Now
+            <span
+              style={{
+                width: 8,
+                height: 8,
+                borderRadius: "50%",
+                backgroundColor: "#10b981",
+                display: "inline-block",
+                boxShadow: "0 0 0 3px rgba(16, 185, 129, 0.25)",
+              }}
+            />
+          </div>
+          <div className="stat-value">{stats.onlineUsers ?? 0}</div>
         </div>
       </div>
 
@@ -133,12 +273,13 @@ export default function UsersPage() {
             <input placeholder="Search by name, email, or number..." value={search}
               onChange={e => { setSearch(e.target.value); setPage(1); }} />
           </div>
-          <select 
+          <select
             className="filter-select"
             value={statusFilter}
             onChange={e => { setStatusFilter(e.target.value); setPage(1); }}
           >
             <option value="all">All Statuses</option>
+            <option value="online">Online Now</option>
             <option value="active">Active</option>
             <option value="blocked">Blocked</option>
           </select>
@@ -147,78 +288,145 @@ export default function UsersPage() {
         {loading ? (
           <div className="empty-state"><p><Loader size={20} style={{ display: "inline-block", marginRight: 8 }} /> Loading users...</p></div>
         ) : (
-          <div className="tbl-wrap">
-            <table className="tbl">
+          <div className="tbl-wrap users-tbl-wrap">
+            <table className="tbl users-tbl">
+              <colgroup>
+                <col style={{ width: "46px" }} />
+                <col style={{ width: "22%" }} />
+                <col style={{ width: "20%" }} />
+                <col style={{ width: "12%" }} />
+                <col style={{ width: "14%" }} />
+                <col style={{ width: "9%" }} />
+                <col style={{ width: "11%" }} />
+                <col style={{ width: "12%" }} />
+              </colgroup>
               <thead>
                 <tr>
-                  <th>#</th>
+                  <th className="col-index">#</th>
                   <th>User</th>
                   <th>Contact</th>
                   <th>Joined</th>
                   <th>Subscription</th>
-                  <th>Status</th>
-                  <th>Actions</th>
+                  <th className="col-center">Status</th>
+                  <th className="col-center">Online</th>
+                  <th className="col-center">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {users.length === 0 ? (
-                  <tr><td colSpan={7} className="tbl-empty">No users found</td></tr>
+                  <tr><td colSpan={8} className="tbl-empty">No users found</td></tr>
                 ) : users.map((u, i) => (
                   <tr key={u._id || i}>
-                    <td style={{ color: "var(--text-muted)", fontWeight: 600 }}>{(pagination.currentPage - 1) * pagination.limit + i + 1}</td>
+                    <td className="col-index">
+                      {(pagination.currentPage - 1) * pagination.limit + i + 1}
+                    </td>
                     <td>
-                      <div className="user-cell">
-                        <div className="u-avatar">
-                          {u.profileImage ? (
-                            <img src={getImageUrl(u.profileImage)} alt={u.name} />
-                          ) : (
-                            u.name ? u.name[0].toUpperCase() : "U"
+                      <div className="users-user-cell">
+                        <div className="users-avatar-wrap">
+                          <div className="users-avatar">
+                            {u.profileImage ? (
+                              <img src={getImageUrl(u.profileImage)} alt={u.name || "User"} />
+                            ) : (
+                              u.name ? u.name[0].toUpperCase() : "U"
+                            )}
+                          </div>
+                          {u.isOnline && (
+                            <span className="users-avatar-dot" title="Online now" />
                           )}
                         </div>
-                        <div>
-                          <div className="cell-main cell-ellipsis">{u.name || "Unknown"}</div>
-                          <div className="cell-sub">{u.phone || "—"}</div>
+                        <div className="users-user-info">
+                          <span className="users-user-name" title={u.name || "Unknown"}>
+                            {u.name || "Unknown"}
+                          </span>
+                          <span className="users-user-phone">
+                            {u.phone || "—"}
+                          </span>
                         </div>
                       </div>
                     </td>
                     <td>
-                      <div className="cell-main cell-normal cell-ellipsis">{u.email || "—"}</div>
-                      <div className="cell-sub">
-                        {u.authProvider === "GOOGLE" ? "Google login" : u.authProvider === "APPLE" ? "Apple login" : "Phone login"}
+                      <div className="users-contact-cell">
+                        <span className="users-contact-email" title={u.email || "No email"}>
+                          {u.email || "—"}
+                        </span>
+                        <div className="users-contact-auth">
+                          <span className={`auth-pill ${u.authProvider === "GOOGLE" ? "google" : u.authProvider === "APPLE" ? "apple" : "phone"}`}>
+                            {u.authProvider === "GOOGLE" ? "Google login" : u.authProvider === "APPLE" ? "Apple login" : "Phone login"}
+                          </span>
+                        </div>
                       </div>
                     </td>
                     <td>
-                      <div className="cell-main">{fmtDate(u.createdAt)}</div>
-                      <div className="cell-sub">{fmtTime(u.createdAt)}</div>
+                      <div className="users-joined-cell">
+                        <span className="users-joined-date">{fmtDate(u.createdAt)}</span>
+                        <span className="users-joined-time">{fmtTime(u.createdAt)}</span>
+                      </div>
                     </td>
                     <td>
-                      {u.latestSubscription ? (
-                        <>
-                          <div className="cell-main cell-plan">
-                            {u.latestSubscription.planName || "Plan"}
-                            <span className={`cell-dot ${u.latestSubscription.status}`} title={u.latestSubscription.status} />
-                          </div>
-                          <div className="cell-sub">Claimed {formatDate(u.latestSubscription.startDate)}</div>
-                        </>
-                      ) : (
-                        <>
-                          <div className="cell-main cell-muted">No plan</div>
-                          <div className="cell-sub">Never subscribed</div>
-                        </>
-                      )}
+                      <div className="users-sub-cell">
+                        {u.latestSubscription ? (
+                          <>
+                            <div className="users-sub-plan" title={u.latestSubscription.planName}>
+                              <span>{u.latestSubscription.planName || "Plan"}</span>
+                              <span className={`sub-status-dot ${u.latestSubscription.status}`} title={u.latestSubscription.status} />
+                            </div>
+                            <div className="users-sub-date">Claimed {formatDate(u.latestSubscription.startDate)}</div>
+                          </>
+                        ) : (
+                          <>
+                            <div className="users-sub-plan muted">No plan</div>
+                            <div className="users-sub-date">Never subscribed</div>
+                          </>
+                        )}
+                      </div>
                     </td>
-                    <td>
-                      <span className={`badge ${u.isBlocked ? "badge-blocked" : "badge-active"}`}>
+                    <td className="col-center">
+                      <span className={`users-status-badge ${u.isBlocked ? "blocked" : "active"}`}>
                         {u.isBlocked ? "Blocked" : "Active"}
                       </span>
                     </td>
-                    <td>
-                      <div className="tbl-actions">
-                        <button className="icon-btn view" onClick={() => openUser(u)} title="View"><Eye size={16} /></button>
-                        <button className="icon-btn" onClick={() => handleToggleBlock(u._id)} title={u.isBlocked ? "Unblock" : "Block"} style={{ color: u.isBlocked ? "var(--success)" : "var(--danger)" }}>
-                          {u.isBlocked ? <Unlock size={16} /> : <Lock size={16} />}
+                    <td className="col-center">
+                      <div className="users-activity-cell">
+                        <span className={`users-activity-badge ${u.isOnline ? "online" : "offline"}`}>
+                          <span className="activity-dot" />
+                          {u.isOnline ? "Online" : "Offline"}
+                        </span>
+                        {!u.isOnline && (
+                          <span className="users-activity-time">
+                            {u.lastActiveAt ? formatRelativeTime(u.lastActiveAt) : "Inactive"}
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="col-center">
+                      <div className="users-actions-cell">
+                        <button
+                          type="button"
+                          className="icon-btn view"
+                          onClick={() => openUser(u)}
+                          title="View Profile"
+                          aria-label="View user profile"
+                        >
+                          <Eye size={15} />
                         </button>
-                        <button className="icon-btn del" onClick={() => handleDelete(u._id)} title="Delete"><Trash2 size={16} /></button>
+                        <button
+                          type="button"
+                          className={`icon-btn ${u.isBlocked ? "unblock" : "block"}`}
+                          onClick={() => handleToggleBlock(u._id)}
+                          title={u.isBlocked ? "Unblock User" : "Block User"}
+                          aria-label={u.isBlocked ? "Unblock user" : "Block user"}
+                        >
+                          {u.isBlocked ? <Unlock size={15} /> : <Lock size={15} />}
+                        </button>
+                        <button
+                          type="button"
+                          className="icon-btn del"
+                          onClick={() => handleDelete(u._id)}
+                          title="Delete User"
+                          aria-label="Delete user"
+                        >
+                          <Trash2 size={15} />
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -253,7 +461,7 @@ export default function UsersPage() {
               <h3><User size={20} style={{ display: "inline-block", marginRight: 8 }} /> User Profile</h3>
               <button className="modal-close" onClick={() => setSelected(null)}><X size={24} /></button>
             </div>
-            
+
             <div className="modal-body p-0">
               {/* Profile Hero */}
               <div className="profile-hero">
@@ -274,9 +482,16 @@ export default function UsersPage() {
                       )}
                     </div>
                     <p>{selected.email}</p>
-                    <span className={`badge ${selected.isBlocked ? "badge-blocked" : "badge-active"}`}>
-                      {selected.isBlocked ? "BLOCKED" : "ACTIVE ACCOUNT"}
-                    </span>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                      <span className={`badge ${selected.isBlocked ? "badge-blocked" : "badge-active"}`}>
+                        {selected.isBlocked ? "BLOCKED" : "ACTIVE ACCOUNT"}
+                      </span>
+                      {selected.isOnline && (
+                        <span className="badge badge-active" style={{ backgroundColor: "rgba(16, 185, 129, 0.16)", color: "#10b981" }}>
+                          ● ONLINE NOW
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -308,9 +523,9 @@ export default function UsersPage() {
                 <div className="p-detail-card">
                   <span className="p-detail-label">Member Since</span>
                   <span className="p-detail-value">
-                    {selected.createdAt?.$date 
+                    {selected.createdAt?.$date
                       ? new Date(selected.createdAt.$date).toLocaleDateString("en-IN", { day: 'numeric', month: 'long', year: 'numeric' })
-                      : selected.createdAt 
+                      : selected.createdAt
                         ? new Date(selected.createdAt).toLocaleDateString("en-IN", { day: 'numeric', month: 'long', year: 'numeric' })
                         : "—"}
                   </span>

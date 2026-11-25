@@ -273,9 +273,11 @@ exports.verifyOtp = async (req, res) => {
           profileComplete: true,
           profileImage: "",
           lastLoginAt: new Date(),
+          lastActiveAt: new Date(),
         });
       } else {
         user.lastLoginAt = new Date();
+        user.lastActiveAt = new Date();
         await user.save();
       }
 
@@ -361,9 +363,11 @@ exports.verifyOtp = async (req, res) => {
         phone: normalizedPhone,
         role: "USER",
         lastLoginAt: new Date(),
+        lastActiveAt: new Date(),
       });
     } else {
       user.lastLoginAt = new Date();
+      user.lastActiveAt = new Date();
     }
 
     const rawFcmToken =
@@ -520,6 +524,7 @@ exports.googleLogin = async (req, res) => {
         profileComplete: true,
         phone: tempPhone,
         lastLoginAt: new Date(),
+        lastActiveAt: new Date(),
       });
     } else {
       // If the user exists but hasn't linked Google credentials yet, link them!
@@ -533,9 +538,11 @@ exports.googleLogin = async (req, res) => {
         updated = true;
       }
       user.lastLoginAt = new Date();
+      user.lastActiveAt = new Date();
     }
 
     user.lastLoginAt = new Date();
+    user.lastActiveAt = new Date();
 
     // Save FCM Token & disassociate it from any other users to prevent duplicate alerts
     if (fcmToken && typeof fcmToken === "string") {
@@ -627,6 +634,7 @@ exports.websiteSSOLogin = async (req, res) => {
     }
 
     user.lastLoginAt = new Date();
+    user.lastActiveAt = new Date();
     await user.save();
 
     // Generate fresh website token
@@ -805,6 +813,7 @@ exports.appleLogin = async (req, res) => {
         profileComplete: true,
         phone: tempPhone,
         lastLoginAt: new Date(),
+        lastActiveAt: new Date(),
       });
     } else {
       // If user exists, link Apple credentials and update name if needed
@@ -832,9 +841,11 @@ exports.appleLogin = async (req, res) => {
         updated = true;
       }
       user.lastLoginAt = new Date();
+      user.lastActiveAt = new Date();
     }
 
     user.lastLoginAt = new Date();
+    user.lastActiveAt = new Date();
 
     // Save FCM Token & disassociate from any other user
     if (fcmToken && typeof fcmToken === "string") {

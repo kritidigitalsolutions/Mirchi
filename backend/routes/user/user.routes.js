@@ -13,6 +13,8 @@ const {
   completeProfile,
   updateProfile,
   saveFcmToken,
+  heartbeat,
+  markOffline,
 } = require("../../controllers/user.controller");
 
 
@@ -60,6 +62,21 @@ router.patch(
   "/fcm-token",
   isAuth,
   saveFcmToken
+);
+
+// ========================================
+// REAL-TIME PRESENCE HEARTBEAT
+// ========================================
+router.post(
+  "/heartbeat",
+  isAuth,
+  heartbeat
+);
+
+router.post(
+  "/offline",
+  isAuth,
+  markOffline
 );
 
 

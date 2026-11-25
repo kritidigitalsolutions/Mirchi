@@ -1,4 +1,5 @@
 const User = require("../models/user.model");
+const { markUserOnline, clearUserActivity } = require("../utils/presence.helper");
 
 
 // ========================================
@@ -303,6 +304,7 @@ exports.saveFcmToken = async (req, res) => {
 
     user.fcmToken = fcmToken;
     user.fcmTokenUpdatedAt = new Date();
+    user.lastActiveAt = new Date();
 
     await user.save();
 
@@ -314,6 +316,40 @@ exports.saveFcmToken = async (req, res) => {
     });
   } catch (error) {
     console.error("Save FCM Token Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};
+
+// ========================================
+// USER PRESENCE HEARTBEAT / OFFLINE
+// ========================================
+exports.heartbeat = async (req, res) => {
+  try {
+    const lastActiveAt = await markUserOnline(req.user._id);
+    res.status(200).json({
+      success: true,
+      lastActiveAt,
+    });
+  } catch (error) {
+    console.error("Heartbeat Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
+  }
+};
+
+exports.markOffline = async (req, res) => {
+  try {
+    await clearUserActivity(req.user._id);
+    res.status(200).json({
+      success: true,
+    });
+  } catch (error) {
+    console.error("Mark Offline Error:", error);
     res.status(500).json({
       success: false,
       message: "Server error",

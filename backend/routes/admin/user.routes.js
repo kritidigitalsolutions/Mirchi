@@ -28,6 +28,8 @@ const {
     getRegistrationStats,
     getUserGrowth,
     toggleBlockUser,
+    getOnlineUsersCount,
+    streamOnlineUsers,
 } = require("../../controllers/admin/user.controller");
 
 
@@ -85,6 +87,22 @@ router.get(
     isAdmin,
     hasPermission("users"),
     getUserGrowth
+);
+
+// Get real-time online users count
+router.get(
+    "/online-count",
+    isAdmin,
+    hasPermission("users"),
+    getOnlineUsersCount
+);
+
+// Stream real-time online users count (SSE)
+router.get(
+    "/online-stream",
+    isAdmin,
+    hasPermission("users"),
+    streamOnlineUsers
 );
 
 // Get single user

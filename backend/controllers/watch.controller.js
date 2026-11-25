@@ -4,6 +4,7 @@ const ShareEvent = require("../models/shareEvent.model");
 const Episode = require("../models/episode.model");
 const Series = require("../models/series.model");
 const Subscription = require("../models/subscription.model");
+const { touchUserActivityById } = require("../utils/presence.helper");
 
 // A play counts as a "view" once this many seconds have been watched
 const VIEW_THRESHOLD_SEC = 10;
@@ -114,6 +115,10 @@ exports.startSession = async (req, res) => {
       return res.status(409).json({ success: false, message: "sessionId already used for another episode" });
     }
 
+    if (session.user) {
+      touchUserActivityById(session.user);
+    }
+
     res.status(200).json({ success: true, sessionId: session.sessionId });
   } catch (error) {
     console.error("Watch Start Error:", error);
@@ -165,6 +170,10 @@ exports.progressSession = async (req, res) => {
 
     const inc = {};
     if (deltaSec > 0) inc.watchTimeSec = deltaSec;
+
+    if (existing.user || req.user?._id) {
+      touchUserActivityById(existing.user || req.user._id);
+    }
 
     // Count the view exactly once (atomic flip of `counted`)
     if (!session.counted && session.watchedSec >= VIEW_THRESHOLD_SEC) {

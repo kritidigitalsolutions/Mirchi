@@ -1,7 +1,14 @@
 const User = require("../../models/user.model");
 const Subscription = require("../../models/subscription.model");
+const WatchSession = require("../../models/watchSession.model");
 const Plan = require("../../models/plan.model");
 const { resolveSubscriptionSource } = require("../../utils/subscriptionSource");
+const {
+    ONLINE_WINDOW_MS,
+    getOnlineCutoff,
+    isUserOnline,
+    getOnlineUserCount,
+} = require("../../utils/presence.helper");
 
 // MongoDB stores timestamps in UTC. Dashboard registration reporting is based
 // on the India calendar day, regardless of where the API process is hosted.
@@ -51,37 +58,55 @@ exports.getAllUsers = async (
             filter.isBlocked = { $ne: true };
         } else if (status === "blocked") {
             filter.isBlocked = true;
+        } else if (status === "online") {
+            const cutoff = getOnlineCutoff();
+            filter.isBlocked = { $ne: true };
+            filter.$or = [
+                { lastActiveAt: { $gte: cutoff } },
+                { lastLoginAt: { $gte: cutoff } },
+                { fcmTokenUpdatedAt: { $gte: cutoff } },
+            ];
         }
 
         const totalUsers = await User.countDocuments(filter);
         const totalPages = Math.max(Math.ceil(totalUsers / limit), 1);
         const currentPage = Math.min(page, totalPages);
 
-        const [userDocs, activeUsers, blockedUsers] = await Promise.all([
+        const [userDocs, activeUsers, blockedUsers, onlineUsers] = await Promise.all([
             User.find(filter)
                 .select("-__v")
-                .sort({ createdAt: -1 })
+                .sort(status === "online" ? { lastActiveAt: -1 } : { createdAt: -1 })
                 .skip((currentPage - 1) * limit)
                 .limit(limit)
                 .lean(),
             User.countDocuments({ ...searchFilter, isBlocked: { $ne: true } }),
             User.countDocuments({ ...searchFilter, isBlocked: true }),
+            getOnlineUserCount(searchFilter),
         ]);
 
-        // Attach each user's latest subscription (claim date, plan, expiry)
-        const latestSubs = await Subscription.aggregate([
-            { $match: { user: { $in: userDocs.map((u) => u._id) } } },
-            { $sort: { startDate: -1 } },
-            { $group: { _id: "$user", sub: { $first: "$$ROOT" } } },
-            {
-                $lookup: {
-                    from: Plan.collection.name,
-                    localField: "sub.plan",
-                    foreignField: "_id",
-                    as: "plan",
+        const userIds = userDocs.map((u) => u._id);
+
+        // Attach each user's latest subscription and check active video sessions
+        const [latestSubs, activeWatchers] = await Promise.all([
+            Subscription.aggregate([
+                { $match: { user: { $in: userIds } } },
+                { $sort: { startDate: -1 } },
+                { $group: { _id: "$user", sub: { $first: "$$ROOT" } } },
+                {
+                    $lookup: {
+                        from: Plan.collection.name,
+                        localField: "sub.plan",
+                        foreignField: "_id",
+                        as: "plan",
+                    },
                 },
-            },
+            ]),
+            WatchSession.distinct("user", {
+                user: { $in: userIds },
+                lastPingAt: { $gte: getOnlineCutoff() },
+            }),
         ]);
+        const activeWatcherSet = new Set(activeWatchers.map(String));
         const latestByUser = new Map(
             latestSubs.map(({ _id, sub, plan }) => [
                 String(_id),
@@ -96,10 +121,17 @@ exports.getAllUsers = async (
                 },
             ])
         );
-        const users = userDocs.map((u) => ({
-            ...u,
-            latestSubscription: latestByUser.get(String(u._id)) || null,
-        }));
+        const now = Date.now();
+        const users = userDocs.map((u) => {
+            const isOnline = isUserOnline(u, now, activeWatcherSet);
+            const effectiveLastActive = u.lastActiveAt || u.fcmTokenUpdatedAt || u.lastLoginAt || null;
+            return {
+                ...u,
+                lastActiveAt: isOnline ? (u.lastActiveAt || new Date(now)) : effectiveLastActive,
+                isOnline,
+                latestSubscription: latestByUser.get(String(u._id)) || null,
+            };
+        });
 
         res.status(200).json({
             success: true,
@@ -114,6 +146,7 @@ exports.getAllUsers = async (
             stats: {
                 activeUsers,
                 blockedUsers,
+                onlineUsers,
             },
         });
 
@@ -350,4 +383,59 @@ exports.getUserGrowth = async (req, res) => {
             message: "Server error",
         });
     }
+};
+
+// ========================================
+// REAL-TIME ONLINE USERS COUNT & STREAM
+// ========================================
+exports.getOnlineUsersCount = async (req, res) => {
+    try {
+        const onlineUsers = await getOnlineUserCount();
+        res.status(200).json({
+            success: true,
+            onlineUsers,
+            windowSeconds: Math.round(ONLINE_WINDOW_MS / 1000),
+            timestamp: new Date().toISOString(),
+        });
+    } catch (error) {
+        console.error("Get Online Users Count Error:", error);
+        res.status(500).json({
+            success: false,
+            message: "Server error",
+        });
+    }
+};
+
+exports.streamOnlineUsers = async (req, res) => {
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache, no-transform");
+    res.setHeader("Connection", "keep-alive");
+    res.flushHeaders?.();
+
+    let closed = false;
+    const pushCount = async () => {
+        if (closed) return;
+        try {
+            const onlineUsers = await getOnlineUserCount();
+            if (closed) return;
+            res.write(
+                `data: ${JSON.stringify({
+                    onlineUsers,
+                    windowSeconds: Math.round(ONLINE_WINDOW_MS / 1000),
+                    timestamp: new Date().toISOString(),
+                })}\n\n`
+            );
+        } catch (error) {
+            console.error("Stream Online Users Error:", error.message);
+        }
+    };
+
+    await pushCount();
+    const intervalId = setInterval(pushCount, 5000);
+
+    req.on("close", () => {
+        closed = true;
+        clearInterval(intervalId);
+        res.end();
+    });
 };
