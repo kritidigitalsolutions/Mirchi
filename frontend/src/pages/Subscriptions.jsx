@@ -39,8 +39,8 @@ const PAGE_SIZE = 10;
 const CHART_RANGES = [
   { value: "today", label: "Day" },
   { value: "week", label: "This Week" },
-  { value: "month", label: "30 Days" },
-  { value: "year", label: "12 Months" },
+  { value: "month", label: "This Month" },
+  { value: "year", label: "This Year" },
 ];
 
 // ── Custom Tooltip ────────────────────────────────────────────────
@@ -392,7 +392,7 @@ export default function SubscriptionPage() {
             <div>
               <div className="sub-chart-title">Subscriber Growth</div>
               <div className="sub-chart-subtitle">
-                {chartRange === "week" ? "This week · Monday–Sunday (IST)" : `${CHART_RANGES.find((r) => r.value === chartRange)?.label} overview`}
+                {chartRange === "week" ? "Mon–Sun (IST)" : `${CHART_RANGES.find((r) => r.value === chartRange)?.label} overview`}
               </div>
             </div>
           </div>

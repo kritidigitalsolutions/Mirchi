@@ -10,8 +10,8 @@ export const RANGE_OPTIONS = [
   { id: "today", label: "Today" },
   { id: "yesterday", label: "Yesterday" },
   { id: "week", label: "This week (Mon–Sun)" },
-  { id: "month", label: "Last 30 days" },
-  { id: "year", label: "Last 12 months" },
+  { id: "month", label: "This month" },
+  { id: "year", label: "This year" },
   { id: "all", label: "All time" },
   { id: "custom", label: "Custom" },
 ];

@@ -450,13 +450,13 @@ export default function Dashboard() {
             </div>
             <div className="stat-card s-orange">
               <div className="stat-icon"><Calendar size={28} /></div>
-              <div className="stat-label">Last 30 Days Income</div>
+              <div className="stat-label">This Month Income</div>
               <div className="stat-value">{loading ? "..." : formatCurrency(incomeStats.monthlyIncome)}</div>
               <div className="stat-trend up">{getMonthlyIncomeTrend()}</div>
             </div>
             <div className="stat-card s-blue">
               <div className="stat-icon"><CalendarClock size={28} /></div>
-              <div className="stat-label">Last 12 Months Income</div>
+              <div className="stat-label">This Year Income</div>
               <div className="stat-value">{loading ? "..." : formatCurrency(incomeStats.yearlyIncome)}</div>
               <div className="stat-trend up">{getYearlyIncomeTrend()}</div>
             </div>

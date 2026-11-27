@@ -75,8 +75,8 @@ const RANGES = ["today", "yesterday", "week", "month", "year", "all", "custom"];
  * Resolve a report range.
  *  today / yesterday -> that IST day, hourly buckets
  *  week              -> current Monday-Sunday IST week, daily buckets
- *  month             -> last 30 days incl. today, daily buckets
- *  year              -> last 12 months, monthly buckets
+ *  month             -> current IST calendar month, daily buckets
+ *  year              -> current IST calendar year, monthly buckets
  *  all               -> everything (start = null), monthly buckets
  *  custom            -> from..to (YYYY-MM-DD, inclusive IST days)
  * Returns { range, start, end, bucket, format } (start null = no lower bound).
@@ -97,12 +97,16 @@ const getRange = (rangeInput, fromInput, toInput, now = new Date()) => {
       ({ start, end } = getIndiaDayBounds(now, -1));
       bucket = "hour";
       break;
-    case "month":
-      start = new Date(todayStart.getTime() - 29 * DAY_MS);
+    case "month": {
+      const s = new Date(todayStart.getTime() + IST_OFFSET_MS);
+      start = new Date(Date.UTC(s.getUTCFullYear(), s.getUTCMonth(), 1) - IST_OFFSET_MS);
+      end = new Date(Date.UTC(s.getUTCFullYear(), s.getUTCMonth() + 1, 1) - IST_OFFSET_MS);
       break;
+    }
     case "year": {
       const s = new Date(todayStart.getTime() + IST_OFFSET_MS);
-      start = new Date(Date.UTC(s.getUTCFullYear(), s.getUTCMonth() - 11, 1) - IST_OFFSET_MS);
+      start = new Date(Date.UTC(s.getUTCFullYear(), 0, 1) - IST_OFFSET_MS);
+      end = new Date(Date.UTC(s.getUTCFullYear() + 1, 0, 1) - IST_OFFSET_MS);
       bucket = "month";
       break;
     }
