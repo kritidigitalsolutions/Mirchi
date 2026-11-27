@@ -39,8 +39,8 @@ const PAGE_SIZE = 10;
 const CHART_RANGES = [
   { value: "today", label: "Day" },
   { value: "week", label: "Week" },
-  { value: "month", label: "Month" },
-  { value: "year", label: "Year" },
+  { value: "month", label: "30 Days" },
+  { value: "year", label: "12 Months" },
 ];
 
 // ── Custom Tooltip ────────────────────────────────────────────────
@@ -171,8 +171,8 @@ export default function SubscriptionPage() {
     fetchChart(chartRange);
   }, [chartRange, fetchChart]);
 
-  const fetchSubs = async () => {
-    setLoading(true);
+  const fetchSubs = async (background = false) => {
+    if (!background) setLoading(true);
     try {
       const res = await API.get("/admin/subscription/all", {
         params: {
@@ -206,6 +206,19 @@ export default function SubscriptionPage() {
   useEffect(() => {
     fetchSubs();
   }, [page, search, status, timeframe, claimedFrom, claimedTo]);
+
+  useEffect(() => {
+    const refresh = () => {
+      fetchSubs(true);
+      fetchChart(chartRange);
+    };
+    const timer = window.setInterval(refresh, 60_000);
+    window.addEventListener("focus", refresh);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("focus", refresh);
+    };
+  }, [page, search, status, timeframe, claimedFrom, claimedTo, chartRange, fetchChart]);
 
   const handleCancel = async (subscription) => {
     if (!window.confirm(`Cancel the ${subscription.plan?.name || "selected"} subscription for ${subscription.user?.name || "this user"}?`)) {
@@ -291,7 +304,7 @@ export default function SubscriptionPage() {
           <h2><CreditCard size={30} /> Subscriptions</h2>
           <p>Search, manage, and review subscriber access.</p>
         </div>
-        <button className="btn btn-ghost" onClick={fetchSubs} disabled={loading}>
+        <button className="btn btn-ghost" onClick={() => { fetchSubs(); fetchChart(chartRange); }} disabled={loading}>
           <RefreshCw size={16} className={loading ? "spin" : ""} /> Refresh
         </button>
       </div>
@@ -379,7 +392,7 @@ export default function SubscriptionPage() {
             <div>
               <div className="sub-chart-title">Subscriber Growth</div>
               <div className="sub-chart-subtitle">
-                {CHART_RANGES.find((r) => r.value === chartRange)?.label} overview
+                {chartRange === "week" ? "This month ? 4 weeks" : `${CHART_RANGES.find((r) => r.value === chartRange)?.label} overview`}
               </div>
             </div>
           </div>
