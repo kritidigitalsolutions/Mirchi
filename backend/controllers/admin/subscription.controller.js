@@ -4,7 +4,6 @@ const { revenueSum } = require("../../utils/revenue");
 const { resolveSubscriptionSource } = require("../../utils/subscriptionSource");
 const {
   getIndiaDayBounds,
-  IST_OFFSET_MS,
   parseIndiaDate,
   getRange,
   buildBucketKeys,
@@ -315,25 +314,12 @@ exports.getSubscriberGrowthChart = async (req, res) => {
     await expireOldSubscriptions();
 
     const now = new Date();
-    let { range, start, end, bucket, format } = getRange(
+    const { range, start, end, bucket, format } = getRange(
       req.query.range,
       req.query.from,
       req.query.to,
       now
     );
-
-    // Week view groups the current IST month into four reporting periods.
-    let weekLabels;
-    if (range === "week") {
-      const indiaNow = new Date(now.getTime() + IST_OFFSET_MS);
-      const year = indiaNow.getUTCFullYear();
-      const month = indiaNow.getUTCMonth();
-      const lastDay = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
-      start = new Date(Date.UTC(year, month, 1) - IST_OFFSET_MS);
-      end = now;
-      bucket = "week";
-      weekLabels = ["Week 1 (1?7)", "Week 2 (8?14)", "Week 3 (15?21)", `Week 4 (22?${lastDay})`];
-    }
 
     const matchStage = { createdAt: {} };
     if (start) matchStage.createdAt.$gte = start;
@@ -345,11 +331,7 @@ exports.getSubscriberGrowthChart = async (req, res) => {
       { $match: matchStage },
       {
         $group: {
-          _id: range === "week" ? {
-            $min: [4, { $ceil: { $divide: [
-              { $dayOfMonth: { date: "$createdAt", timezone: IST_TZ } }, 7,
-            ] } }],
-          } : {
+          _id: {
             $dateToString: {
               format,
               date: "$createdAt",
@@ -377,10 +359,10 @@ exports.getSubscriberGrowthChart = async (req, res) => {
     }
 
     // Fill all keys so the chart has no gaps
-    const allKeys = range === "week" ? [1, 2, 3, 4] : start ? buildBucketKeys(start, end, bucket) : rawRows.map((r) => r._id);
+    const allKeys = start ? buildBucketKeys(start, end, bucket) : rawRows.map((r) => r._id);
 
     const chartData = allKeys.map((key) => ({
-      label: weekLabels ? weekLabels[key - 1] : key,
+      label: key,
       subscribers: dataMap[key]?.subscribers || 0,
       revenue: dataMap[key]?.revenue || 0,
       uniqueUsers: dataMap[key]?.uniqueUsers || 0,

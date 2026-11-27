@@ -38,7 +38,7 @@ const PAGE_SIZE = 10;
 // Chart range options
 const CHART_RANGES = [
   { value: "today", label: "Day" },
-  { value: "week", label: "Week" },
+  { value: "week", label: "This Week" },
   { value: "month", label: "30 Days" },
   { value: "year", label: "12 Months" },
 ];
@@ -392,7 +392,7 @@ export default function SubscriptionPage() {
             <div>
               <div className="sub-chart-title">Subscriber Growth</div>
               <div className="sub-chart-subtitle">
-                {chartRange === "week" ? "This month ? 4 weeks" : `${CHART_RANGES.find((r) => r.value === chartRange)?.label} overview`}
+                {chartRange === "week" ? "This week · Monday–Sunday (IST)" : `${CHART_RANGES.find((r) => r.value === chartRange)?.label} overview`}
               </div>
             </div>
           </div>
@@ -500,9 +500,14 @@ export default function SubscriptionPage() {
                   tickLine={false}
                   axisLine={false}
                   dy={8}
-                  interval="preserveStartEnd"
+                  interval={chartRange === "week" ? 0 : "preserveStartEnd"}
                   tickFormatter={(v) => {
                     if (!v) return "";
+                    if (chartRange === "week") {
+                      return new Date(`${v}T00:00:00+05:30`).toLocaleDateString("en-IN", {
+                        weekday: "short", timeZone: "Asia/Kolkata",
+                      });
+                    }
                     if (chartRange === "today") {
                       const timePart = v.split(" ")[1] || v;
                       const [h] = timePart.split(":").map(Number);

@@ -45,11 +45,13 @@ test('dashboard and subscription revenue use identical ranges and sums', async (
       status(code) { assert.equal(code, 200); return this; },
       json(body) { weeklyResponse = body; },
     });
-    assert.equal(weeklyResponse.bucket, 'week');
-    assert.equal(weeklyResponse.chartData.length, 4);
-    assert.equal(weeklyResponse.chartData[0].label, 'Week 1 (1?7)');
-    assert.equal(weeklyResponse.chartData[3].label, instant.startsWith('2026') ? 'Week 4 (22?30)' : 'Week 4 (22?31)');
-    assert.equal(pipelines[0][0].$match.createdAt.$gte.toISOString(), instant.startsWith('2026') ? '2026-10-31T18:30:00.000Z' : '2026-12-31T18:30:00.000Z');
+    assert.equal(weeklyResponse.bucket, 'day');
+    assert.equal(weeklyResponse.chartData.length, 7);
+    assert.equal(weeklyResponse.chartData[0].label, instant.startsWith('2026') ? '2026-11-23' : '2026-12-28');
+    assert.equal(weeklyResponse.chartData[6].label, instant.startsWith('2026') ? '2026-11-29' : '2027-01-03');
+    assert.deepEqual(normalize(pipelines[0][0]), normalize(facets.weeklyIncome[0]));
+    assert.deepEqual(normalize(pipelines[0][1].$group.revenue), normalize(facets.weeklyIncome[1].$group.total));
+    assert.equal(weeklyResponse.summary.totalRevenue, 0);
     assert.equal(pipelines[0][0].$match.createdAt.$lt.toISOString(), new Date(instant).toISOString());
     assert.equal(facets.todayIncome[0].$match.createdAt.$lt.toISOString(), new Date(instant).toISOString());
   }

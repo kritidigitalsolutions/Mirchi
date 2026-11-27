@@ -444,7 +444,7 @@ export default function Dashboard() {
             </div>
             <div className="stat-card s-green">
               <div className="stat-icon"><CalendarRange size={28} /></div>
-              <div className="stat-label">Last 7 Days Income</div>
+              <div className="stat-label">This Week Income (Mon–Sun)</div>
               <div className="stat-value">{loading ? "..." : formatCurrency(incomeStats.weeklyIncome)}</div>
               <div className="stat-trend up">{getWeeklyIncomeTrend()}</div>
             </div>

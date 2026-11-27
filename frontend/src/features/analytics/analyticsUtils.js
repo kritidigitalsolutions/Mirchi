@@ -9,7 +9,7 @@ import API from "../../api/axios";
 export const RANGE_OPTIONS = [
   { id: "today", label: "Today" },
   { id: "yesterday", label: "Yesterday" },
-  { id: "week", label: "Last 7 days" },
+  { id: "week", label: "This week (Mon–Sun)" },
   { id: "month", label: "Last 30 days" },
   { id: "year", label: "Last 12 months" },
   { id: "all", label: "All time" },

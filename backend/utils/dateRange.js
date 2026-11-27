@@ -74,7 +74,7 @@ const RANGES = ["today", "yesterday", "week", "month", "year", "all", "custom"];
 /**
  * Resolve a report range.
  *  today / yesterday -> that IST day, hourly buckets
- *  week              -> last 7 days incl. today, daily buckets
+ *  week              -> current Monday-Sunday IST week, daily buckets
  *  month             -> last 30 days incl. today, daily buckets
  *  year              -> last 12 months, monthly buckets
  *  all               -> everything (start = null), monthly buckets
@@ -120,9 +120,13 @@ const getRange = (rangeInput, fromInput, toInput, now = new Date()) => {
       break;
     }
     case "week":
-    default:
-      start = new Date(todayStart.getTime() - 6 * DAY_MS);
+    default: {
+      const indiaDay = new Date(now.getTime() + IST_OFFSET_MS).getUTCDay();
+      const daysSinceMonday = (indiaDay + 6) % 7;
+      start = new Date(todayStart.getTime() - daysSinceMonday * DAY_MS);
+      end = new Date(start.getTime() + 7 * DAY_MS);
       break;
+    }
   }
 
   return { range, start, end, bucket, format: BUCKET_FORMATS[bucket] };
