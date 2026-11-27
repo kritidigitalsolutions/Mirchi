@@ -262,3 +262,62 @@ body.light .sub-source.payment { color: #059669; font-weight: 600; }
 body.light .sub-source.voucher { color: #7e22ce; }
 body.light .sub-source.promo { color: #1d4ed8; }
 body.light .sub-urgent { color: #b91c1c; }
+
+/* The growth chart must follow the same body theme as the rest of the page. */
+body.light .sub-chart-card {
+  background: #fff;
+  border-color: #e2e8f0;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.06);
+}
+
+body.light .sub-chart-card:hover {
+  box-shadow: 0 6px 24px rgba(15, 23, 42, 0.09);
+}
+
+body.light .sub-chart-header,
+body.light .sub-chart-tooltip-label { border-bottom-color: #e2e8f0; }
+
+body.light .sub-chart-title,
+body.light .sub-chart-kpi-val,
+body.light .sub-chart-tooltip-val { color: #0f172a; }
+
+body.light .sub-chart-subtitle,
+body.light .sub-chart-kpi-label,
+body.light .sub-chart-tooltip-label,
+body.light .sub-chart-tooltip-key,
+body.light .sub-chart-loading-label,
+body.light .sub-chart-empty { color: #475569; }
+
+body.light .sub-chart-icon { background: #f3e8ff; color: #7e22ce; }
+
+body.light .sub-chart-kpi {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+}
+body.light .sub-chart-kpi:hover { background: #f1f5f9; }
+body.light .sub-chart-kpi--active-purple,
+body.light .sub-chart-kpi--active-purple:hover {
+  background: #faf5ff;
+  border-color: #c084fc;
+}
+body.light .sub-chart-kpi--active-green,
+body.light .sub-chart-kpi--active-green:hover {
+  background: #ecfdf5;
+  border-color: #34d399;
+}
+
+body.light .sub-chart-range-toggle { background: #f1f5f9; border-color: #e2e8f0; }
+body.light .sub-chart-range-toggle button { color: #475569; }
+body.light .sub-chart-range-toggle button:hover:not(.active) {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+body.light .sub-chart-range-toggle button.active { background: #e0e7ff; color: #4338ca; }
+
+body.light .sub-chart-tooltip {
+  background: rgba(255, 255, 255, 0.98);
+  border-color: #e2e8f0;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+}
+body.light .sub-chart-tooltip-row--secondary { opacity: 1; }
+body.light .sub-chart-card .recharts-cartesian-grid line { stroke: #e2e8f0; }

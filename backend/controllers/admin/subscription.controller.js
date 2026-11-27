@@ -1,12 +1,12 @@
 const Subscription = require("../../models/subscription.model");
 const User = require("../../models/user.model");
+const { revenueSum } = require("../../utils/revenue");
 const { resolveSubscriptionSource } = require("../../utils/subscriptionSource");
 const {
   getIndiaDayBounds,
+  IST_OFFSET_MS,
   parseIndiaDate,
-  IST_OFFSET_MS: INDIA_TIMEZONE_OFFSET_MS,
   getRange,
-  bucketKey,
   buildBucketKeys,
   IST_TZ,
 } = require("../../utils/dateRange");
@@ -38,17 +38,11 @@ exports.getRevenue = async (req, res) => {
     // auto cleanup
     await expireOldSubscriptions();
 
-    const subscriptions = await Subscription.find();
-
-    // count paid subscriptions only
-    const validSubs = subscriptions.filter(
-      (sub) => (sub.amount || 0) > 0
-    );
-
-    const totalRevenue = validSubs.reduce(
-      (sum, sub) => sum + (sub.amount || 0),
-      0
-    );
+    const [result] = await Subscription.aggregate([
+      { $match: { createdAt: { $lt: new Date() } } },
+      { $group: { _id: null, revenue: revenueSum } },
+    ]);
+    const totalRevenue = result?.revenue || 0;
 
     res.status(200).json({
       success: true,
@@ -129,109 +123,30 @@ exports.getIncomeStats = async (req, res) => {
     await expireOldSubscriptions();
 
     const now = new Date();
-    const { start: startOfToday } = getIndiaDayBounds(now, 0);
-    const { start: startOfYesterday } = getIndiaDayBounds(new Date(), -1);
-
-    const indiaNow = new Date(Date.now() + INDIA_TIMEZONE_OFFSET_MS);
-    const dayOfWeek = indiaNow.getUTCDay();
-
-    // Start of current IST week (Sunday 00:00:00 IST)
-    const { start: startOfWeek } = getIndiaDayBounds(new Date(), -dayOfWeek);
-
-    // Start of current IST month (1st of month 00:00:00 IST)
-    const startOfIndiaMonthAsUtc = Date.UTC(
-      indiaNow.getUTCFullYear(),
-      indiaNow.getUTCMonth(),
-      1
-    );
-    const startOfMonth = new Date(startOfIndiaMonthAsUtc - INDIA_TIMEZONE_OFFSET_MS);
-
-    // Start of current IST year (Jan 1st 00:00:00 IST)
-    const startOfIndiaYearAsUtc = Date.UTC(
-      indiaNow.getUTCFullYear(),
-      0,
-      1
-    );
-    const startOfYear = new Date(startOfIndiaYearAsUtc - INDIA_TIMEZONE_OFFSET_MS);
-
-    const sumAmount = async (match) => {
-      const result = await Subscription.aggregate([
-        { $match: match },
-        {
-          $group: {
-            _id: null,
-            total: {
-              $sum: {
-                $ifNull: ["$amount", 0],
-              },
-            },
-          },
-        },
-      ]);
-
-      return result[0]?.total || 0;
+    const fields = {
+      todayIncome: "today",
+      yesterdayIncome: "yesterday",
+      weeklyIncome: "week",
+      monthlyIncome: "month",
+      yearlyIncome: "year",
+      totalIncome: "all",
     };
-
-    const baseMatch = {
-      amount: { $gt: 0 },
-    };
-
-    const [
-      todayIncome,
-      yesterdayIncome,
-      weeklyIncome,
-      monthlyIncome,
-      yearlyIncome,
-      totalIncome,
-    ] = await Promise.all([
-      sumAmount({
-        ...baseMatch,
-        createdAt: {
-          $gte: startOfToday,
-          $lt: now,
-        },
-      }),
-      sumAmount({
-        ...baseMatch,
-        createdAt: {
-          $gte: startOfYesterday,
-          $lt: startOfToday,
-        },
-      }),
-      sumAmount({
-        ...baseMatch,
-        createdAt: {
-          $gte: startOfWeek,
-          $lt: now,
-        },
-      }),
-      sumAmount({
-        ...baseMatch,
-        createdAt: {
-          $gte: startOfMonth,
-          $lt: now,
-        },
-      }),
-      sumAmount({
-        ...baseMatch,
-        createdAt: {
-          $gte: startOfYear,
-          $lt: now,
-        },
-      }),
-      sumAmount(baseMatch),
-    ]);
+    // One aggregation keeps every income card on the same data snapshot.
+    const facets = Object.fromEntries(Object.entries(fields).map(([field, range]) => {
+      const { start, end } = getRange(range, undefined, undefined, now);
+      const createdAt = { $lt: end > now ? now : end };
+      if (start) createdAt.$gte = start;
+      return [field, [
+        { $match: { createdAt } },
+        { $group: { _id: null, total: revenueSum } },
+      ]];
+    }));
+    const [result = {}] = await Subscription.aggregate([{ $facet: facets }]);
+    const data = Object.fromEntries(Object.keys(fields).map(field => [field, result[field]?.[0]?.total || 0]));
 
     res.status(200).json({
       success: true,
-      data: {
-        todayIncome,
-        yesterdayIncome,
-        weeklyIncome,
-        monthlyIncome,
-        yearlyIncome,
-        totalIncome,
-      },
+      data,
     });
   } catch (err) {
     console.error("Income Stats Error:", err);
@@ -258,8 +173,9 @@ exports.getAllSubscriptions = async (req, res) => {
     const filter = {};
 
     // 12:00:00 AM to 11:59:59 PM IST bounds
-    const { start: todayStart, end: todayEnd } = getIndiaDayBounds(new Date(), 0);
-    const { start: yesterdayStart, end: yesterdayEnd } = getIndiaDayBounds(new Date(), -1);
+    const now = new Date();
+    const { start: todayStart, end: todayEnd } = getIndiaDayBounds(now, 0);
+    const { start: yesterdayStart, end: yesterdayEnd } = getIndiaDayBounds(now, -1);
 
     if (["active", "cancelled", "expired"].includes(status)) {
       filter.status = status;
@@ -303,13 +219,13 @@ exports.getAllSubscriptions = async (req, res) => {
     ] = await Promise.all([
       Subscription.countDocuments(filter),
       Subscription.aggregate([
-        { $match: { createdAt: { $gte: todayStart, $lt: todayEnd } } },
+        { $match: { createdAt: { $gte: todayStart, $lt: now } } },
         {
           $group: {
             _id: null,
             count: { $sum: 1 },
             distinctUsers: { $addToSet: "$user" },
-            revenue: { $sum: { $ifNull: ["$amount", 0] } },
+            revenue: revenueSum,
           },
         },
       ]),
@@ -320,15 +236,16 @@ exports.getAllSubscriptions = async (req, res) => {
             _id: null,
             count: { $sum: 1 },
             distinctUsers: { $addToSet: "$user" },
-            revenue: { $sum: { $ifNull: ["$amount", 0] } },
+            revenue: revenueSum,
           },
         },
       ]),
       Subscription.aggregate([
+        { $match: { createdAt: { $lt: now } } },
         {
           $group: {
             _id: null,
-            revenue: { $sum: { $ifNull: ["$amount", 0] } },
+            revenue: revenueSum,
           },
         },
       ]),
@@ -397,15 +314,30 @@ exports.getSubscriberGrowthChart = async (req, res) => {
   try {
     await expireOldSubscriptions();
 
-    const { range, start, end, bucket, format } = getRange(
+    const now = new Date();
+    let { range, start, end, bucket, format } = getRange(
       req.query.range,
       req.query.from,
-      req.query.to
+      req.query.to,
+      now
     );
+
+    // Week view groups the current IST month into four reporting periods.
+    let weekLabels;
+    if (range === "week") {
+      const indiaNow = new Date(now.getTime() + IST_OFFSET_MS);
+      const year = indiaNow.getUTCFullYear();
+      const month = indiaNow.getUTCMonth();
+      const lastDay = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+      start = new Date(Date.UTC(year, month, 1) - IST_OFFSET_MS);
+      end = now;
+      bucket = "week";
+      weekLabels = ["Week 1 (1?7)", "Week 2 (8?14)", "Week 3 (15?21)", `Week 4 (22?${lastDay})`];
+    }
 
     const matchStage = { createdAt: {} };
     if (start) matchStage.createdAt.$gte = start;
-    if (end) matchStage.createdAt.$lt = end;
+    if (end) matchStage.createdAt.$lt = end > now ? now : end;
     if (!start && !end) delete matchStage.createdAt;
 
     // Aggregate new subscribers and revenue per bucket
@@ -413,7 +345,11 @@ exports.getSubscriberGrowthChart = async (req, res) => {
       { $match: matchStage },
       {
         $group: {
-          _id: {
+          _id: range === "week" ? {
+            $min: [4, { $ceil: { $divide: [
+              { $dayOfMonth: { date: "$createdAt", timezone: IST_TZ } }, 7,
+            ] } }],
+          } : {
             $dateToString: {
               format,
               date: "$createdAt",
@@ -421,7 +357,7 @@ exports.getSubscriberGrowthChart = async (req, res) => {
             },
           },
           subscribers: { $sum: 1 },
-          revenue: { $sum: { $ifNull: ["$amount", 0] } },
+          revenue: revenueSum,
           uniqueUsers: { $addToSet: "$user" },
         },
       },
@@ -441,10 +377,10 @@ exports.getSubscriberGrowthChart = async (req, res) => {
     }
 
     // Fill all keys so the chart has no gaps
-    const allKeys = start ? buildBucketKeys(start, end, bucket) : rawRows.map((r) => r._id);
+    const allKeys = range === "week" ? [1, 2, 3, 4] : start ? buildBucketKeys(start, end, bucket) : rawRows.map((r) => r._id);
 
     const chartData = allKeys.map((key) => ({
-      label: key,
+      label: weekLabels ? weekLabels[key - 1] : key,
       subscribers: dataMap[key]?.subscribers || 0,
       revenue: dataMap[key]?.revenue || 0,
       uniqueUsers: dataMap[key]?.uniqueUsers || 0,

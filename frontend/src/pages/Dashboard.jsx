@@ -195,10 +195,25 @@ export default function Dashboard() {
   useEffect(() => {
     fetchData();
 
-    // Re-check the server's India 12:00 AM–11:59:59 PM window every minute.
-    // This makes the card update within one minute of India's new day.
-    const registrationRefresh = window.setInterval(fetchRegistrationStats, 60_000);
-    return () => window.clearInterval(registrationRefresh);
+    const refreshRevenue = async () => {
+      if (!canAccessPricing) return;
+      try {
+        const response = await API.get("/admin/subscription/income-stats");
+        if (response.data?.data) setIncomeStats(response.data.data);
+      } catch (err) {
+        console.log("Income stats refresh error:", err);
+      }
+    };
+    const refresh = () => {
+      fetchRegistrationStats();
+      refreshRevenue();
+    };
+    const timer = window.setInterval(refresh, 60_000);
+    window.addEventListener("focus", refresh);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("focus", refresh);
+    };
   }, []);
 
   const formatCurrency = (value) =>
@@ -429,19 +444,19 @@ export default function Dashboard() {
             </div>
             <div className="stat-card s-green">
               <div className="stat-icon"><CalendarRange size={28} /></div>
-              <div className="stat-label">Weekly Income</div>
+              <div className="stat-label">Last 7 Days Income</div>
               <div className="stat-value">{loading ? "..." : formatCurrency(incomeStats.weeklyIncome)}</div>
               <div className="stat-trend up">{getWeeklyIncomeTrend()}</div>
             </div>
             <div className="stat-card s-orange">
               <div className="stat-icon"><Calendar size={28} /></div>
-              <div className="stat-label">Monthly Income</div>
+              <div className="stat-label">Last 30 Days Income</div>
               <div className="stat-value">{loading ? "..." : formatCurrency(incomeStats.monthlyIncome)}</div>
               <div className="stat-trend up">{getMonthlyIncomeTrend()}</div>
             </div>
             <div className="stat-card s-blue">
               <div className="stat-icon"><CalendarClock size={28} /></div>
-              <div className="stat-label">Yearly Income</div>
+              <div className="stat-label">Last 12 Months Income</div>
               <div className="stat-value">{loading ? "..." : formatCurrency(incomeStats.yearlyIncome)}</div>
               <div className="stat-trend up">{getYearlyIncomeTrend()}</div>
             </div>

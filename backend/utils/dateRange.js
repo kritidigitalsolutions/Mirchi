@@ -81,9 +81,8 @@ const RANGES = ["today", "yesterday", "week", "month", "year", "all", "custom"];
  *  custom            -> from..to (YYYY-MM-DD, inclusive IST days)
  * Returns { range, start, end, bucket, format } (start null = no lower bound).
  */
-const getRange = (rangeInput, fromInput, toInput) => {
+const getRange = (rangeInput, fromInput, toInput, now = new Date()) => {
   const range = RANGES.includes(rangeInput) ? rangeInput : "week";
-  const now = new Date();
   const { start: todayStart, end: todayEnd } = getIndiaDayBounds(now, 0);
   let start = null;
   let end = todayEnd;
